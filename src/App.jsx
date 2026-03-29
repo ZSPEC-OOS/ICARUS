@@ -52,6 +52,7 @@ function Splash({ msg = 'Loading...' }) {
 }
 
 export default function App() {
+  const [pinUnlocked, setPinUnlocked] = useState(() => sessionStorage.getItem('logik:pinUnlocked') === '1')
   // Three-phase state:
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
   //   authUser=null      -> Not logged in (show LoginScreen)
@@ -159,11 +160,22 @@ export default function App() {
     } catch {}
     pendingSettingsRef.current = {}
     setModels(loadModels())
+    setPinUnlocked(false)
+    try {
+      sessionStorage.removeItem('logik:pinUnlocked')
+    } catch {}
+  }, [])
+
+  const handlePinUnlock = useCallback(() => {
+    setPinUnlocked(true)
+    try {
+      sessionStorage.setItem('logik:pinUnlocked', '1')
+    } catch {}
   }, [])
 
   if (!authChecked) return <Splash />
-  if (!authUser) return <LoginScreen />
-  if (!settingsReady) return <Splash msg="Loading your settings..." />
+  if (!authUser && !pinUnlocked) return <LoginScreen onUnlock={handlePinUnlock} />
+  if (authUser && !settingsReady) return <Splash msg="Loading your settings..." />
 
   return (
     <>
@@ -184,7 +196,7 @@ export default function App() {
         onClose={() => {}}
         onSettingsChanged={handleSettingsChanged}
         onLogout={handleLogout}
-        userEmail={authUser.email}
+        userEmail={authUser?.email || 'pin-user@local'}
       />
     </>
   )

@@ -1,29 +1,9 @@
 import { useState } from 'react'
-import { signInWithEmail, signUpWithEmail } from '../services/firebaseService.js'
 
-// LoginScreen does NOT receive an onLogin callback - the Firebase auth state
-// listener in App.jsx is the single source of truth. After a successful
-// sign-in the form stays in loading state until Firebase confirms the session
-// and App.jsx unmounts this component.
+const APP_PIN = '5522'
 
-function authErrorMsg(code) {
-  switch (code) {
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential': return 'Incorrect email or password.'
-    case 'auth/email-already-in-use': return 'An account with this email already exists.'
-    case 'auth/invalid-email': return 'Please enter a valid email address.'
-    case 'auth/weak-password': return 'Password must be at least 6 characters.'
-    case 'auth/too-many-requests': return 'Too many attempts - please wait a moment and try again.'
-    case 'auth/network-request-failed': return 'Network error - check your connection and try again.'
-    default: return 'Something went wrong. Please try again.'
-  }
-}
-
-export default function LoginScreen() {
-  const [mode, setMode] = useState('signin')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+export default function LoginScreen({ onUnlock }) {
+  const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -31,12 +11,10 @@ export default function LoginScreen() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    try {
-      mode === 'signup'
-        ? await signUpWithEmail(email.trim(), password)
-        : await signInWithEmail(email.trim(), password)
-    } catch (err) {
-      setError(authErrorMsg(err.code))
+    if (pin === APP_PIN) {
+      onUnlock?.()
+    } else {
+      setError('Incorrect PIN. Please try again.')
       setLoading(false)
     }
   }
@@ -56,52 +34,33 @@ export default function LoginScreen() {
     }}>
       <form onSubmit={handleSubmit} style={{
         background: '#13131e', padding: '2.5rem 2.25rem', borderRadius: '10px',
-        minWidth: '340px', border: '1px solid #2a2a3a', boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        minWidth: '340px', border: '1px solid #2a2a3a', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', textAlign: 'center',
       }}>
         <div style={{ marginBottom: '1.75rem', textAlign: 'center' }}>
           <span style={{ fontSize: '1.6rem', color: '#a78bfa', fontFamily: "'Cormorant Upright', serif", letterSpacing: '0.15em' }}>LOGIK</span>
-          <p style={{ color: '#888', fontSize: '0.85rem', marginTop: '0.4rem', marginBottom: 0 }}>AI Coding Assistant</p>
+          <p style={{ color: '#888', fontSize: '0.85rem', marginTop: '0.4rem', marginBottom: 0 }}>Enter your 4-digit PIN</p>
         </div>
 
-        <div style={{ display: 'flex', marginBottom: '1.5rem', borderBottom: '1px solid #2a2a3a' }}>
-          {[['signin', 'Sign In'], ['signup', 'Create Account']].map(([m, label]) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => { setMode(m); setError('') }}
-              style={{
-                flex: 1, padding: '0.45rem', background: 'none',
-                border: 'none', borderBottom: mode === m ? '2px solid #a78bfa' : '2px solid transparent',
-                color: mode === m ? '#a78bfa' : '#666', cursor: 'pointer',
-                fontSize: '0.875rem', fontFamily: 'inherit', marginBottom: '-1px',
-                transition: 'color 0.15s',
-              }}
-            >{label}</button>
-          ))}
-        </div>
-
-        <input
-          style={inp}
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          autoFocus
-          autoComplete="email"
-          required
-        />
         <input
           style={inp}
           type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={4}
+          placeholder="••••"
+          value={pin}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 4)
+            setPin(digits)
+            if (error) setError('')
+          }}
+          autoFocus
+          autoComplete="one-time-code"
           required
         />
 
         {error && (
-          <p style={{ color: '#f87171', fontSize: '0.85rem', marginBottom: '0.85rem', marginTop: '-0.3rem' }}>
+          <p style={{ color: '#f87171', fontSize: '0.85rem', marginBottom: '0.85rem', marginTop: '0.25rem' }}>
             {error}
           </p>
         )}
@@ -118,11 +77,11 @@ export default function LoginScreen() {
             transition: 'background 0.15s',
           }}
         >
-          {loading ? 'Loading...' : mode === 'signup' ? 'Create Account' : 'Sign In'}
+          {loading ? 'Checking PIN...' : 'Unlock'}
         </button>
 
         <p style={{ color: '#555', fontSize: '0.78rem', marginTop: '1.25rem', textAlign: 'center', lineHeight: 1.5 }}>
-          Your API keys are encrypted and stored securely in your account.
+          Secure local access enabled with a 4-digit PIN.
         </p>
       </form>
     </div>
