@@ -308,6 +308,19 @@ export const AGENT_TOOLS = [
       required: ['text'],
     },
   },
+  {
+    name: 'token_io_optimizer',
+    description: 'Generate a token-optimization plan for long requests. Prioritizes reducing unnecessary token spend without degrading code quality.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task: { type: 'string', description: 'User request or task summary to optimize for' },
+        expected_output_size: { type: 'string', enum: ['small', 'medium', 'large', 'huge'], description: 'Expected response size (default medium)' },
+        mode: { type: 'string', enum: ['off', 'adaptive', 'aggressive'], description: 'Optimization mode (default adaptive)' },
+      },
+      required: ['task'],
+    },
+  },
 ]
 
 // System prompt injected at the start of every agent session.
@@ -339,6 +352,7 @@ export function buildAgentSystemPrompt(conventions, logikMd, repoOwner, repoName
     `Use grep to search file contents by regex — far faster than opening files one by one.`,
     `Use read_many_files to read several files in one call.`,
     `Use lint_file after editing JS/TS files to catch errors before moving on.`,
+    `Use token_io_optimizer for long/complex requests to reduce unnecessary token spend while preserving implementation quality.`,
     `Use update_memory to append important facts to LOGIK.md so they persist across sessions.`,
     `Use the todo tool to track tasks when working on complex multi-step operations.`,
     `Work autonomously — do not ask the user for clarification. Make smart decisions and get the task done.`,
