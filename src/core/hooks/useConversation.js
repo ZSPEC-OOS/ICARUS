@@ -30,19 +30,12 @@ export function useConversation() {
 
   // Load cloud chat history at session start if a user is signed in and local is empty.
   useEffect(() => {
-codex/implement-ui/ux-improvements-for-logik-interface-s3a6du
     if (hydratedCloud) return
     let cancelled = false
     ;(async () => {
       const user = getCurrentUser()
       if (!user?.uid) { if (!cancelled) setHydratedCloud(true); return }
       if (conversation.length > 0) { if (!cancelled) setHydratedCloud(true); return }
-    let cancelled = false
-    ;(async () => {
-      const user = getCurrentUser()
-      if (!user?.uid) { setHydratedCloud(true); return }
-      if (conversation.length > 0) { setHydratedCloud(true); return }
-main
       const remote = await loadUserConversation(user.uid)
       if (!cancelled && remote.length > 0) {
         setConversation(remote.slice(-CONV_MAX_MESSAGES))
@@ -50,10 +43,7 @@ main
       if (!cancelled) setHydratedCloud(true)
     })()
     return () => { cancelled = true }
- codex/implement-ui/ux-improvements-for-logik-interface-s3a6du
   }, [hydratedCloud, conversation.length])
-  }, [])
-main
 
   // Debounce saves: only write to localStorage 500ms after the last update.
   useEffect(() => {
