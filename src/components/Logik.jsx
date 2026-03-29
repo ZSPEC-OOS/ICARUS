@@ -53,7 +53,7 @@ import LogikModularTools from './logik/LogikModularTools'
 import logikLogo         from '../../LOGIKlogo.png'
 import './Logik.css'
 
-// âââ Persistence ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Persistence Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 const SETTINGS_KEY    = 'logik:settings'
 const HISTORY_KEY     = 'logik:history'
 const GHTOKEN_SS_KEY  = 'logik:ghtoken'
@@ -84,9 +84,9 @@ function saveSettings(s) {
 function loadHistory()  { try { return JSON.parse(localStorage.getItem(HISTORY_KEY))  || [] } catch { return [] } }
 function saveHistory(h) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 60))) } catch {} }
 
-// âââ Utilities imported from ../utils/codeUtils and ../utils/diff ââââââââââââ
+// Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Utilities imported from ../utils/codeUtils and ../utils/diff Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
-// âââ Pure system-prompt builder (no hooks â safe to call inside async loops) ââ
+// Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Pure system-prompt builder (no hooks Ã¢ÂÂ safe to call inside async loops) Ã¢ÂÂÃ¢ÂÂ
 function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName, forTests = false, logikMd = null, contextFiles = [], styleExamples = []) {
   const repoCtx  = repoOwner && repoName ? `\nRepository: ${repoOwner}/${repoName}.` : ''
   const editMode = existingContent !== null ? 'patch' : 'replace'
@@ -95,7 +95,7 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
 
   const conv = !isStandalone && shadowContext.getConventions()
   const convCtx = conv && conv.framework !== 'unknown' ? [
-    `\nDETECTED PROJECT CONVENTIONS (follow exactly â do not ask):`,
+    `\nDETECTED PROJECT CONVENTIONS (follow exactly Ã¢ÂÂ do not ask):`,
     `  Framework: ${conv.framework}`,
     `  Language: ${conv.language}`,
     `  Naming: ${conv.namingConvention}`,
@@ -104,13 +104,13 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
     conv.hooks?.length ? `  Existing hooks: ${conv.hooks.join(', ')}`  : '',
     conv.deps?.length  ? `  Key deps: ${conv.deps.slice(0, 10).join(', ')}` : '',
     conv.pathAliases && Object.keys(conv.pathAliases).length
-      ? `  Import aliases: ${Object.entries(conv.pathAliases).map(([k, v]) => `${k}/ â ${v}/`).join(', ')}` : '',
+      ? `  Import aliases: ${Object.entries(conv.pathAliases).map(([k, v]) => `${k}/ Ã¢ÂÂ ${v}/`).join(', ')}` : '',
   ].filter(Boolean).join('\n') : ''
 
   // LOGIK.md standing instructions
-  const logikMdCtx = logikMd ? `\nPROJECT INSTRUCTIONS (from LOGIK.md â follow exactly):\n${logikMd.slice(0, LOGIK_MD_CAP)}` : ''
+  const logikMdCtx = logikMd ? `\nPROJECT INSTRUCTIONS (from LOGIK.md Ã¢ÂÂ follow exactly):\n${logikMd.slice(0, LOGIK_MD_CAP)}` : ''
 
-  // Style patterns: short excerpts from existing similar files â model should match this style
+  // Style patterns: short excerpts from existing similar files Ã¢ÂÂ model should match this style
   const styleCtx = styleExamples.length > 0
     ? `\nCODE STYLE PATTERNS FROM THIS CODEBASE (study these and match the style precisely):\n` +
       styleExamples.map(s => `--- ${s.path} ---\n${s.excerpt}`).join('\n\n')
@@ -118,7 +118,7 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
 
   // Ambient context: relevant files from the repo
   const contextCtx = contextFiles.length > 0
-    ? `\nRELEVANT EXISTING FILES (for reference â match patterns and style):\n` +
+    ? `\nRELEVANT EXISTING FILES (for reference Ã¢ÂÂ match patterns and style):\n` +
       contextFiles.map(f => `--- ${f.path} ---\n${f.content}`).join('\n\n')
     : ''
 
@@ -127,7 +127,7 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
     return [`You are LOGIK, an expert test-writing assistant.${repoCtx}`,
       `Generate a complete, production-ready test file for the provided ${lang} code.`,
       `Use ${tf}.`, convCtx, logikMdCtx,
-      `Output ONLY the test code â no markdown fences, no explanations.`,
+      `Output ONLY the test code Ã¢ÂÂ no markdown fences, no explanations.`,
     ].filter(Boolean).join('\n')
   }
 
@@ -149,8 +149,8 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
   } else {
     lines.push(
       `Output ONLY the complete, production-ready code. Critical requirements:`,
-      `- Include ALL code â never truncate, never write "// rest of implementation", never use TODO stubs`,
-      `- If the file is long, output every line in full â do not abbreviate`,
+      `- Include ALL code Ã¢ÂÂ never truncate, never write "// rest of implementation", never use TODO stubs`,
+      `- If the file is long, output every line in full Ã¢ÂÂ do not abbreviate`,
       `- No markdown code fences, no explanations outside the code`,
     )
   }
@@ -159,11 +159,11 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
   return lines.join('\n')
 }
 
-// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 export default function Logik({ onClose, models, setModels, selectedModelId, onModelChange, onSettingsChanged, onLogout, userEmail }) {
   const saved = loadSettings()
 
-  // ââ Config âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Config Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [activeModelId,  setActiveModelId]  = useState(selectedModelId || '')
   const [repoOwner,      setRepoOwner]      = useState(saved.repoOwner   || '')
   const [repoName,       setRepoName]       = useState(saved.repoName    || '')
@@ -173,7 +173,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const [doCreatePR,     setDoCreatePR]     = useState(true)
   const [dryRun,         setDryRun]         = useState(false)
 
-  // ââ Theme + fine-tune ââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Theme + fine-tune Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [theme, setTheme] = useState(saved.theme || 'graphite')
   const DEFAULT_FT = { brightness: 100, contrast: 100, saturation: 100, highlight: 50, shadow: 50 }
   const [fineTune, setFineTune] = useState({
@@ -206,17 +206,17 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     toggleOffsetY:saved.toggleOffsetY ?? 0,
   })
 
-  // ââ Input ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Input Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [prompt,           setPrompt]           = useState('')
   const [refinementPrompt, setRefinementPrompt] = useState('')
 
-  // ââ Enhancement toggles ââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Enhancement toggles Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [generateTests,   setGenerateTests]   = useState(false)
-  // creativity 0-100: maps to temperature 0.2â1.0 (0 = precise, 100 = creative)
+  // creativity 0-100: maps to temperature 0.2Ã¢ÂÂ1.0 (0 = precise, 100 = creative)
   const [creativity,      setCreativity]      = useState(saved.creativity ?? 50)
   // enableThinking: Anthropic extended thinking (deeper reasoning, slower)
   const [enableThinking,  setEnableThinking]  = useState(saved.enableThinking ?? false)
-  // planMode: agent reads only â no file writes; useful for analysis and review
+  // planMode: agent reads only Ã¢ÂÂ no file writes; useful for analysis and review
   const [planMode,        setPlanMode]        = useState(false)
   // planApproval: pending plan awaiting user approve/reject/modify
   const [planApproval,    setPlanApproval]    = useState(null) // null | { task, summary }
@@ -225,7 +225,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   // webSearchApiKey: Tavily API key for agent web_search tool
   const [webSearchApiKey, setWebSearchApiKey] = useState(() => loadSearchKey())
 
-  // ââ Multi-file plan ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Multi-file plan Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Each entry: {path, action, purpose, existingContent, _sha, code, testCode,
   //              patchEdits, diffText, status, error}
   const [filePlan,         setFilePlan]         = useState([])
@@ -234,10 +234,10 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const planRef            = useRef([])          // sync copy for use inside async loops
   const currentFileRef     = useRef(0)           // which file is streaming
 
-  // ââ Conversation â managed by hook âââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Conversation Ã¢ÂÂ managed by hook Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const { conversation, setConversation, turnCount, setTurnCount, reset: resetConversation } = useConversation()
 
-  // ââ Output âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Output Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [activeTab,  setActiveTab]  = useState('code')
   const [gitStatus,  setGitStatus]  = useState(null)
   const [prResult,   setPrResult]   = useState(null)
@@ -245,7 +245,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const [workflowRuns, setWorkflowRuns] = useState([])
   const [isPollingCI, setIsPollingCI] = useState(false)
 
-  // ââ Aliases: expose active file's data to all downstream JSX unchanged ââ
+  // Ã¢ÂÂÃ¢ÂÂ Aliases: expose active file's data to all downstream JSX unchanged Ã¢ÂÂÃ¢ÂÂ
   const activeFile      = filePlan[activeFileIndex] ?? {}
   const filePath        = activeFile.path           ?? ''
   const existingContent = activeFile.existingContent ?? null
@@ -255,32 +255,32 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const patchEdits      = activeFile.patchEdits      ?? []
   const diffText        = activeFile.diffText        ?? ''
 
-  // ââ Sandbox ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Sandbox Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [sandboxOutput, setSandboxOutput] = useState([])
   const [sandboxSetup,  setSandboxSetup]  = useState('')
   const [isRunning,     setIsRunning]     = useState(false)
   const [isRunningTests, setIsRunningTests] = useState(false)
   const sandboxRef = useRef(null)
 
-  // ââ Terminal ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Terminal Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [terminalInput,    setTerminalInput]    = useState('')
   const [terminalLog,      setTerminalLog]      = useState([])   // [{cmd,output,type,timestamp}]
   const [isTerminalRunning,setIsTerminalRunning]= useState(false)
 
-  // ââ Permission mode âââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  // 'auto'   â push immediately, no confirm
-  // 'ask'    â confirm dialog before any GitHub write
-  // 'manual' â user must click a second time (dry-run first, then confirm)
+  // Ã¢ÂÂÃ¢ÂÂ Permission mode Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+  // 'auto'   Ã¢ÂÂ push immediately, no confirm
+  // 'ask'    Ã¢ÂÂ confirm dialog before any GitHub write
+  // 'manual' Ã¢ÂÂ user must click a second time (dry-run first, then confirm)
   const [permissionMode, setPermissionMode] = useState(
     () => localStorage.getItem('logik:permMode') || 'ask'
   )
 
-  // ââ Agent mode âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Agent mode Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [isRunningPostPushTests, setIsRunningPostPushTests] = useState(false)
   const [logikMdDraft,    setLogikMdDraft]    = useState('')
   const [isSavingLogikMd, setIsSavingLogikMd] = useState(false)
 
-  // ââ UI state âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ UI state Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGenTests,   setIsGenTests]   = useState(false)
   const [isPushing,    setIsPushing]    = useState(false)
@@ -292,23 +292,23 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const [modulesOpen, setModulesOpen] = useState(false)
   const [sourceOpen,   setSourceOpen]   = useState(false)
   const [history,      setHistory]      = useState(loadHistory)
-  // ââ Phase 4: ShadowContext âââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Phase 4: ShadowContext Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [shadowStatus,  setShadowStatus]  = useState(null)   // null | string
 
-  // ââ Interactive response pipeline ââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Interactive response pipeline Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [pipelinePhase, setPipelinePhase] = useState('understanding')
   const [pipelineSteps, setPipelineSteps] = useState(() => createPipelineSteps('understanding'))
   const [validationResults, setValidationResults] = useState([])
   const [assistantMessage, setAssistantMessage] = useState(() => createAssistantMessage())
 
-  // ââ Phase 2: IntentAmplifier âââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Phase 2: IntentAmplifier Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [isAmplifying,       setIsAmplifying]       = useState(false)
   const [amplifierDecisions, setAmplifierDecisions] = useState([])  // string[]
 
-  // ââ Phase 3: AutoRemediation âââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Phase 3: AutoRemediation Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const [remediationStatus, setRemediationStatus] = useState(null)  // null | string
 
-  // ââ Activity log â managed by hook âââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Activity log Ã¢ÂÂ managed by hook Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const activityFeedRef = useRef(null)
   const { activityLog, activityRef, logActivity, updateActivity, clearActivity } = useActivityLog(activityFeedRef)
 
@@ -316,18 +316,18 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const language = detectLanguage(filePath, generatedCode)
   const hasGithub    = !!(githubToken && repoOwner && repoName)
 
-  // ââ Sync model from parent ââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Sync model from parent Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   useEffect(() => {
     if (selectedModelId && !activeModelId) setActiveModelId(selectedModelId)
   }, [selectedModelId, activeModelId])
 
-  // ââ Stable ref for the cloud-sync callback ââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Stable ref for the cloud-sync callback Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Using a ref means the effect below doesn't re-run just because App.jsx
   // re-created the callback (e.g. after a model-key update).
   const onSettingsChangedRef = useRef(onSettingsChanged)
   useEffect(() => { onSettingsChangedRef.current = onSettingsChanged }, [onSettingsChanged])
 
-  // ââ Persist settings âââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Persist settings Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // fineTune is decomposed into primitives so React can compare by value,
   // not by object reference (which would fire this effect on every render).
   const { brightness, contrast, saturation, highlight, shadow } = fineTune
@@ -360,7 +360,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       toggleOffsetX, toggleOffsetY,
       creativity, enableThinking, webSearchApiKey, permissionMode])
 
-  // ââ Phase 4: start ShadowContext indexing when credentials are ready ââââ
+  // Ã¢ÂÂÃ¢ÂÂ Phase 4: start ShadowContext indexing when credentials are ready Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   useEffect(() => {
     if (!hasGithub) return
     shadowContext.startIndexing(githubToken, repoOwner, repoName, baseBranch, () => {
@@ -370,7 +370,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
 
 
-  // ââ State watchdog â detects and resets stuck busy flags âââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ State watchdog Ã¢ÂÂ detects and resets stuck busy flags Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // If isGenerating has been true for >5 minutes (e.g. due to unhandled reject),
   // automatically reset it so the UI is never permanently locked.
   const generationStartRef = useRef(null)
@@ -384,7 +384,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           setIsGenTests(false)
           setIsPlanning(false)
           setIsAmplifying(false)
-          logActivity('warn', 'â  Watchdog: generation timed out after 5 min â state reset')
+          logActivity('warn', 'Ã¢ÂÂ  Watchdog: generation timed out after 5 min Ã¢ÂÂ state reset')
         }
       }, 5 * 60 * 1000)
       return () => clearTimeout(id)
@@ -393,10 +393,10 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }, [isGenerating]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ââ Exec bridge â managed by hook ââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Exec bridge Ã¢ÂÂ managed by hook Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const { bridgeAvailable, callExecBridge, callExecBridgeStream } = useExecBridge()
 
-  // ââ Agent session â managed by hook ââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Agent session Ã¢ÂÂ managed by hook Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const activeModel = models?.find(m => m.id === activeModelId) ?? models?.[0]
   // Memoize config objects so useAgentSession's run callback doesn't get a new
   // reference on every render (text-delta state updates fire many re-renders).
@@ -425,7 +425,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     localDirHandle,
   })
 
-  // ââ Cost estimate (memoized) âââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Cost estimate (memoized) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const costEstimate = useMemo(() => {
     const text = prompt.trim()
     if (!text) return null
@@ -433,15 +433,15 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     return estimateCost(text, model?.modelId)
   }, [prompt, activeModelId, models])
 
-  // ââ Plan entry updater (syncs planRef + React state together) âââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Plan entry updater (syncs planRef + React state together) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const updatePlanEntry = useCallback((index, updates) => {
     planRef.current = planRef.current.map((e, i) => i === index ? { ...e, ...updates } : e)
     setFilePlan([...planRef.current])
   }, [])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Phase 3: AutoRemediation helpers
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
   // Run code in the sandbox and return the first error string, or null if clean.
   const runSandboxTest = useCallback((code, lang = 'javascript') => {
@@ -530,7 +530,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   // JS/TS: runs in the sandbox and fixes real errors (up to 3 attempts).
   // Other supported langs: one AI static-analysis pass with a language checklist.
   // Unsupported langs (html, markdown, yaml, etc.): skipped immediately.
-  // filePath and purpose are optional â used to give the AI richer context for fixes.
+  // filePath and purpose are optional Ã¢ÂÂ used to give the AI richer context for fixes.
   const autoRemediate = useCallback(async (code, lang, model, signal, filePath = '', purpose = '') => {
     if (!REMEDIATABLE.has(lang)) return code  // skip html, markdown, yaml, etc.
 
@@ -554,12 +554,12 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      setRemediationStatus(`Auto-remediating (${attempt}/${MAX_ATTEMPTS})â¦`)
+      setRemediationStatus(`Auto-remediating (${attempt}/${MAX_ATTEMPTS})Ã¢ÂÂ¦`)
 
       let errorHint = null
 
       if (isJS && hasEslint) {
-        // Pipe code directly to eslint via stdin â catches real parse + lint errors
+        // Pipe code directly to eslint via stdin Ã¢ÂÂ catches real parse + lint errors
         const ext = lang === 'typescript' ? 'ts' : 'js'
         const lint = await callExecBridge(
           `npx eslint --stdin --stdin-filename=logik-check.${ext} --format=compact --rule '{"no-undef":"error","no-unused-vars":"warn"}'`,
@@ -573,13 +573,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           const ts = await callExecBridge('npx ts-node --transpile-only --stdin', undefined, 15000, current)
           const tsOut = [ts.stdout, ts.stderr].filter(Boolean).join('\n').trim()
           if (ts.exitCode !== 0 && tsOut) errorHint = tsOut.slice(0, 1500)
-          else break  // both lint + tsc pass â done
+          else break  // both lint + tsc pass Ã¢ÂÂ done
         } else {
           break  // eslint passes, no tsc needed
         }
       } else if (hasSandbox) {
         errorHint = await runSandboxTest(current, lang)
-        if (!errorHint) break  // passes sandbox â done
+        if (!errorHint) break  // passes sandbox Ã¢ÂÂ done
       } else {
         // Non-sandbox: run checklist pass; stop if code didn't change on 2nd attempt
         errorHint = checklist || 'syntax review requested'
@@ -588,11 +588,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       const fileCtx  = filePath ? ` in ${filePath}` : ''
       const purposeCtx = purpose ? ` Purpose: ${purpose}.` : ''
       const fixCtx = [
-        { role: 'user',      content: `You are a code repair assistant.${purposeCtx} Fix all syntax errors, undefined references, type errors, and obvious runtime bugs. Output ONLY the corrected ${lang} code â no fences, no explanations.` },
+        { role: 'user',      content: `You are a code repair assistant.${purposeCtx} Fix all syntax errors, undefined references, type errors, and obvious runtime bugs. Output ONLY the corrected ${lang} code Ã¢ÂÂ no fences, no explanations.` },
         { role: 'assistant', content: 'Corrected code:' },
       ]
       const fixMsg = hasSandbox
-        ? `Fix this ${lang} code${fileCtx}. The following error was detected at runtime:\n\n${errorHint}\n\nRead the error carefully â trace it to its root cause before fixing. Output ONLY the corrected code:\n\n${current}`
+        ? `Fix this ${lang} code${fileCtx}. The following error was detected at runtime:\n\n${errorHint}\n\nRead the error carefully Ã¢ÂÂ trace it to its root cause before fixing. Output ONLY the corrected code:\n\n${current}`
         : checklist
           ? `Review this ${lang} code${fileCtx} against this checklist:\n${checklist}\n\nFix every issue found. Output ONLY the corrected code:\n\n${current}`
           : `Review this ${lang} code${fileCtx} for syntax errors and obvious bugs, and fix any you find. Output ONLY the corrected code:\n\n${current}`
@@ -609,10 +609,10 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     return current
   }, [runSandboxTest, bridgeAvailable, callExecBridge])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  // Core generation â Plan â Hydrate â Loop across files
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+  // Core generation Ã¢ÂÂ Plan Ã¢ÂÂ Hydrate Ã¢ÂÂ Loop across files
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handleGenerate = useCallback(async (userMsg = prompt, isRefinement = false) => {
     if (!userMsg.trim()) { setError('Enter a coding request first.'); return }
     const model = models?.find(m => m.id === activeModelId)
@@ -654,7 +654,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     abortRef.current = ctrl
 
     // Build an effective model config that carries the current creativity/thinking settings.
-    // temperature = 0.2 + (creativity/100) * 0.8  â  creativity 0 = 0.2, 50 = 0.6, 100 = 1.0
+    // temperature = 0.2 + (creativity/100) * 0.8  Ã¢ÂÂ  creativity 0 = 0.2, 50 = 0.6, 100 = 1.0
     const effectiveModel = {
       ...model,
       temperature: parseFloat((0.2 + (creativity / 100) * 0.8).toFixed(2)),
@@ -663,11 +663,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
 
     try {
-      // ââ Phase 2: IntentAmplifier âââââââââââââââââââââââââââââââââââââââââ
+      // Ã¢ÂÂÃ¢ÂÂ Phase 2: IntentAmplifier Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
       let effectiveMsg = requestText
       if (!isRefinement && isVaguePrompt(requestText)) {
         setIsAmplifying(true)
-        const ampId = logActivity('amplify', 'â Analyzing intentâ¦')
+        const ampId = logActivity('amplify', 'Ã¢ÂÂ Analyzing intentÃ¢ÂÂ¦')
         const conv = shadowContext.getConventions()
         // Pass last 6 messages (3 turn pairs) for pronoun/reference resolution
         const { enrichedPrompt, decisions } = await amplifyPrompt(
@@ -677,14 +677,14 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         if (enrichedPrompt !== requestText) {
           effectiveMsg = enrichedPrompt
           setAmplifierDecisions(decisions)
-          updateActivity(ampId, { status: 'done', msg: `â Intent clarified â ${decisions.length} assumption${decisions.length !== 1 ? 's' : ''} made` })
+          updateActivity(ampId, { status: 'done', msg: `Ã¢ÂÂ Intent clarified Ã¢ÂÂ ${decisions.length} assumption${decisions.length !== 1 ? 's' : ''} made` })
         } else {
-          updateActivity(ampId, { status: 'done', msg: 'â Intent clear â proceeding as-is' })
+          updateActivity(ampId, { status: 'done', msg: 'Ã¢ÂÂ Intent clear Ã¢ÂÂ proceeding as-is' })
         }
       }
 
       if (isRefinement) {
-        // ââ Refinement: regenerate only the active file ââââââââââââââââââ
+        // Ã¢ÂÂÃ¢ÂÂ Refinement: regenerate only the active file Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
         const entry  = planRef.current[activeFileIndex] ?? {}
         const lang   = detectLanguage(entry.path, entry.code || '')
         const mode   = entry.existingContent !== null ? 'patch' : 'replace'
@@ -697,7 +697,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           ...conversation,
         ]
         emitStreamEvent(createStreamEvent('status', { phase: 'refining' }))
-        const refId = logActivity('generate', `âº Refining ${entry.path || 'file'}â¦`)
+        const refId = logActivity('generate', `Ã¢ÂÂº Refining ${entry.path || 'file'}Ã¢ÂÂ¦`)
         let streaming = ''
         let prevStreaming = ''
         const raw = await runPromptWithRetry(effectiveModel, refMsg, ctx, (partial) => {
@@ -706,7 +706,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           const chunk = streaming.startsWith(prevStreaming) ? streaming.slice(prevStreaming.length) : streaming
           prevStreaming = streaming
           emitStreamEvent(createStreamEvent('code', { chunk }))
-          updateActivity(refId, { detail: `${streaming.split('\n').length} linesâ¦` })
+          updateActivity(refId, { detail: `${streaming.split('\n').length} linesÃ¢ÂÂ¦` })
         }, ctrl.signal)
         let finalCode = extractCode(raw)
         if (mode === 'patch' && entry.existingContent) {
@@ -715,8 +715,8 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         }
         updatePlanEntry(activeFileIndex, { code: finalCode, status: 'done' })
         emitStreamEvent(createStreamEvent('status', { phase: 'validating' }))
-        updateActivity(refId, { status: 'done', msg: `âº Refined ${entry.path || 'file'}`, detail: `${finalCode.split('\n').length} lines` })
-        const refValidation = ['â Refinement applied to active file.', 'â Output is ready for review.']
+        updateActivity(refId, { status: 'done', msg: `Ã¢ÂÂº Refined ${entry.path || 'file'}`, detail: `${finalCode.split('\n').length} lines` })
+        const refValidation = ['Ã¢ÂÂ Refinement applied to active file.', 'Ã¢ÂÂ Output is ready for review.']
         setValidationResults(refValidation)
         emitStreamEvent(createStreamEvent('validation', { results: refValidation }))
         const refOut = formatStructuredOutput({
@@ -734,14 +734,14 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         setActiveTab('code')
 
       } else {
-        // ââ First-shot: plan â hydrate â generate each file ââââââââââââââ
+        // Ã¢ÂÂÃ¢ÂÂ First-shot: plan Ã¢ÂÂ hydrate Ã¢ÂÂ generate each file Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
         // Phase 4/Planner: determine which files to touch.
         // Pass files from the current plan (prior run) so the planner knows what was
         // recently generated and can build on or avoid redundancy.
         const recentFiles = filePlan.filter(e => e.status === 'done').map(e => e.path)
         emitStreamEvent(createStreamEvent('status', { phase: 'planning' }))
-        const planId = logActivity('plan', 'â Building file planâ¦')
+        const planId = logActivity('plan', 'Ã¢ÂÂ Building file planÃ¢ÂÂ¦')
         setIsPlanning(true)
         const rawPlan = await buildFilePlan(
           effectiveMsg,
@@ -754,21 +754,21 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         setIsPlanning(false)
         updateActivity(planId, {
           status: 'done',
-          msg: `â Plan â ${rawPlan.length} file${rawPlan.length !== 1 ? 's' : ''}`,
-          detail: rawPlan.map(e => e.path.split('/').pop()).join(' Â· '),
+          msg: `Ã¢ÂÂ Plan Ã¢ÂÂ ${rawPlan.length} file${rawPlan.length !== 1 ? 's' : ''}`,
+          detail: rawPlan.map(e => e.path.split('/').pop()).join(' ÃÂ· '),
         })
 
         // Order plan entries based on imports (if available) so dependencies are generated first
         const orderedRawPlan = orderFilePlan(rawPlan)
         emitStreamEvent(createStreamEvent('plan', {
-          steps: orderedRawPlan.map((e) => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} â ${e.purpose}`),
+          steps: orderedRawPlan.map((e) => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} Ã¢ÂÂ ${e.purpose}`),
         }))
         if (command === '/plan') {
-          const planOnlyValidation = ['â Plan generated.', 'â No code emitted in /plan mode.']
+          const planOnlyValidation = ['Ã¢ÂÂ Plan generated.', 'Ã¢ÂÂ No code emitted in /plan mode.']
           setValidationResults(planOnlyValidation)
           const planOnlyText = formatStructuredOutput({
             summary: `Created an execution plan for: ${requestText}`,
-            plan: orderedRawPlan.map((e) => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} â ${e.purpose}`),
+            plan: orderedRawPlan.map((e) => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} Ã¢ÂÂ ${e.purpose}`),
             code: '',
             changes: orderedRawPlan.map((e) => `${e.action === 'modify' ? 'Will update' : 'Will add'} ${e.path}`),
             validation: planOnlyValidation,
@@ -796,20 +796,20 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             const ep = planRef.current[i]
             if (ep.action !== 'modify') continue
             updatePlanEntry(i, { status: 'fetching' })
-            const fetchId = logActivity('fetch', `â¬ Reading ${ep.path}`)
+            const fetchId = logActivity('fetch', `Ã¢Â¬Â Reading ${ep.path}`)
             try {
               const file = await getFileContent(githubToken, repoOwner, repoName, ep.path, baseBranch)
               if (file?.content) {
                 const content = decodeBase64(file.content)
                 updatePlanEntry(i, { existingContent: content, _sha: file.sha, status: 'pending' })
-                updateActivity(fetchId, { status: 'done', msg: `â¬ ${ep.path}`, detail: `${content.split('\n').length} lines` })
+                updateActivity(fetchId, { status: 'done', msg: `Ã¢Â¬Â ${ep.path}`, detail: `${content.split('\n').length} lines` })
               } else {
                 updatePlanEntry(i, { status: 'pending' })
-                updateActivity(fetchId, { status: 'skip', msg: `â¬ ${ep.path} â not found, will create` })
+                updateActivity(fetchId, { status: 'skip', msg: `Ã¢Â¬Â ${ep.path} Ã¢ÂÂ not found, will create` })
               }
             } catch {
               updatePlanEntry(i, { status: 'pending' })
-              updateActivity(fetchId, { status: 'skip', msg: `â¬ ${ep.path} â fetch failed, will create` })
+              updateActivity(fetchId, { status: 'skip', msg: `Ã¢Â¬Â ${ep.path} Ã¢ÂÂ fetch failed, will create` })
             }
           }
         }
@@ -820,13 +820,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         try {
           ambientFiles = await shadowContext.getContextContent(effectiveMsg, CONTEXT_FILES_LIMIT)
         } catch (ctxErr) {
-          logActivity('warn', `â  Context index unavailable â generating without repo context (${ctxErr.message})`)
+          logActivity('warn', `Ã¢ÂÂ  Context index unavailable Ã¢ÂÂ generating without repo context (${ctxErr.message})`)
         }
         // Style examples: short excerpts from similar files that set the style baseline
         let styleExamples = []
         try {
           styleExamples = shadowContext.getStyleExamples(effectiveMsg, STYLE_EXAMPLES_LIMIT)
-        } catch { /* non-fatal â proceed without style injection */ }
+        } catch { /* non-fatal Ã¢ÂÂ proceed without style injection */ }
 
         // Generate each file in the plan
         emitStreamEvent(createStreamEvent('status', { phase: 'coding' }))
@@ -843,10 +843,10 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           // Exclude current file from style examples too
           const fileStyleExamples = styleExamples.filter(s => s.path !== entry.path)
           const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, logikMd, contextFiles, fileStyleExamples)
-          const fileTask = `${effectiveMsg}\n\nFor this file: ${entry.path} â ${entry.purpose}`
+          const fileTask = `${effectiveMsg}\n\nFor this file: ${entry.path} Ã¢ÂÂ ${entry.purpose}`
 
           updatePlanEntry(i, { status: 'generating' })
-          const genId = logActivity('generate', `â¶ Generating ${entry.path}`, `${mode} mode`)
+          const genId = logActivity('generate', `Ã¢ÂÂ¶ Generating ${entry.path}`, `${mode} mode`)
 
           try {
             let streaming = ''
@@ -860,7 +860,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               const chunk = streaming.startsWith(prevStreaming) ? streaming.slice(prevStreaming.length) : streaming
               prevStreaming = streaming
               emitStreamEvent(createStreamEvent('code', { chunk }))
-              updateActivity(genId, { detail: `${streaming.split('\n').length} linesâ¦` })
+              updateActivity(genId, { detail: `${streaming.split('\n').length} linesÃ¢ÂÂ¦` })
             }, ctrl.signal)
 
             let finalCode  = extractCode(raw)
@@ -881,7 +881,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               newDiff = computeLineDiff(entry.existingContent || null, finalCode, entry.path)
             }
 
-            // ââ Completeness check + continuation loop âââââââââââââââââââââ
+            // Ã¢ÂÂÃ¢ÂÂ Completeness check + continuation loop Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
             // If the model truncated, request continuations (max 3 attempts)
             if (mode !== 'patch' && !isCodeComplete(finalCode, lang)) {
               const contCtx = [
@@ -892,7 +892,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                 if (ctrl.signal.aborted) break
                 if (isCodeComplete(finalCode, lang)) break
                 const lineCount = finalCode.split('\n').length
-                updateActivity(genId, { detail: `continuingâ¦ (${lineCount} lines so far, attempt ${cont + 1}/3)` })
+                updateActivity(genId, { detail: `continuingÃ¢ÂÂ¦ (${lineCount} lines so far, attempt ${cont + 1}/3)` })
                 // Show the last 30 lines so the model knows exactly where it left off
                 const tail = finalCode.split('\n').slice(-30).join('\n')
                 try {
@@ -903,26 +903,26 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                   if (contChunk) finalCode = finalCode.trimEnd() + '\n' + contChunk
                   else break
                 } catch (contErr) {
-                  updateActivity(genId, { detail: `continuation failed (${contErr.message}) â using partial output` })
+                  updateActivity(genId, { detail: `continuation failed (${contErr.message}) Ã¢ÂÂ using partial output` })
                   break
                 }
               }
             }
 
-            updateActivity(genId, { status: 'done', msg: `â¶ ${entry.path}`, detail: `${finalCode.split('\n').length} lines` })
+            updateActivity(genId, { status: 'done', msg: `Ã¢ÂÂ¶ ${entry.path}`, detail: `${finalCode.split('\n').length} lines` })
 
             // AutoRemediation
             emitStreamEvent(createStreamEvent('status', { phase: 'refining' }))
             updatePlanEntry(i, { status: 'remediating', code: finalCode })
-            const remId = logActivity('remediate', `â Testing ${entry.path}`)
+            const remId = logActivity('remediate', `Ã¢ÂÂ Testing ${entry.path}`)
             finalCode = await autoRemediate(finalCode, lang, effectiveModel, ctrl.signal, entry.path, entry.purpose)
-            updateActivity(remId, { status: 'done', msg: `â ${entry.path} â clean` })
+            updateActivity(remId, { status: 'done', msg: `Ã¢ÂÂ ${entry.path} Ã¢ÂÂ clean` })
 
             // Test generation
             let builtTestCode = ''
             if (generateTests) {
               setIsGenTests(true)
-              const testId = logActivity('test', `â Writing tests for ${entry.path}`)
+              const testId = logActivity('test', `Ã¢ÂÂ Writing tests for ${entry.path}`)
               try {
                 const testSys = buildFileSystemPrompt(entry.path, null, lang, repoOwner, repoName, true)
                 const testRaw = await runPromptWithRetry(effectiveModel,
@@ -930,11 +930,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                   [{ role: 'user', content: testSys }, { role: 'assistant', content: 'Understood. Test code only.' }],
                   null, ctrl.signal)
                 builtTestCode = extractCode(testRaw)
-                updateActivity(testId, { status: 'done', msg: `â Tests â ${testFilePath(entry.path)}`, detail: `${builtTestCode.split('\n').length} lines` })
+                updateActivity(testId, { status: 'done', msg: `Ã¢ÂÂ Tests Ã¢ÂÂ ${testFilePath(entry.path)}`, detail: `${builtTestCode.split('\n').length} lines` })
               } catch (e) {
                 if (e.name !== 'AbortError') {
                   console.warn('Test gen failed:', e.message)
-                  updateActivity(testId, { status: 'error', msg: `â Test gen failed: ${e.message}` })
+                  updateActivity(testId, { status: 'error', msg: `Ã¢ÂÂ Test gen failed: ${e.message}` })
                 }
               } finally { setIsGenTests(false) }
             }
@@ -946,7 +946,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           } catch (err) {
             if (err.name !== 'AbortError') {
               updatePlanEntry(i, { status: 'error', error: err.message })
-              updateActivity(genId, { status: 'error', msg: `â ${entry.path} â ${err.message}` })
+              updateActivity(genId, { status: 'error', msg: `Ã¢ÂÂ ${entry.path} Ã¢ÂÂ ${err.message}` })
             }
             // Guarantee isGenTests is cleared even if error occurs before test finally block
             setIsGenTests(false)
@@ -957,19 +957,19 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         if (!ctrl.signal.aborted && planRef.current.length > 0) {
           emitStreamEvent(createStreamEvent('status', { phase: 'validating' }))
           const doneCount = planRef.current.filter(e => e.status === 'done').length
-          logActivity('done', `â Complete â ${doneCount}/${planRef.current.length} file${planRef.current.length !== 1 ? 's' : ''} generated`)
+          logActivity('done', `Ã¢ÂÂ Complete Ã¢ÂÂ ${doneCount}/${planRef.current.length} file${planRef.current.length !== 1 ? 's' : ''} generated`)
           // Auto-switch to Diff tab when diffs are available (surface review naturally)
           const hasDiffs = planRef.current.some(e => e.diffText?.trim())
           setActiveTab(hasDiffs ? 'diff' : 'code')
           const he = { id: Date.now().toString(), prompt: requestText.slice(0, 100), filePath: planRef.current[0]?.path || '', timestamp: new Date().toISOString() }
 
-          const planSteps = planRef.current.map((e) => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} â ${e.purpose}`)
+          const planSteps = planRef.current.map((e) => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} Ã¢ÂÂ ${e.purpose}`)
           const primary = planRef.current[0] || {}
           const combinedDiff = planRef.current.map((e) => e.diffText?.trim()).filter(Boolean).join('\n\n')
           const validation = [
-            `â Generated ${doneCount}/${planRef.current.length} planned file(s).`,
-            planRef.current.some((e) => e.status === 'error') ? 'â  Some files failed and may need retry.' : 'â No file-level generation errors.',
-            generateTests ? 'â Test generation attempted for completed files.' : 'â  Test generation disabled.',
+            `Ã¢ÂÂ Generated ${doneCount}/${planRef.current.length} planned file(s).`,
+            planRef.current.some((e) => e.status === 'error') ? 'Ã¢ÂÂ  Some files failed and may need retry.' : 'Ã¢ÂÂ No file-level generation errors.',
+            generateTests ? 'Ã¢ÂÂ Test generation attempted for completed files.' : 'Ã¢ÂÂ  Test generation disabled.',
           ]
           setValidationResults(validation)
           emitStreamEvent(createStreamEvent('validation', { results: validation }))
@@ -997,13 +997,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     } catch (err) {
       if (err.name !== 'AbortError') {
         setError(`Generation failed: ${err.message}`)
-        logActivity('error', `â ${err.message}`)
+        logActivity('error', `Ã¢ÂÂ ${err.message}`)
       }
     } finally {
       setIsGenerating(false)
       setIsPlanning(false)
       setIsAmplifying(false)
-      setIsGenTests(false)   // safety net â ensures it can never stay stuck
+      setIsGenTests(false)   // safety net Ã¢ÂÂ ensures it can never stay stuck
       emitStreamEvent(createStreamEvent('status', { phase: 'complete' }))
       setPrompt('')
     }
@@ -1014,12 +1014,12 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     history, activeFileIndex, autoRemediate, updatePlanEntry, logActivity, updateActivity, setActivePhase, resetConversation, emitStreamEvent,
   ])
 
-  // ââ Refinement shortcut âââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Refinement shortcut Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handleRefine = useCallback(() => {
     if (refinementPrompt.trim() && !isGenerating) handleGenerate(refinementPrompt, true)
   }, [refinementPrompt, isGenerating, handleGenerate])
 
-  // ââ Per-file retry â re-generates a single failed file without re-running the full plan
+  // Ã¢ÂÂÃ¢ÂÂ Per-file retry Ã¢ÂÂ re-generates a single failed file without re-running the full plan
   const handleRetryFile = useCallback(async (fileIndex) => {
     if (isGenerating) return
     const entry = planRef.current[fileIndex]
@@ -1029,7 +1029,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
     setIsGenerating(true)
     updatePlanEntry(fileIndex, { status: 'generating', error: undefined })
-    const retryId = logActivity('generate', `âº Retrying ${entry.path}`)
+    const retryId = logActivity('generate', `Ã¢ÂÂº Retrying ${entry.path}`)
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
@@ -1045,7 +1045,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         retryContextFiles = retryContextFiles.filter(f => f.path !== entry.path)
       } catch {}
       const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, logikMd, retryContextFiles)
-      const fileTask = `${prompt || 'Regenerate this file.'}\n\nFor this file: ${entry.path} â ${entry.purpose}`
+      const fileTask = `${prompt || 'Regenerate this file.'}\n\nFor this file: ${entry.path} Ã¢ÂÂ ${entry.purpose}`
       const mode     = entry.existingContent !== null ? 'patch' : 'replace'
 
       let streaming = ''
@@ -1065,11 +1065,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       finalCode = await autoRemediate(finalCode, lang, model, ctrl.signal, entry.path, entry.purpose)
       const newDiff = computeLineDiff(entry.existingContent || null, finalCode, entry.path)
       updatePlanEntry(fileIndex, { code: finalCode, diffText: newDiff, status: 'done', error: undefined })
-      updateActivity(retryId, { status: 'done', msg: `âº ${entry.path} â retry succeeded`, detail: `${finalCode.split('\n').length} lines` })
+      updateActivity(retryId, { status: 'done', msg: `Ã¢ÂÂº ${entry.path} Ã¢ÂÂ retry succeeded`, detail: `${finalCode.split('\n').length} lines` })
     } catch (err) {
       if (err.name !== 'AbortError') {
         updatePlanEntry(fileIndex, { status: 'error', error: err.message })
-        updateActivity(retryId, { status: 'error', msg: `âº ${entry.path} â retry failed: ${err.message}` })
+        updateActivity(retryId, { status: 'error', msg: `Ã¢ÂÂº ${entry.path} Ã¢ÂÂ retry failed: ${err.message}` })
         setError(`Retry failed: ${err.message}`)
       }
     } finally {
@@ -1077,7 +1077,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }, [isGenerating, models, activeModelId, repoOwner, repoName, prompt, autoRemediate, updatePlanEntry, logActivity]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ââ LOGIK.md save âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ LOGIK.md save Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handleSaveLogikMd = useCallback(async () => {
     if (!hasGithub) { setError('GitHub required to save LOGIK.md.'); return }
     setIsSavingLogikMd(true)
@@ -1090,7 +1090,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         m.createOrUpdateFile(githubToken, repoOwner, repoName, 'LOGIK.md', logikMdDraft, 'docs: update LOGIK.md project instructions', baseBranch, sha)
       )
       shadowContext.logikMd = logikMdDraft
-      logActivity('done', 'â LOGIK.md saved to repo')
+      logActivity('done', 'Ã¢ÂÂ LOGIK.md saved to repo')
     } catch (e) {
       setError(`Failed to save LOGIK.md: ${e.message}`)
     } finally {
@@ -1098,24 +1098,24 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }, [hasGithub, githubToken, repoOwner, repoName, baseBranch, logikMdDraft, logActivity])
 
-  // ââ Post-push test runner âââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Post-push test runner Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Runs npm test / pytest in streaming mode after a successful push.
   const handleRunProjectTests = useCallback(async () => {
     if (!bridgeAvailable) return
     setIsRunningPostPushTests(true)
     const testCmd = 'npm test -- --watchAll=false --passWithNoTests'
-    logActivity('test', `â Running project testsâ¦`)
+    logActivity('test', `Ã¢ÂÂ Running project testsÃ¢ÂÂ¦`)
     let out = ''
     await callExecBridgeStream(testCmd, undefined, (chunk) => {
       out += chunk
     }, 120000)
     setIsRunningPostPushTests(false)
     const passed = out.includes('Tests:') && !out.includes('failed')
-    logActivity('test', passed ? 'â Tests passed' : 'â Tests failed â see output', out.slice(-300))
+    logActivity('test', passed ? 'Ã¢ÂÂ Tests passed' : 'Ã¢ÂÂ Tests failed Ã¢ÂÂ see output', out.slice(-300))
     setActiveTab('code')
   }, [bridgeAvailable, callExecBridgeStream, logActivity])
 
-  // ââ Reset conversation ââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Reset conversation Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handleReset = useCallback(() => {
     resetConversation()
     clearActivity()
@@ -1134,7 +1134,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     setActiveTab('code')
   }, [resetConversation, clearActivity])
 
-  // ââ Abort âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Abort Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handleAbort = () => {
     abortRef.current?.abort()
     agentSession.abort()
@@ -1144,11 +1144,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     setPushStep('')
   }
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Reindex shadow context (clears cache and re-crawls the repo)
   const handleReindex = useCallback(async () => {
     if (!hasGithub) return
-    setShadowStatus('reindexingâ¦')
+    setShadowStatus('reindexingÃ¢ÂÂ¦')
     try {
       await shadowContext.reindex()
       setShadowStatus(shadowContext.statusSummary())
@@ -1157,7 +1157,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }, [hasGithub])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // GitHub Actions: list workflows and trigger a run
   const loadWorkflows = useCallback(async () => {
     if (!hasGithub) return
@@ -1175,15 +1175,15 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     if (!wf) return
 
     setIsPollingCI(true)
-    const id = logActivity('ci', `â Triggering workflow ${wf.name || wf.path}`)
+    const id = logActivity('ci', `Ã¢ÂÂ Triggering workflow ${wf.name || wf.path}`)
 
     try {
       const dispatch = await dispatchWorkflow(githubToken, repoOwner, repoName, wf.id, baseBranch)
       if (!dispatch) {
-        updateActivity(id, { status: 'error', msg: `â Failed to trigger workflow ${wf.name || wf.path}` })
+        updateActivity(id, { status: 'error', msg: `Ã¢ÂÂ Failed to trigger workflow ${wf.name || wf.path}` })
         return
       }
-      updateActivity(id, { status: 'done', msg: `â Workflow triggered: ${wf.name || wf.path}` })
+      updateActivity(id, { status: 'done', msg: `Ã¢ÂÂ Workflow triggered: ${wf.name || wf.path}` })
 
       // Poll for a new run to appear
       for (let i = 0; i < 18; i++) {
@@ -1192,25 +1192,25 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         const run = runs?.workflow_runs?.find(r => r.workflow_id === wf.id)
         if (run && (run.status !== 'queued' && run.status !== 'in_progress')) {
           setWorkflowRuns([run])
-          updateActivity(id, { status: run.conclusion === 'success' ? 'done' : 'error', msg: `â Workflow ${run.name} ${run.conclusion || run.status}`, detail: run.html_url })
+          updateActivity(id, { status: run.conclusion === 'success' ? 'done' : 'error', msg: `Ã¢ÂÂ Workflow ${run.name} ${run.conclusion || run.status}`, detail: run.html_url })
           break
         }
       }
     } catch (e) {
-      updateActivity(id, { status: 'error', msg: `â Workflow trigger failed: ${e.message}` })
+      updateActivity(id, { status: 'error', msg: `Ã¢ÂÂ Workflow trigger failed: ${e.message}` })
     } finally {
       setIsPollingCI(false)
     }
   }, [hasGithub, workflows, githubToken, repoOwner, repoName, baseBranch, logActivity, updateActivity])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  // ENHANCEMENT 7 â JS sandbox execution
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+  // ENHANCEMENT 7 Ã¢ÂÂ JS sandbox execution
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handleRunInSandbox = useCallback(() => {
     if (!generatedCode) return
     const isPython = language === 'python'
     setIsRunning(true)
-    setSandboxOutput([{ level: 'info', text: isPython ? 'â¶ Loading Python runtime (Pyodide)â¦' : 'â¶ Running in isolated sandboxâ¦' }])
+    setSandboxOutput([{ level: 'info', text: isPython ? 'Ã¢ÂÂ¶ Loading Python runtime (Pyodide)Ã¢ÂÂ¦' : 'Ã¢ÂÂ¶ Running in isolated sandboxÃ¢ÂÂ¦' }])
 
     const iframe = sandboxRef.current
     if (!iframe) { setIsRunning(false); return }
@@ -1225,7 +1225,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       }
     }
     window.addEventListener('message', onMessage)
-    // Fallback timeout â iframe should always postMessage, but just in case
+    // Fallback timeout Ã¢ÂÂ iframe should always postMessage, but just in case
     const guard = setTimeout(() => {
       window.removeEventListener('message', onMessage)
       setIsRunning(false)
@@ -1234,14 +1234,14 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     iframe.srcdoc = isPython ? buildPyodideSandboxHtml(generatedCode) : buildSandboxHtml(generatedCode, sandboxSetup)
   }, [generatedCode, sandboxSetup, language])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  // ENHANCEMENT â Run tests in sandbox
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+  // ENHANCEMENT Ã¢ÂÂ Run tests in sandbox
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handleRunTests = useCallback(() => {
     if (!testCode) return
     const isPython = language === 'python'
     setIsRunningTests(true)
-    setSandboxOutput([{ level: 'info', text: isPython ? 'â¶ Loading Python runtime (Pyodide)â¦' : 'â¶ Running tests in isolated sandboxâ¦' }])
+    setSandboxOutput([{ level: 'info', text: isPython ? 'Ã¢ÂÂ¶ Loading Python runtime (Pyodide)Ã¢ÂÂ¦' : 'Ã¢ÂÂ¶ Running tests in isolated sandboxÃ¢ÂÂ¦' }])
 
     const iframe = sandboxRef.current
     if (!iframe) { setIsRunningTests(false); return }
@@ -1256,7 +1256,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       }
     }
     window.addEventListener('message', onMessage)
-    // Fallback timeout â iframe should always postMessage, but just in case
+    // Fallback timeout Ã¢ÂÂ iframe should always postMessage, but just in case
     const guard = setTimeout(() => {
       window.removeEventListener('message', onMessage)
       setIsRunningTests(false)
@@ -1265,9 +1265,9 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     iframe.srcdoc = isPython ? buildPyodideSandboxHtml(testCode) : buildSandboxHtml(testCode, sandboxSetup)
   }, [testCode, sandboxSetup, language])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Terminal: real JS/Python execution in the sandbox; honest msgs for shell cmds
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const runTerminalCommand = useCallback((cmd) => {
     const trimmed = cmd.trim()
     if (!trimmed) return
@@ -1279,17 +1279,17 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     if (trimmed === 'help') {
       pushEntry(
         'Available commands:\n' +
-        '  JS/TS expressions  â executed in real browser sandbox\n' +
-        '  python: <code>     â executed via Pyodide (real)\n' +
-        '  clear              â clear terminal\n' +
-        '  help               â this message\n' +
-        '  npm / git / shell  â requires backend (shown as info)',
+        '  JS/TS expressions  Ã¢ÂÂ executed in real browser sandbox\n' +
+        '  python: <code>     Ã¢ÂÂ executed via Pyodide (real)\n' +
+        '  clear              Ã¢ÂÂ clear terminal\n' +
+        '  help               Ã¢ÂÂ this message\n' +
+        '  npm / git / shell  Ã¢ÂÂ requires backend (shown as info)',
         'info'
       )
       return
     }
 
-    // python: <snippet> â run in Pyodide sandbox
+    // python: <snippet> Ã¢ÂÂ run in Pyodide sandbox
     if (/^python:/i.test(trimmed)) {
       const code = trimmed.slice(7).trim()
       setIsTerminalRunning(true)
@@ -1314,7 +1314,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       return
     }
 
-    // Looks like a JS expression or statement â run in JS sandbox
+    // Looks like a JS expression or statement Ã¢ÂÂ run in JS sandbox
     const isJsLike = /^(const |let |var |function |class |console\.|\/\/|import |export |async |await )/.test(trimmed) ||
       (/[+\-*/%=()[\]{}.`"']/.test(trimmed) && !/^[a-z]+ /.test(trimmed)) ||
       /^\d/.test(trimmed)
@@ -1343,9 +1343,9 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
     // Known version flags (fast local answers)
     if (/^node( -v|--version)?$/.test(trimmed)) { pushEntry('v20.x (browser JS engine)', 'info'); return }
-    if (/^python3?( --version|-V)?$/.test(trimmed)) { pushEntry('Python 3.12 (Pyodide) â use: python: print("hello")', 'info'); return }
+    if (/^python3?( --version|-V)?$/.test(trimmed)) { pushEntry('Python 3.12 (Pyodide) Ã¢ÂÂ use: python: print("hello")', 'info'); return }
 
-    // ââ Bridge path: streaming real shell commands âââââââââââââââââââââââââ
+    // Ã¢ÂÂÃ¢ÂÂ Bridge path: streaming real shell commands Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     if (bridgeAvailable) {
       setIsTerminalRunning(true)
       let streamOut = ''
@@ -1368,14 +1368,14 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       return
     }
 
-    // ââ Fallback: bridge not available (production / no Vite dev server) ââ
+    // Ã¢ÂÂÃ¢ÂÂ Fallback: bridge not available (production / no Vite dev server) Ã¢ÂÂÃ¢ÂÂ
     const shellCmds = ['npm', 'yarn', 'pnpm', 'git', 'npx', 'tsc', 'eslint', 'jest', 'vitest', 'cargo', 'go', 'pip']
     const base = trimmed.split(/\s+/)[0]
     if (shellCmds.includes(base)) {
       pushEntry(
-        `â¹ "${trimmed}" requires the exec bridge (run via \`npm run dev\`).\n` +
-        `Bridge not detected â start the Vite dev server to enable real shell execution.\n` +
-        `Tip: JS/TS runs in the sandbox without a bridge â try: console.log(42)`,
+        `Ã¢ÂÂ¹ "${trimmed}" requires the exec bridge (run via \`npm run dev\`).\n` +
+        `Bridge not detected Ã¢ÂÂ start the Vite dev server to enable real shell execution.\n` +
+        `Tip: JS/TS runs in the sandbox without a bridge Ã¢ÂÂ try: console.log(42)`,
         'info'
       )
       return
@@ -1384,24 +1384,24 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     pushEntry(`command not found: ${base}\nType "help" for available commands.`, 'error')
   }, [sandboxRef, bridgeAvailable, callExecBridge, callExecBridgeStream])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  // Permission gate â respects permissionMode before any GitHub write
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+  // Permission gate Ã¢ÂÂ respects permissionMode before any GitHub write
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const confirmAction = useCallback((description) => {
     if (permissionMode === 'auto') return true
     if (permissionMode === 'ask') return window.confirm(`LOGIK permission request\n\n${description}\n\nProceed?`)
     // 'manual': same as 'ask' but with extra context
-    return window.confirm(`LOGIK â manual mode\n\n${description}\n\nThis action writes to GitHub. Confirm to continue.`)
+    return window.confirm(`LOGIK Ã¢ÂÂ manual mode\n\n${description}\n\nThis action writes to GitHub. Confirm to continue.`)
   }, [permissionMode])
 
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Push: commit all generated files to GitHub, optionally create branch + PR
-  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const handlePush = async () => {
     const filesToPush = filePlan.filter(e => e.code?.trim())
     if (filesToPush.length === 0) { setError('Generate code first.'); return }
-    if (!githubToken)             { setError('GitHub token required â open Settings.'); setSettingsOpen(true); return }
-    if (!repoOwner || !repoName)  { setError('Repo owner and name required â open Settings.'); setSettingsOpen(true); return }
+    if (!githubToken)             { setError('GitHub token required Ã¢ÂÂ open Settings.'); setSettingsOpen(true); return }
+    if (!repoOwner || !repoName)  { setError('Repo owner and name required Ã¢ÂÂ open Settings.'); setSettingsOpen(true); return }
 
     const promptSummary = (history[0]?.prompt || prompt || 'LOGIK generated code').slice(0, 80)
 
@@ -1420,30 +1420,30 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     const steps = []
     const log = (msg, ok = true) => { steps.push({ msg, ok }); setGitStatus([...steps]) }
 
-    logActivity('push', `â¬ Pushing ${filesToPush.length} file${filesToPush.length !== 1 ? 's' : ''} to GitHub`)
+    logActivity('push', `Ã¢Â¬Â Pushing ${filesToPush.length} file${filesToPush.length !== 1 ? 's' : ''} to GitHub`)
 
     try {
-      setPushStep('Verifying repositoryâ¦')
-      const repoId = logActivity('push', `â¬ Verifying ${repoOwner}/${repoName}`)
+      setPushStep('Verifying repositoryÃ¢ÂÂ¦')
+      const repoId = logActivity('push', `Ã¢Â¬Â Verifying ${repoOwner}/${repoName}`)
       const repo = await getRepo(githubToken, repoOwner, repoName)
-      log(`â ${repoOwner}/${repoName} â ${repo.private ? 'private' : 'public'}`)
-      updateActivity(repoId, { status: 'done', msg: `â¬ ${repoOwner}/${repoName} â ${repo.private ? 'private' : 'public'}` })
+      log(`Ã¢ÂÂ ${repoOwner}/${repoName} Ã¢ÂÂ ${repo.private ? 'private' : 'public'}`)
+      updateActivity(repoId, { status: 'done', msg: `Ã¢Â¬Â ${repoOwner}/${repoName} Ã¢ÂÂ ${repo.private ? 'private' : 'public'}` })
 
-      setPushStep(`Fetching branch "${baseBranch}"â¦`)
-      const branchId = logActivity('push', `â¬ Resolving branch "${baseBranch}"`)
+      setPushStep(`Fetching branch "${baseBranch}"Ã¢ÂÂ¦`)
+      const branchId = logActivity('push', `Ã¢Â¬Â Resolving branch "${baseBranch}"`)
       const branchData = await getBranch(githubToken, repoOwner, repoName, baseBranch)
       const baseSha    = branchData.commit.sha
-      log(`â Base "${baseBranch}" â ${baseSha.slice(0, 7)}`)
-      updateActivity(branchId, { status: 'done', msg: `â¬ "${baseBranch}" @ ${baseSha.slice(0, 7)}` })
+      log(`Ã¢ÂÂ Base "${baseBranch}" Ã¢ÂÂ ${baseSha.slice(0, 7)}`)
+      updateActivity(branchId, { status: 'done', msg: `Ã¢Â¬Â "${baseBranch}" @ ${baseSha.slice(0, 7)}` })
 
       let targetBranch = baseBranch
       if (doCreateBranch) {
         targetBranch = generateBranchName(promptSummary)
-        setPushStep(`Creating branch "${targetBranch}"â¦`)
-        const newBrId = logActivity('push', `â¬ Creating branch "${targetBranch}"`)
+        setPushStep(`Creating branch "${targetBranch}"Ã¢ÂÂ¦`)
+        const newBrId = logActivity('push', `Ã¢Â¬Â Creating branch "${targetBranch}"`)
         if (!dryRun) await createBranch(githubToken, repoOwner, repoName, targetBranch, baseSha)
-        log(`${dryRun ? 'â' : 'â'} Branch "${targetBranch}"${dryRun ? ' (dry run)' : ''}`)
-        updateActivity(newBrId, { status: 'done', msg: `â¬ Branch "${targetBranch}" ready${dryRun ? ' (dry run)' : ''}` })
+        log(`${dryRun ? 'Ã¢ÂÂ' : 'Ã¢ÂÂ'} Branch "${targetBranch}"${dryRun ? ' (dry run)' : ''}`)
+        updateActivity(newBrId, { status: 'done', msg: `Ã¢Â¬Â Branch "${targetBranch}" ready${dryRun ? ' (dry run)' : ''}` })
       }
 
       // Push each file in the plan
@@ -1469,33 +1469,33 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       }
 
       for (const entry of filesToPush) {
-        setPushStep(`Pushing "${entry.path}"â¦`)
-        const fileId = logActivity('push', `â¬ ${entry.path}`)
+        setPushStep(`Pushing "${entry.path}"Ã¢ÂÂ¦`)
+        const fileId = logActivity('push', `Ã¢Â¬Â ${entry.path}`)
         const existing    = await getFileContent(githubToken, repoOwner, repoName, entry.path, targetBranch)
         const existingSha = existing?.sha || entry._sha || null
         const action      = existingSha ? 'update' : 'add'
         const commitMsg   = `feat(logik): ${action} ${entry.path}\n\nGenerated by LOGIK: "${promptSummary}"`
         if (!dryRun) await pushWithRetry(entry.path, entry.code, commitMsg, targetBranch, existingSha)
-        log(`${dryRun ? 'â' : 'â'} ${dryRun ? '[dry run] ' : ''}${action === 'update' ? 'Updated' : 'Created'} ${entry.path}`)
-        updateActivity(fileId, { status: 'done', msg: `â¬ ${action === 'update' ? 'Updated' : 'Created'} ${entry.path}${dryRun ? ' (dry run)' : ''}` })
+        log(`${dryRun ? 'Ã¢ÂÂ' : 'Ã¢ÂÂ'} ${dryRun ? '[dry run] ' : ''}${action === 'update' ? 'Updated' : 'Created'} ${entry.path}`)
+        updateActivity(fileId, { status: 'done', msg: `Ã¢Â¬Â ${action === 'update' ? 'Updated' : 'Created'} ${entry.path}${dryRun ? ' (dry run)' : ''}` })
 
         // Co-commit test file if present
         if (entry.testCode) {
           const tp = testFilePath(entry.path)
-          setPushStep(`Pushing tests "${tp}"â¦`)
-          const testPushId = logActivity('push', `â¬ ${tp}`)
+          setPushStep(`Pushing tests "${tp}"Ã¢ÂÂ¦`)
+          const testPushId = logActivity('push', `Ã¢Â¬Â ${tp}`)
           const existingTest = await getFileContent(githubToken, repoOwner, repoName, tp, targetBranch)
           if (!dryRun) await pushWithRetry(tp, entry.testCode, `test(logik): add tests for ${entry.path}`, targetBranch, existingTest?.sha || null)
-          log(`${dryRun ? 'â' : 'â'} ${dryRun ? '[dry run] ' : ''}Tests: ${tp}`)
-          updateActivity(testPushId, { status: 'done', msg: `â¬ Tests: ${tp}${dryRun ? ' (dry run)' : ''}` })
+          log(`${dryRun ? 'Ã¢ÂÂ' : 'Ã¢ÂÂ'} ${dryRun ? '[dry run] ' : ''}Tests: ${tp}`)
+          updateActivity(testPushId, { status: 'done', msg: `Ã¢Â¬Â Tests: ${tp}${dryRun ? ' (dry run)' : ''}` })
         }
       }
 
       let prUrl = null
       if (doCreateBranch && doCreatePR) {
-        setPushStep('Creating pull requestâ¦')
-        const prId = logActivity('push', 'â¬ Creating pull requestâ¦')
-        const fileList = filesToPush.map(e => `- \`${e.path}\`${e.purpose ? ` â ${e.purpose}` : ''}`).join('\n')
+        setPushStep('Creating pull requestÃ¢ÂÂ¦')
+        const prId = logActivity('push', 'Ã¢Â¬Â Creating pull requestÃ¢ÂÂ¦')
+        const fileList = filesToPush.map(e => `- \`${e.path}\`${e.purpose ? ` Ã¢ÂÂ ${e.purpose}` : ''}`).join('\n')
         const prBody = [
           `## LOGIK AI Generated Code`,
           ``,
@@ -1506,54 +1506,54 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           turnCount > 1 ? `**Refinement turns:** ${turnCount}` : '',
           ``,
           `---`,
-          `*Generated by LOGIK â WolfKrow AI Coding Assistant*`,
+          `*Generated by LOGIK Ã¢ÂÂ WolfKrow AI Coding Assistant*`,
         ].filter(Boolean).join('\n')
 
         let pr = null
         if (!dryRun) pr = await createPullRequest(githubToken, repoOwner, repoName, `LOGIK: ${promptSummary}`, targetBranch, baseBranch, prBody)
         prUrl = pr?.html_url || `https://github.com/${repoOwner}/${repoName}/compare/${targetBranch}`
         setPrResult({ url: prUrl, number: pr?.number })
-        log(`${dryRun ? 'â' : 'â'} PR ${dryRun ? 'preview' : 'created'}: ${prUrl}`)
-        updateActivity(prId, { status: 'done', msg: `â¬ PR${pr?.number ? ` #${pr.number}` : ''} ${dryRun ? 'preview' : 'created'}`, detail: prUrl })
+        log(`${dryRun ? 'Ã¢ÂÂ' : 'Ã¢ÂÂ'} PR ${dryRun ? 'preview' : 'created'}: ${prUrl}`)
+        updateActivity(prId, { status: 'done', msg: `Ã¢Â¬Â PR${pr?.number ? ` #${pr.number}` : ''} ${dryRun ? 'preview' : 'created'}`, detail: prUrl })
       }
 
-      log('ââ Complete ââ')
-      logActivity('done', `â Push complete â ${filesToPush.length} file${filesToPush.length !== 1 ? 's' : ''}`)
+      log('Ã¢ÂÂÃ¢ÂÂ Complete Ã¢ÂÂÃ¢ÂÂ')
+      logActivity('done', `Ã¢ÂÂ Push complete Ã¢ÂÂ ${filesToPush.length} file${filesToPush.length !== 1 ? 's' : ''}`)
 
-      // ââ CI monitoring: poll GitHub Actions after push ââââââââââââââââââ
+      // Ã¢ÂÂÃ¢ÂÂ CI monitoring: poll GitHub Actions after push Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
       if (!dryRun && hasGithub) {
-        const ciId = logActivity('ci', 'â Waiting for CIâ¦')
+        const ciId = logActivity('ci', 'Ã¢ÂÂ Waiting for CIÃ¢ÂÂ¦')
         // Short delay to let GitHub register the push
         await new Promise(r => setTimeout(r, 4000))
         try {
           const runsData = await getWorkflowRuns(githubToken, repoOwner, repoName, targetBranch, 1)
           const run = runsData?.workflow_runs?.[0]
           if (run) {
-            updateActivity(ciId, { msg: `â CI: ${run.name} â ${run.status}` })
-            // Poll until completed (max 30 Ã 10s = 5 min)
+            updateActivity(ciId, { msg: `Ã¢ÂÂ CI: ${run.name} Ã¢ÂÂ ${run.status}` })
+            // Poll until completed (max 30 ÃÂ 10s = 5 min)
             let pollRun = run
             for (let p = 0; p < 30 && pollRun.status !== 'completed'; p++) {
               await new Promise(r => setTimeout(r, 10000))
               const refreshed = await getWorkflowRun(githubToken, repoOwner, repoName, pollRun.id)
               if (refreshed) pollRun = refreshed
-              updateActivity(ciId, { msg: `â CI: ${pollRun.name} â ${pollRun.status}` })
+              updateActivity(ciId, { msg: `Ã¢ÂÂ CI: ${pollRun.name} Ã¢ÂÂ ${pollRun.status}` })
             }
             const ciOk = pollRun.conclusion === 'success'
             updateActivity(ciId, {
               status: ciOk ? 'done' : 'error',
-              msg: `â CI: ${pollRun.name} â ${pollRun.conclusion || pollRun.status}`,
+              msg: `Ã¢ÂÂ CI: ${pollRun.name} Ã¢ÂÂ ${pollRun.conclusion || pollRun.status}`,
               detail: pollRun.html_url,
             })
           } else {
-            updateActivity(ciId, { status: 'skip', msg: 'â CI: no workflow runs found' })
+            updateActivity(ciId, { status: 'skip', msg: 'Ã¢ÂÂ CI: no workflow runs found' })
           }
         } catch {
-          updateActivity(ciId, { status: 'skip', msg: 'â CI: monitoring unavailable' })
+          updateActivity(ciId, { status: 'skip', msg: 'Ã¢ÂÂ CI: monitoring unavailable' })
         }
       }
     } catch (err) {
-      log(`â ${err.message}`, false)
-      logActivity('error', `â Push failed: ${err.message}`)
+      log(`Ã¢ÂÂ ${err.message}`, false)
+      logActivity('error', `Ã¢ÂÂ Push failed: ${err.message}`)
       setError(`Push failed: ${err.message}`)
     } finally {
       setIsPushing(false)
@@ -1574,11 +1574,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
   const busy = isGenerating || isPushing
 
-  // ââ Tab config ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂ Tab config Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const effectiveActiveTab = 'code'
 
-  // ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  // ââ Fine-tune filter string ââââââââââââââââââââââââââââââââââââââââââââ
+  // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+  // Ã¢ÂÂÃ¢ÂÂ Fine-tune filter string Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   const ft = fineTune
   const ftFilter = [
     `brightness(${(ft.brightness / 100) * (0.85 + (ft.highlight / 100) * 0.30)})`,
@@ -1592,33 +1592,33 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       style={{ filter: ftFilter }}
       onKeyDown={handleKeyDown}
     >
-      {/* ââ Invisible sandbox iframe ââââââââââââââââââââââââââââââââââââââââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ Invisible sandbox iframe Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
       <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="LOGIK sandbox" aria-hidden="true" />
 
-      {/* ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-          LEFT SIDEBAR â icon column (like Claude Code's narrow left rail)
-          ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+          LEFT SIDEBAR Ã¢ÂÂ icon column (like Claude Code's narrow left rail)
+          Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
       <nav className="lk-sidebar">
-        <button className="lk-sidebar-btn lk-sidebar-btn--back" onClick={onClose} title="Back">â</button>
+        <button className="lk-sidebar-btn lk-sidebar-btn--back" onClick={onClose} title="Back">Ã¢ÂÂ</button>
         <div className="lk-sidebar-sep" />
         <button className={`lk-sidebar-btn${historyOpen ? ' lk-sidebar-btn--on' : ''}`}
-          onClick={() => { setHistoryOpen(v => !v); setSettingsOpen(false) }} title="History">â§</button>
+          onClick={() => { setHistoryOpen(v => !v); setSettingsOpen(false) }} title="History">Ã¢Â§Â</button>
         <button className={`lk-sidebar-btn${settingsOpen ? ' lk-sidebar-btn--on' : ''}`}
           onClick={() => {
             setSettingsOpen(v => !v)
             setHistoryOpen(false)
             setLogikMdDraft(shadowContext.logikMd || '')
-          }} title="Settings">â</button>
+          }} title="Settings">Ã¢ÂÂ</button>
         <button
           className="lk-sidebar-btn"
           onClick={handleReset}
           title="New Chat"
-        >ï¼</button>
+        >Ã¯Â¼Â</button>
         <button
           className={`lk-sidebar-btn${chatHistoryOpen ? ' lk-sidebar-btn--on' : ''}`}
           onClick={() => setChatHistoryOpen(v => !v)}
           title="Chat History"
-        >ð¬</button>
+        >Ã°ÂÂÂ¬</button>
         <div className="lk-sidebar-spacer" />
         {shadowStatus && (
           <div className={`lk-sidebar-shadow${shadowContext.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`}
@@ -1626,12 +1626,12 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         )}
       </nav>
 
-      {/* ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+      {/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
           MAIN COLUMN
-          ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+          Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
       <div className="lk-main">
 
-        {/* ââ Thin top bar ââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+        {/* Ã¢ÂÂÃ¢ÂÂ Thin top bar Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
         <div className="lk-topbar" style={{ height: `${headerLayout.headerHeight}px` }}>
           <>
 
@@ -1673,34 +1673,34 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               {turnCount > 0 && (
                 <div className="lk-turn-badge">
                   {turnCount} {turnCount === 1 ? 'turn' : 'turns'}
-                  {filePath && <span className="lk-turn-file"> Â· {filePath.split('/').pop()}</span>}
+                  {filePath && <span className="lk-turn-file"> ÃÂ· {filePath.split('/').pop()}</span>}
                 </div>
               )}
               <div className="lk-topbar-spacer" />
               {shadowStatus && (
                 <div className={`lk-shadow-badge${shadowContext.isIndexing ? ' lk-shadow-badge--indexing' : ''}`}
-                  title="ShadowContext: background repo index">â {shadowStatus}</div>
+                  title="ShadowContext: background repo index">Ã¢ÂÂ {shadowStatus}</div>
               )}
           </>
           <select className="lk-model-select" value={activeModelId}
             onChange={e => { setActiveModelId(e.target.value); onModelChange?.(e.target.value) }} disabled={busy}>
-            <option value="">Modelâ¦</option>
+            <option value="">ModelÃ¢ÂÂ¦</option>
             {(models || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
 
-          {/* Account / logout â shown when Firebase auth is active */}
+          {/* Account / logout Ã¢ÂÂ shown when Firebase auth is active */}
           {onLogout && (
             <button
               className="lk-icon-btn"
-              title={userEmail ? `Signed in as ${userEmail} â click to log out` : 'Log out'}
+              title={userEmail ? `Signed in as ${userEmail} Ã¢ÂÂ click to log out` : 'Log out'}
               onClick={onLogout}
               style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', opacity: 0.7 }}
-            >â»</button>
+            >Ã¢ÂÂ»</button>
           )}
 
         </div>
 
-        {/* ââ Drawers (overlay inside lk-main) âââââââââââââââââââââââââââââââ */}
+        {/* Ã¢ÂÂÃ¢ÂÂ Drawers (overlay inside lk-main) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
         {settingsOpen && (
           <LogikSettings
             githubToken={githubToken}     setGithubToken={setGithubToken}
@@ -1730,7 +1730,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           />
         )}
 
-      {/* ââ History drawer âââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ History drawer Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
       {historyOpen && (
         <div className="lk-drawer lk-drawer--history">
           <div className="lk-drawer-hd">
@@ -1753,57 +1753,57 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         </div>
       )}
 
-        {/* ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-            MAIN FEED â full-height scrollable output area
-            ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+        {/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+            MAIN FEED Ã¢ÂÂ full-height scrollable output area
+            Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
         <div className="lk-feed">
 
-          {/* ââ Plan approval gate ââââââââââââââââââââââââââââââââââââââââââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ Plan approval gate Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
           {planApproval && (
             <div className="lk-plan-approval">
-              <div className="lk-plan-approval-hd">ð Plan ready â approve to execute, modify to revise, or reject to cancel</div>
+              <div className="lk-plan-approval-hd">Ã°ÂÂÂ Plan ready Ã¢ÂÂ approve to execute, modify to revise, or reject to cancel</div>
               {planApproval.summary && (
-                <div className="lk-plan-approval-summary">{planApproval.summary.slice(0, 600)}{planApproval.summary.length > 600 ? 'â¦' : ''}</div>
+                <div className="lk-plan-approval-summary">{planApproval.summary.slice(0, 600)}{planApproval.summary.length > 600 ? 'Ã¢ÂÂ¦' : ''}</div>
               )}
               <div className="lk-plan-approval-actions">
                 <button className="lk-btn lk-btn--success" onClick={() => {
                   const t = planApproval.task
                   setPlanApproval(null)
                   agentSession.run(t, conversation.slice(-10), { forceBuildMode: true })
-                }}>â Approve &amp; Execute</button>
+                }}>Ã¢ÂÂ Approve &amp; Execute</button>
                 <button className="lk-btn" onClick={() => {
                   setPrompt(planApproval.task)
                   setPlanApproval(null)
-                }}>â Modify</button>
-                <button className="lk-btn lk-btn--danger" onClick={() => setPlanApproval(null)}>â Reject</button>
+                }}>Ã¢ÂÂ Modify</button>
+                <button className="lk-btn lk-btn--danger" onClick={() => setPlanApproval(null)}>Ã¢ÂÂ Reject</button>
               </div>
             </div>
           )}
 
-          {/* ââ Feed status strip: plan, amplifier, remediation ââââââââââââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ Feed status strip: plan, amplifier, remediation Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
           {(isAmplifying || amplifierDecisions.length > 0 || remediationStatus || isPlanning || filePlan.length > 0) && (
             <div className="lk-feed-status">
-              {isAmplifying && <div className="lk-feed-pill"><span className="lk-spinner" /> Amplifying intentâ¦</div>}
+              {isAmplifying && <div className="lk-feed-pill"><span className="lk-spinner" /> Amplifying intentÃ¢ÂÂ¦</div>}
               {amplifierDecisions.length > 0 && (
                 <div className="lk-amplifier-panel">
-                  <div className="lk-amplifier-hd">â LOGIK decided:</div>
-                  {amplifierDecisions.map((d, i) => <div key={i} className="lk-amplifier-item">Â· {d}</div>)}
+                  <div className="lk-amplifier-hd">Ã¢ÂÂ LOGIK decided:</div>
+                  {amplifierDecisions.map((d, i) => <div key={i} className="lk-amplifier-item">ÃÂ· {d}</div>)}
                 </div>
               )}
               {remediationStatus && <div className="lk-feed-pill"><span className="lk-spinner" /> {remediationStatus}</div>}
-              {isPlanning && <div className="lk-feed-pill"><span className="lk-spinner" /> Planning across repoâ¦</div>}
+              {isPlanning && <div className="lk-feed-pill"><span className="lk-spinner" /> Planning across repoÃ¢ÂÂ¦</div>}
               {filePlan.length > 0 && (
                 <div className="lk-plan-panel">
-                  <div className="lk-plan-hd">â Plan â {filePlan.length} file{filePlan.length !== 1 ? 's' : ''}</div>
+                  <div className="lk-plan-hd">Ã¢ÂÂ Plan Ã¢ÂÂ {filePlan.length} file{filePlan.length !== 1 ? 's' : ''}</div>
                   {filePlan.map((entry, i) => (
                     <button key={entry.path}
                       className={`lk-plan-card${i === activeFileIndex ? ' lk-plan-card--active' : ''} lk-plan-card--${entry.status}`}
                       onClick={() => setActiveFileIndex(i)}>
                       <span className="lk-plan-card-icon">
-                        {entry.status === 'done'       ? 'â' :
-                         entry.status === 'error'      ? 'â' :
-                         entry.status === 'generating' || entry.status === 'remediating' ? 'â¦' :
-                         entry.status === 'fetching'   ? 'â¬' : 'Â·'}
+                        {entry.status === 'done'       ? 'Ã¢ÂÂ' :
+                         entry.status === 'error'      ? 'Ã¢ÂÂ' :
+                         entry.status === 'generating' || entry.status === 'remediating' ? 'Ã¢ÂÂ¦' :
+                         entry.status === 'fetching'   ? 'Ã¢Â¬Â' : 'ÃÂ·'}
                       </span>
                       <span className="lk-plan-card-path">{entry.path}</span>
                       <span className="lk-plan-card-action">{entry.action === 'modify' ? 'edit' : 'new'}</span>
@@ -1814,7 +1814,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             </div>
           )}
 
-          {/* ââ File tabs (multiple files in plan) âââââââââââââââââââââââââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ File tabs (multiple files in plan) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
           {filePlan.length > 1 && (
             <div className="lk-file-tabs">
               {filePlan.map((entry, i) => (
@@ -1823,8 +1823,8 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                     className={`lk-file-tab${i === activeFileIndex ? ' lk-file-tab--active' : ''} lk-file-tab--${entry.status}`}
                     onClick={() => setActiveFileIndex(i)} title={entry.path}>
                     <span className="lk-file-tab-status">
-                      {entry.status === 'done' ? 'â' : entry.status === 'error' ? 'â' :
-                       entry.status === 'generating' || entry.status === 'remediating' ? 'â¦' : 'Â·'}
+                      {entry.status === 'done' ? 'Ã¢ÂÂ' : entry.status === 'error' ? 'Ã¢ÂÂ' :
+                       entry.status === 'generating' || entry.status === 'remediating' ? 'Ã¢ÂÂ¦' : 'ÃÂ·'}
                     </span>
                     {entry.path.split('/').pop()}
                   </button>
@@ -1833,7 +1833,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                       className="lk-file-retry-btn"
                       onClick={e => { e.stopPropagation(); handleRetryFile(i) }}
                       title={`Retry ${entry.path}${entry.error ? ': ' + entry.error : ''}`}
-                    >âº</button>
+                    >Ã¢ÂÂº</button>
                   )}
                 </div>
               ))}
@@ -1856,7 +1856,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             </div>
           )}
 
-          {/* ââ Agent activity feed â shown when agent is running or has output ââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ Agent activity feed Ã¢ÂÂ shown when agent is running or has output Ã¢ÂÂÃ¢ÂÂ */}
           {(agentSession.isAgentRunning || activityLog.length > 0) && (
             <LogikActivityFeed
               activityLog={activityLog}
@@ -1873,10 +1873,10 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             />
           )}
 
-          {/* ââ Output area ââââââââââââââââââââââââââââââââââââââââââââââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ Output area Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
           <div className="lk-feed-output">
 
-          {/* ââ Code tab ââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ Code tab Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
           {effectiveActiveTab === 'code' && (
             <LogikCodePane
               generatedCode={assistantMessage.code || generatedCode}
@@ -1896,21 +1896,21 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             />
           )}
 
-          {/* ââ Tests tab ââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ Tests tab Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
           <div className="lk-output" style={{ display: effectiveActiveTab === 'tests' ? 'flex' : 'none', flexDirection: 'column' }}>
             <div className="lk-code-scroll" style={{ flex: 1 }}>
               {isGenTests ? (
-                <div className="lk-generating"><span className="lk-spinner" /> Generating testsâ¦</div>
+                <div className="lk-generating"><span className="lk-spinner" /> Generating testsÃ¢ÂÂ¦</div>
               ) : testCode ? (
                 <pre className="lk-pre">
                   <code dangerouslySetInnerHTML={{ __html: highlightCode(testCode, language) }} />
                 </pre>
               ) : (
                 <div className="lk-placeholder">
-                  <div className="lk-placeholder-glyph">â</div>
+                  <div className="lk-placeholder-glyph">Ã¢ÂÂ</div>
                   <p className="lk-placeholder-body">
                     {generateTests
-                      ? 'Generate code first â test file will be auto-generated.'
+                      ? 'Generate code first Ã¢ÂÂ test file will be auto-generated.'
                       : 'Enable "Generate test file" in options, then generate code.'}
                   </p>
                   {filePath && <p className="lk-placeholder-tip">Tests will be saved to: <code>{testFilePath(filePath)}</code></p>}
@@ -1918,11 +1918,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               )}
             </div>
 
-            {/* ââ Run Tests bar ââââââââââââââââââââââââââââââââââââââââââââââ */}
+            {/* Ã¢ÂÂÃ¢ÂÂ Run Tests bar Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
             {testCode && !isGenTests && (
               <div className="lk-run-bar">
                 <button className="lk-btn lk-btn--run" onClick={handleRunTests} disabled={isRunningTests}>
-                  {isRunningTests ? 'Running Testsâ¦' : 'Run Tests'}
+                  {isRunningTests ? 'Running TestsÃ¢ÂÂ¦' : 'Run Tests'}
                 </button>
               </div>
             )}
@@ -1933,11 +1933,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           )}
 
 
-          {/* ââ ENHANCEMENT 7 â Run tab (JS sandbox) ââââââââââââââââââââââââ */}
+          {/* Ã¢ÂÂÃ¢ÂÂ ENHANCEMENT 7 Ã¢ÂÂ Run tab (JS sandbox) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
           <div className="lk-output" style={{ display: effectiveActiveTab === 'run' ? 'flex' : 'none', flexDirection: 'column' }}>
             <div className="lk-sandbox-controls">
               <div className="lk-sandbox-warn">
-                â  Isolated sandbox Â· JS (7 s) Â· Python via Pyodide (20 s) Â· No filesystem access
+                Ã¢ÂÂ  Isolated sandbox ÃÂ· JS (7 s) ÃÂ· Python via Pyodide (20 s) ÃÂ· No filesystem access
               </div>
               <div className="lk-sandbox-setup-row">
                 <input
@@ -1951,13 +1951,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                   onClick={handleRunInSandbox}
                   disabled={!generatedCode || isRunning}
                 >
-                  {isRunning ? <><span className="lk-spinner" /> Runningâ¦</> : 'â¶ Run'}
+                  {isRunning ? <><span className="lk-spinner" /> RunningÃ¢ÂÂ¦</> : 'Ã¢ÂÂ¶ Run'}
                 </button>
               </div>
             </div>
             <div className="lk-sandbox-output">
               {sandboxOutput.length === 0 ? (
-                <div className="lk-sandbox-empty">Click â¶ Run to execute the generated code in a sandboxed environment.</div>
+                <div className="lk-sandbox-empty">Click Ã¢ÂÂ¶ Run to execute the generated code in a sandboxed environment.</div>
               ) : (
                 sandboxOutput.map((line, i) => (
                   <div key={i} className={`lk-sandbox-line lk-sandbox-line--${line.level}`}>
@@ -2001,9 +2001,9 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           </div>{/* end lk-feed-output */}
         </div>{/* end lk-feed */}
 
-        <>{/* ââââââââââââââââââââââââââââââââââââââââââââââââââ
-            BOTTOM INPUT BAR â prompt + controls (Claude Code style)
-            ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
+        <>{/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+            BOTTOM INPUT BAR Ã¢ÂÂ prompt + controls (Claude Code style)
+            Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */}
         <div className="lk-input-bar">
 
           {/* Inline status: error, push progress, PR link, repo badge */}
@@ -2013,7 +2013,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           )}
           {prResult && (
             <a className="lk-pr-badge" href={prResult.url} target="_blank" rel="noopener noreferrer">
-              <span className="lk-pr-icon">â</span>
+              <span className="lk-pr-icon">Ã¢ÂÂ</span>
               Pull Request {prResult.number ? `#${prResult.number}` : 'created'}
             </a>
           )}
@@ -2021,7 +2021,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           {/* Prompt textarea */}
           <textarea
             className="lk-textarea"
-            placeholder={"Describe what you needâ¦\ne.g. 'Build a snake game in HTML/JS' or 'Add auth to the API'"}
+            placeholder={"Describe what you needÃ¢ÂÂ¦\ne.g. 'Build a snake game in HTML/JS' or 'Add auth to the API'"}
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -2036,7 +2036,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               {costEstimate && (
                 <span className="lk-cost-row">
                   <span className="lk-cost-tokens">~{costEstimate.inputTokens.toLocaleString()}</span>
-                  <span className="lk-cost-sep">Â·</span>
+                  <span className="lk-cost-sep">ÃÂ·</span>
                   <span className="lk-cost-usd">{formatCost(costEstimate.totalUSD)}</span>
                 </span>
               )}
@@ -2044,38 +2044,38 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                 <div className="lk-repo-badge">
                   <span className="lk-repo-dot" />
                   <span>{repoOwner && repoName ? `${repoOwner}/${repoName}` : repoOwner || repoName}</span>
-                  {githubToken ? <span className="lk-repo-auth">â auth</span> : <span className="lk-repo-noauth">â no token</span>}
+                  {githubToken ? <span className="lk-repo-auth">● auth</span> : <span className="lk-repo-noauth">○ no token</span>}
                 </div>
               )}
               {/* Local folder attachment */}
               {localDirHandle ? (
                 <div className="lk-local-badge">
-                  <span className="lk-local-badge-icon">ð</span>
+                  <span className="lk-local-badge-icon">Ã°ÂÂÂ</span>
                   <span className="lk-local-badge-name" title="Local folder attached">{localDirHandle.name}</span>
-                  <button className="lk-local-badge-detach" title="Detach local folder" onClick={() => setLocalDirHandle(null)}>â</button>
+                  <button className="lk-local-badge-detach" title="Detach local folder" onClick={() => setLocalDirHandle(null)}>Ã¢ÂÂ</button>
                 </div>
               ) : (
                 <button
                   className="lk-btn lk-btn--small lk-btn--attach"
-                  title="Attach a local repo folder â agent will read/write files directly on disk"
+                  title="Attach a local repo folder Ã¢ÂÂ agent will read/write files directly on disk"
                   onClick={async () => {
                     try { setLocalDirHandle(await pickDirectory()) }
                     catch (e) { if (e.name !== 'AbortError') setError(`Folder access denied: ${e.message}`) }
                   }}
-                >ð Attach folder</button>
+                >Ã°ÂÂÂ Attach folder</button>
               )}
               <button
                 className={`lk-btn lk-btn--small lk-btn--attach${modulesOpen ? ' lk-btn--active' : ''}`}
                 onClick={() => setModulesOpen(v => !v)}
                 title="Open modules"
-              >â Modules</button>
+              >Ã¢ÂÂ Modules</button>
             </div>
 
             {/* Right: action buttons */}
             <div className="lk-input-right">
               <>
 
-                  {/* Push button â only when there's generated code to push */}
+                  {/* Push button Ã¢ÂÂ only when there's generated code to push */}
                   {hasGithub && filePlan.some(e => e.code?.trim()) && (() => {
                     const hasDiffs  = filePlan.some(e => e.diffText?.trim())
                     const fileCount = filePlan.filter(e => e.code?.trim()).length
@@ -2083,31 +2083,31 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                     return (
                       <>
                         <button className={`lk-btn lk-btn--push${hasDiffs ? ' lk-btn--push-ready' : ''}`} onClick={handlePush}>
-                          <span className="lk-btn-icon">â¬</span>Push {pushLabel}
+                          <span className="lk-btn-icon">Ã¢Â¬Â</span>Push {pushLabel}
                         </button>
                       </>
                     )
                   })()}
 
-                  {/* Run Tests â after a successful push with bridge available */}
+                  {/* Run Tests Ã¢ÂÂ after a successful push with bridge available */}
                   {bridgeAvailable && prResult && (
                     <button className="lk-btn lk-btn--run" onClick={handleRunProjectTests} disabled={isRunningPostPushTests}>
-                      <span className="lk-btn-icon">â</span>
-                      {isRunningPostPushTests ? 'Runningâ¦' : 'Run Tests'}
+                      <span className="lk-btn-icon">Ã¢ÂÂ</span>
+                      {isRunningPostPushTests ? 'RunningÃ¢ÂÂ¦' : 'Run Tests'}
                     </button>
                   )}
 
-                  {/* Single Send button â agent when GitHub connected, generate otherwise */}
+                  {/* Single Send button Ã¢ÂÂ agent when GitHub connected, generate otherwise */}
                   <button
                     className="lk-btn lk-btn--send"
                     onClick={() => hasGithub ? agentSession.run(prompt, conversation.slice(-10)) : handleGenerate()}
                     disabled={!prompt.trim() || agentSession.isAgentRunning || isGenerating}
                   >
-                    <span className="lk-btn-icon">â¶</span>
-                    {agentSession.isAgentRunning ? 'Workingâ¦' : isGenerating || isPlanning || isAmplifying ? 'Thinkingâ¦' : 'Send'}
+                    <span className="lk-btn-icon">Ã¢ÂÂ¶</span>
+                    {agentSession.isAgentRunning ? 'WorkingÃ¢ÂÂ¦' : isGenerating || isPlanning || isAmplifying ? 'ThinkingÃ¢ÂÂ¦' : 'Send'}
                   </button>
 
-                  {/* Terminate â always visible next to Send when running */}
+                  {/* Terminate Ã¢ÂÂ always visible next to Send when running */}
                   {busy && (
                     <button className="lk-btn lk-btn--abort lk-btn--abort-inline" onClick={handleAbort} title="Terminate process">
                       Terminate Process
@@ -2119,15 +2119,15 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                     <div className="lk-agent-summary">
                       {agentSession.agentSummary ? (
                         <>
-                          <span className="lk-agent-summary-icon">â</span>
+                          <span className="lk-agent-summary-icon">Ã¢ÂÂ</span>
                           <span>{agentSession.agentSummary.slice(0, 120)}</span>
                           {agentSession.agentFiles.length > 0 && (
-                            <span className="lk-agent-files"> Â· {agentSession.agentFiles.length} file{agentSession.agentFiles.length !== 1 ? 's' : ''} changed</span>
+                            <span className="lk-agent-files"> ÃÂ· {agentSession.agentFiles.length} file{agentSession.agentFiles.length !== 1 ? 's' : ''} changed</span>
                           )}
                         </>
                       ) : (
                         <>
-                          <span className="lk-agent-summary-icon">â</span>
+                          <span className="lk-agent-summary-icon">Ã¢ÂÂ</span>
                           <span>
                             {localDirHandle
                               ? `Ready to work in local folder ${localDirHandle.name}`
