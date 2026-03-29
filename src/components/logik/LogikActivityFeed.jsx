@@ -94,11 +94,14 @@ const LogikActivityFeed = memo(function LogikActivityFeed({
           activityLog.map(entry => {
             const isCompleteMessage = /agent complete/i.test(entry.msg || '')
             return (
-              <div key={entry.id} className={`lk-activity-line lk-activity-line--${entry.status} lk-activity-line--${entry.type}`}>
+              <div
+                key={entry.id}
+                className={`lk-activity-line lk-activity-line--${entry.status} lk-activity-line--${entry.type}${isCompleteMessage ? ' lk-activity-line--agent-complete' : ''}`}
+              >
                 <span className="lk-activity-icon">
                   {entry.status === 'active' && !isCompleteMessage
                     ? <span className="lk-spinner" />
-                    : entry.status === 'done' ? 'OK'
+                    : entry.status === 'done' || isCompleteMessage ? '✓'
                     : entry.status === 'error' ? 'X'
                     : '-'}
                 </span>

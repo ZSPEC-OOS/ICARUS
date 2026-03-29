@@ -1999,6 +1999,15 @@ kbd {
 .lk-activity-line--push.lk-activity-line--active     { border-left-color: var(--lk-warn); }
 .lk-activity-line--push.lk-activity-line--done       { border-left-color: var(--lk-success); }
 .lk-activity-line--done.lk-activity-line--done       { background: var(--lk-success-bg); }
+.lk-activity-line--agent-complete {
+  background: color-mix(in srgb, var(--lk-success) 18%, transparent);
+  border-left-color: var(--lk-success);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lk-success) 28%, transparent);
+}
+.lk-activity-line--agent-complete .lk-activity-msg {
+  color: color-mix(in srgb, var(--lk-success) 74%, white);
+  font-weight: 700;
+}
 
 .lk-activity-icon {
   width: 16px;
