@@ -20,6 +20,7 @@ import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS } from '../config/constants.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
 import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
 import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
+import { memoryGraphService } from './memoryGraphService.js'
 
 // ââ Session diary â Claude Code /compact pattern ââââââââââââââââââââââââââââââ
 // Accumulates a lightweight log of what has happened in the session.
@@ -178,6 +179,7 @@ export async function runAgentLoop({
     (!modelConfig.provider && modelConfig.baseUrl?.includes('api.anthropic.com'))
 
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
+  memoryGraphService.init()
   const filesChanged = []
   const recentSigs   = []   // rolling window of tool-call signatures for loop detection
   const diary        = makeSessionDiary()   // Claude Code-style session digest
@@ -250,6 +252,11 @@ export async function runAgentLoop({
 [Self-check]
 ${critique.summary}`
         }
+        memoryGraphService.ingestCritiqueOutcome({
+          task,
+          critiqueSummary: critique.summary,
+          passed: critique.passed,
+        })
       }
       onEvent({ type: 'done', text: finalText, filesChanged })
       return
@@ -290,6 +297,12 @@ ${critique.summary}`
             onEvent({ type: 'file_write', path, action })
             diary.onFileWrite(path, action)
             toolResultCache.clear() // file system changed — drop stale read/search cache
+            memoryGraphService.ingestFileChange({
+              path,
+              action,
+              content: String(result || '').slice(0, 500),
+              source: 'agent_loop',
+            })
           } else if (tc.name === 'read_file' || tc.name === 'read_many_files') {
             const paths = tc.name === 'read_many_files' ? (tc.input.paths || []) : [tc.input.path]
             paths.forEach(p => diary.onFileRead(p))

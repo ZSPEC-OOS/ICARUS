@@ -2,6 +2,7 @@
 // Plugs into existing shadowContext indexing with lightweight metadata-rich
 // chunking and reranking. This implementation avoids introducing heavy infra
 // and can be swapped for a real vector DB backend later.
+import { memoryGraphService } from '../memoryGraphService.js'
 
 /**
  * @typedef {{
@@ -29,12 +30,30 @@ export function hybridSearch(input) {
   } = input || {}
 
   if (!query?.trim()) throw new Error('query is required')
-  if (!shadowContext?.isReady) return []
 
-  const lexical = shadowContext.findRelevantFiles?.(query, Math.max(limit * 2, 10)) || []
-  const vectorLike = shadowContext.search?.(query, Math.max(limit * 2, 10)) || lexical
+  const graphHits = memoryGraphService.querySemantic({ query, limit: Math.max(limit * 2, 12) })
+  const lexical = shadowContext?.isReady
+    ? (shadowContext.findRelevantFiles?.(query, Math.max(limit * 2, 10)) || [])
+    : []
+  const vectorLike = shadowContext?.isReady
+    ? (shadowContext.search?.(query, Math.max(limit * 2, 10)) || lexical)
+    : lexical
 
   const byPath = new Map()
+
+  for (const hit of graphHits) {
+    const path = hit.path || hit.id
+    const entry = byPath.get(path) || initChunk(path)
+    entry.vectorScore = Math.max(entry.vectorScore, normalizeScore(hit.score))
+    entry.text = hit.summary || entry.text
+    entry.metadata = {
+      source: hit.path || hit.id,
+      date: hit.updatedAt || null,
+      section: hit.type || 'memory',
+      owner: hit.metadata?.owner || null,
+    }
+    byPath.set(path, entry)
+  }
 
   for (const row of lexical) {
     const path = row.path
@@ -52,8 +71,8 @@ export function hybridSearch(input) {
 
   const chunks = [...byPath.values()].map(chunk => {
     chunk.score = (chunk.lexicalScore * weights.bm25) + (chunk.vectorScore * weights.vector)
-    chunk.text = loadChunkPreview(shadowContext, chunk.path)
-    chunk.metadata = inferMetadata(chunk.path)
+    chunk.text = chunk.text || loadChunkPreview(shadowContext, chunk.path)
+    chunk.metadata = { ...inferMetadata(chunk.path), ...(chunk.metadata || {}) }
     return chunk
   })
 

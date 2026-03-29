@@ -7,12 +7,14 @@
 
 import { runPrompt } from './aiService.js'
 import { PLAN_MAX_FILES as MAX_PLAN_FILES } from '../config/constants.js'
+import { memoryGraphService } from './memoryGraphService.js'
 
 // ─── Main entry point ─────────────────────────────────────────────────────────
 // recentFiles — paths of files generated in prior conversation turns.
 // Lets the planner avoid redundant recreations and build on existing work.
 export async function buildFilePlan(task, fileIndex, conventions, model, signal, recentFiles = []) {
   if (!model?.apiKey) return fallbackPlan(task, conventions)
+  memoryGraphService.init()
 
   // Give the planner a condensed snapshot of what exists (up to 400 paths)
   const existing = (fileIndex || []).slice(0, 400).map(f => f.path).join('\n')
@@ -32,6 +34,10 @@ export async function buildFilePlan(task, fileIndex, conventions, model, signal,
 
   const recentCtx = recentFiles.length > 0
     ? `\nFiles created or modified in prior conversation turns (you may reference or extend these):\n${recentFiles.join('\n')}`
+    : ''
+  const memoryPlanContext = memoryGraphService.queryForPlanning(task, 8)
+  const memoryCtx = memoryPlanContext.summary
+    ? `\nMemory graph hits:\n${memoryPlanContext.summary}`
     : ''
 
   const standalone = isStandaloneTask(task)
@@ -60,7 +66,7 @@ export async function buildFilePlan(task, fileIndex, conventions, model, signal,
   try {
     const raw = await runPrompt(
       model,
-      `Project context:\n${convSummary}\n\nExisting files:\n${existing || '(none indexed yet)'}${recentCtx}\n\nTask: ${task}`,
+      `Project context:\n${convSummary}\n\nExisting files:\n${existing || '(none indexed yet)'}${recentCtx}${memoryCtx}\n\nTask: ${task}`,
       context,
       null,
       signal,

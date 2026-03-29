@@ -13,6 +13,7 @@
 
 import { listDirectory, getFileContent } from './githubService.js'
 import { decodeBase64 } from '../utils/base64.js'
+import { memoryGraphService } from './memoryGraphService.js'
 import {
   SHADOW_MAX_FILES         as MAX_FILES,
   SHADOW_MAX_DEPTH         as MAX_DEPTH,
@@ -98,6 +99,7 @@ class ShadowContextStore {
       await this._fetchContentBatch()   // build symbol/preview/import index
       this._buildImportGraph()          // derive dependency graph from imports
       await this._detectConventions()
+      memoryGraphService.ingestShadowContext(this, key)
       this.isReady = true
       // Persist to sessionStorage
       try {
