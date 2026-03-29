@@ -14,6 +14,7 @@
 //   web_fetch         → exec bridge curl | direct fetch fallback
 //   web_search        → Tavily REST API
 //   update_memory     → appends note to LOGIK.md via GitHub API
+//   token_io_optimizer → returns a quality-preserving token optimization plan
 //   run_command       → Vite exec bridge (POST /api/exec)
 //   create_pull_request → GitHub Pulls API
 
@@ -146,6 +147,45 @@ function attemptJsonRepair(raw) {
     .replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, ': "$1"')
 
   return next
+}
+
+function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive') {
+  const normalizedSize = ['small', 'medium', 'large', 'huge'].includes(expectedOutputSize)
+    ? expectedOutputSize
+    : 'medium'
+  const normalizedMode = ['off', 'adaptive', 'aggressive'].includes(mode)
+    ? mode
+    : 'adaptive'
+
+  const basePlan = [
+    'Keep full implementation quality: never omit required code, tests, or error handling.',
+    'Batch reads using read_many_files and use grep before opening many files.',
+    'Avoid redundant tool calls by caching prior read/search results within the session.',
+    'Use edit_file for surgical patches; reserve write_file for full rewrites/new files.',
+    'Defer verbose prose until final answer; keep intermediate tool outputs concise.',
+  ]
+
+  if (normalizedSize === 'large' || normalizedSize === 'huge') {
+    basePlan.push('Split work into milestones and only load context relevant to the current milestone.')
+  }
+
+  if (normalizedMode === 'off') {
+    basePlan.unshift('Optimization mode OFF: prioritize maximal context and verbosity.')
+  } else if (normalizedMode === 'aggressive') {
+    basePlan.push('Aggressive mode: cap repeated file reads and summarize unchanged sections after first inspection.')
+    basePlan.push('Aggressive mode: prefer short tool arguments and avoid re-sending unchanged large strings.')
+  } else {
+    basePlan.push('Adaptive mode: optimize only when requests are long or repetitive.')
+  }
+
+  return {
+    tool: 'token_io_optimizer',
+    mode: normalizedMode,
+    expectedOutputSize: normalizedSize,
+    qualityGuardrail: 'Do not sacrifice correctness, completeness, or code quality for token savings.',
+    taskSummary: String(task || '').trim().slice(0, 400),
+    recommendations: basePlan,
+  }
 }
 
 export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, localDirHandle, enhancerConfig: enhancerConfigOverrides }) {
@@ -611,6 +651,15 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
             return JSON.stringify({ repaired: true, valid: false, error: e.message, json: candidate }, null, 2)
           }
         }
+      }
+
+      // ── token_io_optimizer ─────────────────────────────────────────────
+      case 'token_io_optimizer': {
+        if (typeof input?.task !== 'string' || !input.task.trim()) {
+          return 'token_io_optimizer error: task is required.'
+        }
+        const plan = buildTokenIoPlan(input.task, input.expected_output_size, input.mode)
+        return JSON.stringify(plan, null, 2)
       }
 
       default:
