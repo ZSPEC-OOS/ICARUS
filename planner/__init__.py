@@ -13,6 +13,7 @@ from .models import (
     TaskGraph,
     TaskStatus,
 )
+from .memory_graph_models import MemoryEdge, MemoryEdgeType, MemoryGraph, MemoryNode, MemoryNodeType
 from .orchestrator import (
     AgentRoleExecutor,
     ArchitectAgent,
@@ -36,6 +37,11 @@ __all__ = [
     "SubTask",
     "TaskGraph",
     "TaskStatus",
+    "MemoryNodeType",
+    "MemoryEdgeType",
+    "MemoryNode",
+    "MemoryEdge",
+    "MemoryGraph",
     "SymbolDefinition",
     "CodeIntelligenceSnapshot",
     "CodeIntelligence",
