@@ -40,6 +40,7 @@ const SRC_EXTS  = /\.(js|jsx|ts|tsx|py|go|rs|java|rb|css|scss|vue|svelte)$/i
 class ShadowContextStore {
   constructor() {
     this._fileIndex    = []   // [{path, name, ext, size}]
+    this._totalRepoFiles = 0  // includes non-code files for metadata accuracy
     this._contentIndex = {}   // {path: {full, preview, symbols, imports}}
     this._importGraph  = {}   // {path: [depPath, ...]}   — files this file imports
     this._importedBy   = {}   // {path: [consumerPath, ...]} — files that import this
@@ -62,9 +63,10 @@ class ShadowContextStore {
     try {
       const cached = sessionStorage.getItem(`shadow:${key}`)
       if (cached) {
-        const { ts, index, conventions, contentIndex } = JSON.parse(cached)
+        const { ts, index, totalRepoFiles, conventions, contentIndex } = JSON.parse(cached)
         if (Date.now() - ts < CACHE_TTL) {
           this._fileIndex    = index
+          this._totalRepoFiles = totalRepoFiles || (index?.length || 0)
           this._conventions  = conventions
           this._contentIndex = contentIndex || {}
           this._repoKey      = key
@@ -79,6 +81,7 @@ class ShadowContextStore {
     if (this._repoKey === key && this.isReady) return
 
     this._fileIndex    = []
+    this._totalRepoFiles = 0
     this._contentIndex = {}
     this._importGraph  = {}
     this._importedBy   = {}
@@ -101,6 +104,7 @@ class ShadowContextStore {
         sessionStorage.setItem(`shadow:${key}`, JSON.stringify({
           ts: Date.now(),
           index:        this._fileIndex,
+          totalRepoFiles: this._totalRepoFiles,
           conventions:  this._conventions,
           contentIndex: this._contentIndex,
         }))
@@ -367,7 +371,7 @@ class ShadowContextStore {
     const c            = this._conventions
     const label        = [c?.framework !== 'unknown' ? c?.framework : '', c?.language].filter(Boolean).join(' · ')
     const contentCount = Object.keys(this._contentIndex).length
-    return `${this._fileIndex.length} files · ${contentCount} indexed · ${label}`
+    return `${this._totalRepoFiles} files · ${this._fileIndex.length} code files · ${contentCount} indexed · ${label}`
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
@@ -386,7 +390,9 @@ class ShadowContextStore {
       if (item.type === 'dir') {
         if (SKIP_DIRS.has(item.name)) continue
         await this._crawl(item.path, depth + 1)
-      } else if (CODE_EXTS.test(item.name)) {
+      } else {
+        this._totalRepoFiles += 1
+        if (!CODE_EXTS.test(item.name)) continue
         const ext = item.name.split('.').pop()?.toLowerCase() || ''
         this._fileIndex.push({ path: item.path, name: item.name, ext, size: item.size || 0 })
       }
@@ -585,7 +591,7 @@ class ShadowContextStore {
 
     this._conventions = {
       framework, testFramework, language, namingConvention,
-      srcDir, hooks, deps, pathAliases, totalFiles: this._fileIndex.length,
+      srcDir, hooks, deps, pathAliases, totalFiles: this._totalRepoFiles,
       contentIndexed: Object.keys(this._contentIndex).length,
     }
   }
