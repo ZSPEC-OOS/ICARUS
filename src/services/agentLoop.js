@@ -7,6 +7,10 @@ import { createReliabilityLoopFSM } from './reliability/fsm.js'
 import { evaluateReliabilityGates, detectApiSignatureChange } from './reliability/gateEvaluators.js'
 import { createRollbackHandler } from './reliability/rollbackHandler.js'
 import { setTraceLoopState } from './toolTraceStore.js'
+import { semanticCacheService } from './efficiency/cacheService.js'
+import { efficiencyMetricsService } from './efficiency/metricsService.js'
+import { packContextSections } from './enhancers/contextPacker.js'
+import { enforceQualityFloor } from './enhancers/qualityFloor.js'
 
 function makeSessionDiary() {
   const filesRead = new Set()
@@ -102,14 +106,18 @@ export async function runAgentLoop({
   const filesChanged = []
   const diary = makeSessionDiary()
   const recentSigs = []
-  const toolResultCache = new Map()
+  const taskId = `agent-${Date.now()}`
   const executionTrace = { mutations: [], commandRuns: [] }
   let finalText = ''
+
+  const packedInput = packContextSections([
+    { heading: 'TASK', content: enhancerConfig.structuredPrompting.enabled ? enforceStructuredPrompt(task).promptText : task },
+  ])
 
   let messages = [
     ...(isAnthropic ? [] : [{ role: 'system', content: systemPrompt }]),
     ...(conversationHistory?.length ? conversationHistory : []),
-    { role: 'user', content: enhancerConfig.structuredPrompting.enabled ? enforceStructuredPrompt(task).promptText : task },
+    { role: 'user', content: packedInput.text },
   ]
   const anthropicSystemField = isAnthropic ? systemPrompt : undefined
 
@@ -143,8 +151,22 @@ export async function runAgentLoop({
 
           onEvent({ type: 'turn', turn })
           let response
+          const turnStarted = Date.now()
           try {
-            response = await callWithToolsStreaming(modelConfig, messages, tools, signal, anthropicSystemField, (delta) => onEvent({ type: 'text_delta', delta }))
+            const modelCacheKey = {
+              modelId: modelConfig.modelId,
+              provider: modelConfig.provider || '',
+              messages: messages.slice(-6),
+            }
+            const cachedResponse = semanticCacheService.get('model_response', modelCacheKey)
+            if (cachedResponse) {
+              response = cachedResponse
+              onEvent({ type: 'cache', layer: 'model_response', hit: true })
+            } else {
+              response = await callWithToolsStreaming(modelConfig, messages, tools, signal, anthropicSystemField, (delta) => onEvent({ type: 'text_delta', delta }))
+              if (!response?.toolCalls?.length) semanticCacheService.set('model_response', modelCacheKey, response, 45000)
+              onEvent({ type: 'cache', layer: 'model_response', hit: false })
+            }
           } catch (err) {
             if (err.name === 'AbortError') {
               finalText = 'Agent stopped.'
@@ -156,6 +178,13 @@ export async function runAgentLoop({
           }
 
           if (response.usage?.input || response.usage?.output) onEvent({ type: 'usage', inputTokens: response.usage.input, outputTokens: response.usage.output })
+          efficiencyMetricsService.record({
+            taskId,
+            stage: 'agent_turn',
+            latencyMs: Date.now() - turnStarted,
+            inputTokens: response.usage?.input || 0,
+            outputTokens: response.usage?.output || 0,
+          })
           if (response.text) diary.onModelText(response.text)
 
           if (response.isDone || response.toolCalls.length === 0) {
@@ -174,10 +203,13 @@ export async function runAgentLoop({
             const id = toolCallIds.get(tc)
             const cacheKey = `${tc.name}:${JSON.stringify(tc.input || {})}`
             try {
-              if (CACHEABLE_TOOLS.has(tc.name) && toolResultCache.has(cacheKey)) {
-                const cached = toolResultCache.get(cacheKey)
-                onEvent({ type: 'tool_done', id, name: tc.name, result: cached, error: null, cached: true })
-                return cached
+              if (CACHEABLE_TOOLS.has(tc.name)) {
+                const cached = semanticCacheService.get('file_content', cacheKey)
+                if (cached != null) {
+                  onEvent({ type: 'tool_done', id, name: tc.name, result: cached, error: null, cached: true })
+                  efficiencyMetricsService.record({ taskId, stage: `tool:${tc.name}`, cacheHit: true })
+                  return cached
+                }
               }
 
               let beforeContent = null
@@ -191,7 +223,7 @@ export async function runAgentLoop({
               }
 
               const result = await executeTool(tc.name, tc.input)
-              if (CACHEABLE_TOOLS.has(tc.name)) toolResultCache.set(cacheKey, result)
+              if (CACHEABLE_TOOLS.has(tc.name)) semanticCacheService.set('file_content', cacheKey, result)
 
               if (tc.name === 'run_command') executionTrace.commandRuns.push({ input: tc.input, result })
 
@@ -201,7 +233,7 @@ export async function runAgentLoop({
                 const action = tc.name === 'write_file' ? 'write' : tc.name === 'delete_file' ? 'delete' : 'edit'
                 onEvent({ type: 'file_write', path, action })
                 diary.onFileWrite(path, action)
-                toolResultCache.clear()
+                semanticCacheService.clearNamespace('file_content')
 
                 let afterContent = null
                 if (action !== 'delete') {
@@ -225,6 +257,7 @@ export async function runAgentLoop({
               }
 
               onEvent({ type: 'tool_done', id, name: tc.name, result, error: null })
+              efficiencyMetricsService.record({ taskId, stage: `tool:${tc.name}`, cacheHit: false })
               return result
             } catch (err) {
               onEvent({ type: 'tool_done', id, name: tc.name, result: `ERROR: ${err.message}`, error: err.message })
@@ -257,6 +290,15 @@ export async function runAgentLoop({
           config: enhancerConfig.reliability || {},
         })
         onEvent({ type: 'critique', critique: verification.critique })
+        const qualityFloor = enforceQualityFloor({
+          text: execution?.finalText || finalText,
+          minChars: enhancerConfig?.deepReasoning?.qualityFloorMinChars ?? 120,
+        })
+        if (!qualityFloor.passed) {
+          verification.passed = false
+          verification.failedGateIds = [...(verification.failedGateIds || []), 'quality_floor']
+        }
+        onEvent({ type: 'quality_floor', qualityFloor })
         onEvent({ type: 'verification', verification })
         return verification
       },
