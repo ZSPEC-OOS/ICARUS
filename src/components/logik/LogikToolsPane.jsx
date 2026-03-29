@@ -16,23 +16,13 @@ const LogikToolsPane = memo(function LogikToolsPane({
   callExecBridge,
   onSetActiveTab,
 }) {
-  const [toolOutput,    setToolOutput]    = useState([])
   const [customCommand, setCustomCommand] = useState('')
 
   async function runTool(cmd) {
-    const ts = new Date().toISOString()
     if (bridgeAvailable) {
-      setToolOutput(prev => [...prev, { tool: cmd.split(' ')[0], output: `▶ Running: ${cmd}…`, timestamp: ts }])
-      const { stdout, stderr, exitCode } = await callExecBridge(cmd)
-      const out = [stdout.trimEnd(), stderr.trimEnd()].filter(Boolean).join('\n') || '(no output)'
-      setToolOutput(prev => prev.map((e, i) =>
-        i === prev.length - 1 ? { ...e, output: out, exitCode } : e
-      ))
+      await callExecBridge(cmd)
     } else {
-      setToolOutput(prev => [...prev, {
-        tool: cmd.split(' ')[0], timestamp: ts,
-        output: `ℹ Bridge offline — "${cmd}" will run when the exec bridge is available.\nStart via: npm run dev`,
-      }])
+      // No output panel is shown in Tools tab; keep this path as a no-op.
     }
     onSetActiveTab?.('tools')
   }
@@ -81,23 +71,7 @@ const LogikToolsPane = memo(function LogikToolsPane({
           >
             Run
           </button>
-          {toolOutput.length > 0 && (
-            <button className="lk-btn lk-btn--small" onClick={() => setToolOutput([])}>Clear</button>
-          )}
         </div>
-      </div>
-
-      <div className="lk-tools-output">
-        {toolOutput.length === 0 ? (
-          <div className="lk-tools-empty">Tool outputs will appear here.</div>
-        ) : (
-          toolOutput.map((entry, i) => (
-            <div key={i} className="lk-tool-entry lk-tool-entry--shell">
-              <div className="lk-tool-header">{entry.tool} - {entry.timestamp}</div>
-              <pre className="lk-tool-output">{entry.output}</pre>
-            </div>
-          ))
-        )}
       </div>
     </div>
   )
