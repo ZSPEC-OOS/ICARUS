@@ -40,6 +40,26 @@ class OrchestratorTests(unittest.TestCase):
         self.assertIn(AgentRole.BUILDER, blocked_targets)
         self.assertTrue(any(state == TaskStatus.BLOCKED for state in trace.task_states.values()))
 
+    def test_builder_simulation_blocks_unsafe_patch_before_reviewer(self):
+        graph = self.planner.plan(self.prompt)
+        orchestrator = Orchestrator(graph)
+        context = {
+            "workspace_root": ".",
+            "proposed_edits": [
+                {
+                    "file_path": "planner/syntax_break.py",
+                    "new_content": "def broken(:\n    pass\n",
+                }
+            ],
+        }
+
+        trace = orchestrator.run(context=context)
+        builder_blocks = [h for h in trace.handoffs if h.from_role == AgentRole.BUILDER and "simulation_block" in ",".join(h.evidence)]
+        reviewer_handoffs = [h for h in trace.handoffs if h.from_role == AgentRole.REVIEWER]
+
+        self.assertGreater(len(builder_blocks), 0)
+        self.assertEqual(reviewer_handoffs, [])
+
     def test_trace_is_human_readable_and_reversible(self):
         graph = self.planner.plan(self.prompt)
         orchestrator = Orchestrator(graph)

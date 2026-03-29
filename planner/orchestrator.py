@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from .change_simulator import ChangeSimulationResult, ChangeSimulator, ProposedEdit
 from .models import AgentRole, HandoffMessage, SubTask, TaskGraph, TaskStatus
 
 
@@ -58,18 +59,45 @@ class BuilderAgent(AgentRoleExecutor):
                 notes="Patch generation failed",
             )
 
-        patches = [
+        patch_plan = context.get("builder_patch_plan") or [
             {
                 "file": f"generated/{sub_task.id}.patch",
                 "summary": f"Apply implementation changes for {sub_task.title}",
             }
         ]
+
+        simulated_result = self._simulate_changes(context=context)
+        if not simulated_result.safe_to_apply:
+            return RoleResult(
+                status=TaskStatus.BLOCKED,
+                payload={"patch_plan": patch_plan, "simulation": simulated_result.model_dump(mode="json")},
+                evidence=[f"builder:simulation_block:{sub_task.id}"],
+                notes="Change simulation blocked unsafe patch before any filesystem write",
+            )
+
         return RoleResult(
             status=TaskStatus.IN_PROGRESS,
-            payload={"patches": patches},
-            evidence=[patch["file"] for patch in patches],
+            payload={"patch_plan": patch_plan, "simulation": simulated_result.model_dump(mode="json")},
+            evidence=[patch["file"] for patch in patch_plan],
             notes="Patch generation complete",
         )
+
+    def _simulate_changes(self, context: Dict[str, Any]) -> ChangeSimulationResult:
+        edits_payload = context.get("proposed_edits", [])
+        unified_diff = context.get("proposed_diff")
+        if not edits_payload and not unified_diff:
+            return ChangeSimulationResult(
+                risk_score=0.0,
+                affected_symbols=[],
+                projected_test_outcomes={"no_targeted_tests": True},
+                warnings=["No proposed edits attached to this sub-task; simulation skipped as no-op"],
+                safe_to_apply=True,
+            )
+
+        simulator = ChangeSimulator()
+        edits = [ProposedEdit.model_validate(item) for item in edits_payload]
+        workspace_root = context.get("workspace_root", ".")
+        return simulator.simulate(workspace_root=workspace_root, edits=edits, unified_diff=unified_diff)
 
 
 class ReviewerAgent(AgentRoleExecutor):
@@ -79,18 +107,30 @@ class ReviewerAgent(AgentRoleExecutor):
         coverage_override = context.get("coverage_override")
         coverage = int(coverage_override) if coverage_override is not None else 90
         policy_ok = not context.get("force_policy_fail", False)
+        simulation_payload = context.get("latest_builder_payload", {}).get("simulation", {})
+        simulated = (
+            ChangeSimulationResult.model_validate(simulation_payload)
+            if simulation_payload
+            else ChangeSimulationResult(
+                risk_score=1.0,
+                affected_symbols=[],
+                projected_test_outcomes={},
+                warnings=["Missing builder simulation payload"],
+                safe_to_apply=False,
+            )
+        )
 
-        if coverage < 80 or not policy_ok:
+        if coverage < 80 or not policy_ok or not simulated.safe_to_apply:
             return RoleResult(
                 status=TaskStatus.BLOCKED,
-                payload={"coverage": coverage, "policy_ok": policy_ok},
+                payload={"coverage": coverage, "policy_ok": policy_ok, "simulation": simulated.model_dump(mode="json")},
                 evidence=[f"reviewer:block:{sub_task.id}"],
                 notes="Reviewer blocked task due to quality gate failure",
             )
 
         return RoleResult(
             status=TaskStatus.IN_PROGRESS,
-            payload={"coverage": coverage, "policy_ok": policy_ok},
+            payload={"coverage": coverage, "policy_ok": policy_ok, "simulation": simulated.model_dump(mode="json")},
             evidence=[f"reviewer:approved:{sub_task.id}"],
             notes="Static analysis and policy checks passed",
         )
@@ -153,10 +193,10 @@ class Orchestrator:
     def next_ready_sub_task(self) -> Optional[SubTask]:
         for task_id in self.task_graph.topological_sort():
             task = self.task_graph.sub_tasks[task_id]
-            if task.status == TaskStatus.COMPLETED:
+            if task.status in {TaskStatus.COMPLETED, TaskStatus.BLOCKED}:
                 continue
             deps_complete = all(self.task_graph.sub_tasks[dep].status == TaskStatus.COMPLETED for dep in task.dependencies)
-            if deps_complete and task.status in {TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED}:
+            if deps_complete and task.status in {TaskStatus.PENDING, TaskStatus.IN_PROGRESS}:
                 return task
         return None
 
@@ -177,6 +217,8 @@ class Orchestrator:
         while attempt < 8:
             attempt += 1
             result = self.role_agents[active_role].execute(sub_task, context)
+            if active_role == AgentRole.BUILDER:
+                context["latest_builder_payload"] = result.payload
             next_role = self._determine_next_role(active_role, result)
             self.handoff_history.append(
                 HandoffMessage(

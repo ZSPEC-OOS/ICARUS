@@ -1,3 +1,5 @@
+from .change_simulator import ChangeSimulationResult, ChangeSimulator, ProposedEdit
+from .code_intelligence import CodeIntelligence, CodeIntelligenceSnapshot, SymbolDefinition
 from .models import AgentRole, AcceptanceTest, Dependency, HandoffMessage, Milestone, SubTask, TaskGraph, TaskStatus
 from .orchestrator import (
     AgentRoleExecutor,
@@ -21,6 +23,12 @@ __all__ = [
     "SubTask",
     "TaskGraph",
     "TaskStatus",
+    "SymbolDefinition",
+    "CodeIntelligenceSnapshot",
+    "CodeIntelligence",
+    "ProposedEdit",
+    "ChangeSimulationResult",
+    "ChangeSimulator",
     "Planner",
     "AgentRoleExecutor",
     "RoleResult",
