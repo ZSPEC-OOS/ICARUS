@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { getMetricsDashboard } from './src/services/efficiency/metricsService.js'
 
 let spawn = null
 
@@ -106,6 +107,13 @@ function execBridgePlugin() {
             res.end(JSON.stringify({ stdout: '', stderr: err.message, exitCode: 127 }))
           })
         })
+      })
+
+      server.middlewares.use('/api/metrics/dashboard', (req, res) => {
+        if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.end(JSON.stringify(getMetricsDashboard()))
       })
     },
   }

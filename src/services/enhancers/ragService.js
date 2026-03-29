@@ -3,6 +3,8 @@
 // chunking and reranking. This implementation avoids introducing heavy infra
 // and can be swapped for a real vector DB backend later.
 import { memoryGraphService } from '../memoryGraphService.js'
+import { semanticCacheService } from '../efficiency/cacheService.js'
+import { efficiencyMetricsService } from '../efficiency/metricsService.js'
 
 /**
  * @typedef {{
@@ -108,6 +110,24 @@ export function rerankChunks(input) {
  */
 export function retrieveContext(input) {
   const { query, shadowContext, config = {} } = input || {}
+  const cacheKey = {
+    query,
+    config,
+    ready: Boolean(shadowContext?.isReady),
+    corpusSize: shadowContext?.contentIndex?.size || shadowContext?._contentIndex?.size || 0,
+  }
+  const cached = semanticCacheService.get('rag_result', cacheKey)
+  if (cached) {
+    efficiencyMetricsService.record({
+      taskId: query?.slice(0, 64) || 'rag',
+      stage: 'rag_retrieve',
+      cacheHit: true,
+      meta: { cached: true, totalCandidates: cached.totalCandidates || 0 },
+    })
+    return cached
+  }
+
+  const startedAt = Date.now()
   const hybrid = hybridSearch({
     query,
     shadowContext,
@@ -120,12 +140,21 @@ export function retrieveContext(input) {
   })
 
   const reranked = rerankChunks({ query, chunks: hybrid, topK: config.injectTopK || 6 })
-  return {
+  const result = {
     query,
     totalCandidates: hybrid.length,
     contexts: reranked,
     promptContext: reranked.map((c, idx) => `[#${idx + 1}] ${c.path}\n${c.text}`).join('\n\n'),
   }
+  semanticCacheService.set('rag_result', cacheKey, result, config.cacheTtlMs || 120000)
+  efficiencyMetricsService.record({
+    taskId: query?.slice(0, 64) || 'rag',
+    stage: 'rag_retrieve',
+    latencyMs: Date.now() - startedAt,
+    cacheHit: false,
+    meta: { totalCandidates: hybrid.length, returned: reranked.length },
+  })
+  return result
 }
 
 function initChunk(path) {

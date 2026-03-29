@@ -4,6 +4,9 @@ import { runCritiquePass } from './critiqueMiddleware.js'
 import { createReliabilityLoopFSM } from '../reliability/fsm.js'
 import { memoryGraphService } from '../memoryGraphService.js'
 import { setTraceLoopState } from '../toolTraceStore.js'
+import { packContextSections } from './contextPacker.js'
+import { enforceQualityFloor } from './qualityFloor.js'
+import { efficiencyMetricsService } from '../efficiency/metricsService.js'
 
 /**
  * @typedef {'simple'|'moderate'|'complex'} TaskComplexity
@@ -22,6 +25,8 @@ export function createDeepReasoningWorkflow({
   onEvent = () => {},
 }) {
   return async function runDeepReasoningTask(task, ctx = {}) {
+    const taskId = `deep-${Date.now()}`
+    const startedAt = Date.now()
     const complexity = classifyTaskComplexity(task, enhancerConfig?.plannerExecutor)
     memoryGraphService.init()
 
@@ -61,16 +66,24 @@ export function createDeepReasoningWorkflow({
           workflow.retrieval = enhancerConfig?.rag?.enabled
             ? retrieveContext({ query: workflow.structured.contract.goal, shadowContext, config: enhancerConfig.rag })
             : { contexts: [], promptContext: '' }
-          workflow.executionTask = [
-            workflow.structured.promptText,
-            workflow.retrieval.promptContext ? `\n[RETRIEVED CONTEXT]\n${workflow.retrieval.promptContext}` : '',
-            `\n[PLAN]\n${plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
-          ].join('\n')
+          const packed = packContextSections([
+            { heading: 'TASK', content: workflow.structured.promptText },
+            { heading: 'RETRIEVED CONTEXT', content: workflow.retrieval.promptContext || '' },
+            { heading: 'PLAN', content: plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') },
+          ], ctx.previousPackedContext || '')
+          workflow.executionTask = packed.text
+          workflow.packing = packed
           logger.info?.('[deep-reasoning] running task', { complexity, steps: plan.steps.length })
           workflow.result = await runAgent(workflow.executionTask, { ...ctx, plan, complexity, retrieval: workflow.retrieval })
           return workflow.result
         },
         verify: async ({ execution }) => {
+          const qualityFloor = enforceQualityFloor({
+            text: execution?.text || '',
+            plan: workflow.plan,
+            minChars: enhancerConfig?.deepReasoning?.qualityFloorMinChars ?? 140,
+            minPlanSteps: enhancerConfig?.deepReasoning?.qualityFloorMinPlanSteps ?? 1,
+          })
           workflow.critique = enhancerConfig?.critique?.enabled
             ? runCritiquePass({
               draftText: execution?.text || '',
@@ -79,11 +92,19 @@ export function createDeepReasoningWorkflow({
               config: enhancerConfig.critique,
             })
             : { passed: true, issues: [], summary: 'Critique disabled.' }
+          const passed = workflow.critique.passed && qualityFloor.passed
           return {
-            passed: workflow.critique.passed,
-            failedGateIds: workflow.critique.passed ? [] : ['critique'],
-            gates: [{ id: 'critique', passed: workflow.critique.passed }],
+            passed,
+            failedGateIds: passed ? [] : [
+              ...(!workflow.critique.passed ? ['critique'] : []),
+              ...(!qualityFloor.passed ? ['quality_floor'] : []),
+            ],
+            gates: [
+              { id: 'critique', passed: workflow.critique.passed },
+              { id: 'quality_floor', passed: qualityFloor.passed, issues: qualityFloor.issues },
+            ],
             critique: workflow.critique,
+            qualityFloor,
           }
         },
         rollback: async () => ({
@@ -104,12 +125,22 @@ export function createDeepReasoningWorkflow({
     const detailed = workflow.result?.text || ''
     const concise = summarize(detailed)
     const failedLoop = runState.current !== 'done' || !workflow.critique?.passed
+    efficiencyMetricsService.record({
+      taskId,
+      stage: 'deep_reasoning',
+      latencyMs: Date.now() - startedAt,
+      inputTokens: Math.ceil((workflow.executionTask || '').length / 4),
+      outputTokens: Math.ceil(detailed.length / 4),
+      cacheHit: Boolean(workflow.retrieval?.cached),
+      meta: { complexity },
+    })
     return {
       complexity,
       structuredContract: workflow.structured?.contract,
       plan: workflow.plan || buildFallbackPlan(workflow.structured?.contract || { goal: task }, complexity),
       retrieval: workflow.retrieval,
       critique: workflow.critique,
+      contextPacking: workflow.packing || { text: workflow.executionTask || '', stats: [] },
       reliability: {
         state: runState.current,
         history: runState.history,
