@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { highlightCode } from '../../utils/codeUtils.js'
 
-// ─── LogikCodePane ────────────────────────────────────────────────────────────
+// âââ LogikCodePane ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // Renders the Generated Code tab, including the refinement bar.
 const LogikCodePane = memo(function LogikCodePane({
   generatedCode,
@@ -25,7 +25,7 @@ const LogikCodePane = memo(function LogikCodePane({
         <div className="lk-phase-tracker" aria-live="polite">
           {pipelineSteps.map((step) => (
             <span key={step.key} className={`lk-phase-pill lk-phase-pill--${step.state}`}>
-              {step.state === 'done' ? '✓' : step.state === 'active' ? '●' : '○'} {step.label}
+              {step.state === 'done' ? 'â' : step.state === 'active' ? 'â' : 'â'} {step.label}
             </span>
           ))}
           <span className="lk-phase-current">Current: {pipelinePhase}</span>
@@ -41,19 +41,12 @@ const LogikCodePane = memo(function LogikCodePane({
       )}
       <div className="lk-code-scroll" style={{ flex: 1 }}>
         {isGenerating && !generatedCode && (
-          <div className="lk-generating"><span className="lk-spinner" /> Generating…</div>
+          <div className="lk-generating"><span className="lk-spinner" /> Generatingâ¦</div>
         )}
         {generatedCode ? (
           <pre className="lk-pre">
             <code dangerouslySetInnerHTML={{ __html: highlightCode(generatedCode, language) }} />
           </pre>
-        ) : !isGenerating ? (
-          <div className="lk-placeholder">
-            <div className="lk-placeholder-glyph">◈</div>
-            <p className="lk-placeholder-title">Ready to generate</p>
-            <p className="lk-placeholder-body">Enter a request and press <em>Send</em>, or press <kbd>Ctrl+Enter</kbd>.</p>
-            {hasGithub && <p className="lk-placeholder-tip">LOGIK will automatically plan and generate across all relevant files.</p>}
-          </div>
         ) : null}
 
         {!!validationResults?.length && (
@@ -73,16 +66,16 @@ const LogikCodePane = memo(function LogikCodePane({
           )}
           <input
             className="lk-input lk-refine-input"
-            placeholder={`Refine: 'make it async', 'add error handling', 'add JSDoc'…`}
+            placeholder={`Refine: 'make it async', 'add error handling', 'add JSDoc'â¦`}
             value={refinementPrompt}
             onChange={e => onRefinementChange(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onRefine() } }}
           />
           <button className="lk-btn lk-btn--refine" onClick={onRefine} disabled={!refinementPrompt.trim()}>
-            ↺ Refine
+            âº Refine
           </button>
           <button className="lk-btn lk-btn--reset" onClick={onReset} title="Clear conversation and start over">
-            ✕
+            â
           </button>
         </div>
       )}
