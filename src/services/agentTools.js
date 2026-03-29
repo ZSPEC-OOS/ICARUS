@@ -3,6 +3,7 @@
 // callWithTools() in aiService.js converts to OpenAI format automatically.
 
 import { LOGIK_MD_CAP } from '../config/constants.js'
+import { getInputSchema, schemaVersion } from '../tools/contracts.js'
 
 export const AGENT_TOOLS = [
   {
@@ -322,6 +323,11 @@ export const AGENT_TOOLS = [
     },
   },
 ]
+
+for (const tool of AGENT_TOOLS) {
+  tool.input_schema = getInputSchema(tool.name)
+  tool.schema_version = schemaVersion()
+}
 
 // System prompt injected at the start of every agent session.
 // planMode=true  → read-only analysis; no file writes.

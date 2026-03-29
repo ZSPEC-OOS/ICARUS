@@ -1,6 +1,7 @@
 // ─── tools/index.js — Built-in tool registry ──────────────────────────────────
 // All tools shipped with LOGIK. Each export must conform to the toolMeta /
 // execute / test contract defined in tool-template.js.
+import * as contracts from './contracts.js'
 
 export * as readFile          from './read-file.js'
 export * as writeFile         from './write-file.js'
@@ -30,3 +31,20 @@ export * as jsonRepair       from './json-repair.js'
 export * as hybridSearch     from './hybrid-search.js'
 export * as retrieveContext  from './retrieve-context.js'
 export * as tokenIoOptimizer from './token-io-optimizer.js'
+
+export const TOOL_SCHEMA_VERSION = contracts.schemaVersion()
+
+export function withToolContractValidation(toolName, execute) {
+  return async (input, config = {}) => {
+    const inputValidation = contracts.validateToolInput(toolName, input)
+    if (!inputValidation.ok) {
+      throw new Error(`Invalid input for ${toolName}: ${inputValidation.errors.join('; ')}`)
+    }
+    const output = await execute(input, config)
+    const outputValidation = contracts.validateToolOutput(toolName, output)
+    if (!outputValidation.ok) {
+      throw new Error(`Invalid output for ${toolName}: ${outputValidation.errors.join('; ')}`)
+    }
+    return output
+  }
+}

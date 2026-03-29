@@ -32,6 +32,8 @@ import { shadowContext } from './shadowContext.js'
 import { EXEC_BRIDGE_TIMEOUT_MS } from '../config/constants.js'
 import { retrieveContext, hybridSearch } from './enhancers/ragService.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
+import { validateToolInput, validateToolOutput, schemaVersion } from '../tools/contracts.js'
+import { beginToolTrace, endToolTrace, replayTrace } from './toolTraceStore.js'
 
 // ── Exec bridge call ──────────────────────────────────────────────────────────
 async function execBridge(cmd, cwd) {
@@ -191,7 +193,7 @@ function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive'
 export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, localDirHandle, enhancerConfig: enhancerConfigOverrides }) {
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
 
-  return async function executeTool(name, input) {
+  async function rawExecuteTool(name, input) {
     switch (name) {
       // ── analyze_codebase ───────────────────────────────────────────────
       case 'analyze_codebase': {
@@ -366,6 +368,15 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
       // ── run_command ────────────────────────────────────────────────────
       case 'run_command': {
+        const replayMatch = String(input?.cmd || '').trim().match(/^replay\s+--trace-id\s+(\S+)$/)
+        if (replayMatch) {
+          try {
+            const replayed = await replayTrace(replayMatch[1], rawExecuteTool)
+            return JSON.stringify(replayed, null, 2)
+          } catch (error) {
+            return `replay failed: ${error.message}`
+          }
+        }
         return execBridge(input.cmd, input.cwd)
       }
 
@@ -664,6 +675,31 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
       default:
         return `Unknown tool: ${name}`
+    }
+  }
+
+  return async function executeTool(name, input = {}) {
+    const trace = beginToolTrace(name, input)
+    const inputValidation = validateToolInput(name, input)
+    if (!inputValidation.ok) {
+      const err = `Invalid input for ${name} (schema v${inputValidation.schemaVersion || schemaVersion()}): ${inputValidation.errors.join('; ')}`
+      endToolTrace({ traceId: trace.traceId, toolName: name, input, output: null, error: err, startedAt: trace.startedAt })
+      return err
+    }
+
+    try {
+      const output = await rawExecuteTool(name, input)
+      const outputValidation = validateToolOutput(name, output)
+      if (!outputValidation.ok) {
+        const err = `Invalid output for ${name} (schema v${outputValidation.schemaVersion || schemaVersion()}): ${outputValidation.errors.join('; ')}`
+        endToolTrace({ traceId: trace.traceId, toolName: name, input, output, error: err, startedAt: trace.startedAt })
+        return err
+      }
+      endToolTrace({ traceId: trace.traceId, toolName: name, input, output, error: null, startedAt: trace.startedAt })
+      return output
+    } catch (error) {
+      endToolTrace({ traceId: trace.traceId, toolName: name, input, output: null, error: error.message, startedAt: trace.startedAt })
+      throw error
     }
   }
 }
