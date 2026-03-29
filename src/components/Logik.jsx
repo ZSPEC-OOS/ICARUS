@@ -1700,7 +1700,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                   fontSize: `${titleSize}px`,
                   transform: `translate(${titleOffsetX}px, ${titleOffsetY}px)`,
                 }}
-              >ICARUS - AI professional coder</span>
+              >ICARUS - AI Professional Coder</span>
 
               <div
                 className="lk-view-toggle"
