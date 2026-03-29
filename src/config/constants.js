@@ -3,7 +3,7 @@
 // timeouts, and capability caps — changes propagate everywhere automatically.
 
 // ── Agent loop ────────────────────────────────────────────────────────────────
-export const AGENT_MAX_TURNS          = 40        // safety ceiling; prevents runaway loops
+export const AGENT_MAX_TURNS          = 100       // safety ceiling; prevents runaway loops
 export const AGENT_KEEP_TURNS         = 10        // message turns to retain (older pruned)
 
 // ── Diff viewer ───────────────────────────────────────────────────────────────

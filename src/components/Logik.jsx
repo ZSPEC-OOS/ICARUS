@@ -314,6 +314,8 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const abortRef = useRef(null)
   const language = detectLanguage(filePath, generatedCode)
   const hasGithub    = !!(githubToken && repoOwner && repoName)
+  const hasLocalRepo = !!localDirHandle
+  const shouldUseAgent = hasLocalRepo || hasGithub
 
   // ── Sync model from parent ──────────────────────────────────────────────
   useEffect(() => {
@@ -1604,16 +1606,19 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     setSettingsOpen(false)
     const userMsg = prompt.trim()
     if (!userMsg) return
+    setPrompt('')
     if (isConversationalPrompt(userMsg)) {
       handleConversationalReply(userMsg)
       return
     }
-    if (hasGithub) agentSession.run(prompt, conversation.slice(-10))
-    else handleGenerate()
-  }, [prompt, isConversationalPrompt, handleConversationalReply, hasGithub, agentSession, conversation, handleGenerate])
+    if (shouldUseAgent) agentSession.run(userMsg, conversation.slice(-10))
+    else handleGenerate(userMsg)
+  }, [prompt, isConversationalPrompt, handleConversationalReply, shouldUseAgent, agentSession, conversation, handleGenerate])
 
   const handleKeyDown = useCallback((e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    const submitByEnter = e.key === 'Enter' && !e.shiftKey && !e.isComposing
+    const submitByModifier = (e.ctrlKey || e.metaKey) && e.key === 'Enter'
+    if (submitByEnter || submitByModifier) {
       e.preventDefault()
       if (!isGenerating && !isPushing && !agentSession.isAgentRunning) {
         if (generatedCode && refinementPrompt.trim()) handleRefine()

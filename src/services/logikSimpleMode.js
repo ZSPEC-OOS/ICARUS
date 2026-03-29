@@ -375,7 +375,7 @@ export const SIMPLE_LABELS = {
   codePaneHint:      'Describe what you want in plain English. LOGIK will write the code automatically.',
   refinePlaceholder: 'Describe what to change — e.g. "make the button blue" or "add a loading spinner"',
   refineButton:      'Update',
-  ctrlEnter:         'Press Ctrl+Enter to send',
+  ctrlEnter:         'Press Enter to send (Shift+Enter for newline)',
 
   // Tools pane
   runTests:          'Run automated tests',
@@ -632,7 +632,7 @@ export const ONBOARDING_STEPS = [
   {
     id:       'step-first-prompt',
     title:    'Try your first request',
-    detail:   'Type what you want in plain English and press Ctrl+Enter (or the Generate button). For example: "Add a contact form with name, email, and message fields."',
+    detail:   'Type what you want in plain English and press Enter to send (Shift+Enter for newline), or click Generate. For example: "Add a contact form with name, email, and message fields."',
     action:   'Type in the main input and press Generate',
     link:     null,
     check:    (settings) => !!settings?.hasGenerated,
