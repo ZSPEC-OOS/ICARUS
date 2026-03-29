@@ -29,3 +29,4 @@ export * as jsonRepair       from './json-repair.js'
 
 export * as hybridSearch     from './hybrid-search.js'
 export * as retrieveContext  from './retrieve-context.js'
+export * as tokenIoOptimizer from './token-io-optimizer.js'
