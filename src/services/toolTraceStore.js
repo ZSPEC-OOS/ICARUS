@@ -2,6 +2,7 @@ import { schemaVersion } from '../tools/contracts.js'
 
 const TRACE_STORAGE_KEY = 'logik:tool-traces:jsonl'
 const MAX_TRACE_LINES = 2000
+let activeLoopState = null
 
 function nowIso() {
   return new Date().toISOString()
@@ -48,6 +49,7 @@ export function beginToolTrace(toolName, input) {
     schemaVersion: schemaVersion(),
     toolName,
     input: safeJson(input),
+    loopState: safeJson(activeLoopState),
     timestamp: nowIso(),
     status: 'started',
   }
@@ -63,12 +65,17 @@ export function endToolTrace({ traceId, toolName, input, output, error, startedA
     schemaVersion: schemaVersion(),
     toolName,
     input: safeJson(input),
+    loopState: safeJson(activeLoopState),
     output: safeJson(output),
     error: error ? String(error) : null,
     durationMs,
     timestamp: nowIso(),
     status: error ? 'error' : 'ok',
   })
+}
+
+export function setTraceLoopState(loopState = null) {
+  activeLoopState = loopState ? safeJson(loopState) : null
 }
 
 export function getTraceById(traceId) {

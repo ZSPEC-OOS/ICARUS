@@ -33,7 +33,7 @@ import { EXEC_BRIDGE_TIMEOUT_MS } from '../config/constants.js'
 import { retrieveContext, hybridSearch } from './enhancers/ragService.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
 import { validateToolInput, validateToolOutput, schemaVersion } from '../tools/contracts.js'
-import { beginToolTrace, endToolTrace, replayTrace } from './toolTraceStore.js'
+import { beginToolTrace, endToolTrace, replayTrace, setTraceLoopState } from './toolTraceStore.js'
 
 // ── Exec bridge call ──────────────────────────────────────────────────────────
 async function execBridge(cmd, cwd) {
@@ -679,27 +679,36 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
   }
 
   return async function executeTool(name, input = {}) {
-    const trace = beginToolTrace(name, input)
-    const inputValidation = validateToolInput(name, input)
+    const loopStateOverride = input?.__loopState || null
+    const normalizedInput = loopStateOverride
+      ? Object.fromEntries(Object.entries(input || {}).filter(([k]) => k !== '__loopState'))
+      : input
+    if (loopStateOverride) setTraceLoopState(loopStateOverride)
+
+    const trace = beginToolTrace(name, normalizedInput)
+    const inputValidation = validateToolInput(name, normalizedInput)
     if (!inputValidation.ok) {
       const err = `Invalid input for ${name} (schema v${inputValidation.schemaVersion || schemaVersion()}): ${inputValidation.errors.join('; ')}`
-      endToolTrace({ traceId: trace.traceId, toolName: name, input, output: null, error: err, startedAt: trace.startedAt })
+      endToolTrace({ traceId: trace.traceId, toolName: name, input: normalizedInput, output: null, error: err, startedAt: trace.startedAt })
+      if (loopStateOverride) setTraceLoopState(null)
       return err
     }
 
     try {
-      const output = await rawExecuteTool(name, input)
+      const output = await rawExecuteTool(name, normalizedInput)
       const outputValidation = validateToolOutput(name, output)
       if (!outputValidation.ok) {
         const err = `Invalid output for ${name} (schema v${outputValidation.schemaVersion || schemaVersion()}): ${outputValidation.errors.join('; ')}`
-        endToolTrace({ traceId: trace.traceId, toolName: name, input, output, error: err, startedAt: trace.startedAt })
+        endToolTrace({ traceId: trace.traceId, toolName: name, input: normalizedInput, output, error: err, startedAt: trace.startedAt })
         return err
       }
-      endToolTrace({ traceId: trace.traceId, toolName: name, input, output, error: null, startedAt: trace.startedAt })
+      endToolTrace({ traceId: trace.traceId, toolName: name, input: normalizedInput, output, error: null, startedAt: trace.startedAt })
       return output
     } catch (error) {
-      endToolTrace({ traceId: trace.traceId, toolName: name, input, output: null, error: error.message, startedAt: trace.startedAt })
+      endToolTrace({ traceId: trace.traceId, toolName: name, input: normalizedInput, output: null, error: error.message, startedAt: trace.startedAt })
       throw error
+    } finally {
+      if (loopStateOverride) setTraceLoopState(null)
     }
   }
 }
