@@ -27,3 +27,16 @@ is never included in a production build.
 
 Optional: copy `.env.example` to `.env.local` and set `VITE_AI_PROXY_URL` to
 route API calls through a backend proxy instead of calling providers directly.
+
+## Deploying to Render (Static Site)
+
+This repo includes a `render.yaml` blueprint for a static deployment. Render will:
+- install dependencies (`npm ci`)
+- build with Vite (`npm run build`)
+- publish the `dist/` directory
+- rewrite all routes to `index.html` so deep links in the SPA do not 404
+
+If you deploy from the Render UI instead of a Blueprint, use:
+- **Build Command:** `npm ci && npm run build`
+- **Publish Directory:** `dist`
+
