@@ -1619,54 +1619,6 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }, [isGenerating, isPushing, agentSession.isAgentRunning, generatedCode, refinementPrompt, handleRefine, handleSubmitPrompt])
 
-  const isConversationalPrompt = useCallback((value) => {
-    const text = String(value || '').trim().toLowerCase()
-    if (!text) return false
-    if (text.length < 80 && /^(hi|hello|hey|thanks|thank you|how are you|what can you do)/i.test(text)) return true
-    const codingSignals = /(create|build|implement|fix|refactor|add|remove|update|generate|write|bug|error|test|repo|file|component|api|function|class|css|ui|database|deploy|pipeline|module|route)/i
-    const chatSignals = /(explain|what is|why|how does|compare|difference|ideas|brainstorm|summary|summarize|help me understand)/i
-    if (codingSignals.test(text)) return false
-    return chatSignals.test(text) || text.endsWith('?')
-  }, [])
-
-  const handleConversationalReply = useCallback(async (userMsg) => {
-    const model = models?.find(m => m.id === activeModelId)
-    if (!model) { setError('Select a model.'); return }
-    if (!model.apiKey) { setError(`No API key for "${model.name}". Open Admin Panel.`); return }
-    const clean = userMsg.trim()
-    if (!clean) return
-    setError('')
-    setIsGenerating(true)
-    try {
-      const reply = await runPromptWithRetry(
-        model,
-        clean,
-        [
-          { role: 'system', content: 'You are LOGIK in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
-          ...conversation.slice(-10),
-        ],
-      )
-      setConversation(prev => [...prev, { role: 'user', content: clean }, { role: 'assistant', content: reply }])
-      setTurnCount(t => t + 1)
-      setPrompt('')
-    } catch (err) {
-      setError(`Chat response failed: ${err.message}`)
-    } finally {
-      setIsGenerating(false)
-    }
-  }, [models, activeModelId, conversation, setConversation, setTurnCount])
-
-  const handleSubmitPrompt = useCallback(() => {
-    const userMsg = prompt.trim()
-    if (!userMsg) return
-    if (isConversationalPrompt(userMsg)) {
-      handleConversationalReply(userMsg)
-      return
-    }
-    if (hasGithub) agentSession.run(prompt, conversation.slice(-10))
-    else handleGenerate()
-  }, [prompt, isConversationalPrompt, handleConversationalReply, hasGithub, agentSession, conversation, handleGenerate])
-
   const busy = isGenerating || isPushing
 
   // Ã¢ÂÂÃ¢ÂÂ Tab config Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
