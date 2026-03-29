@@ -10,7 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-// Dev-only exec bridge â lets the LOGIK terminal and Tools tab run real shell
+// Dev-only exec bridge — lets the LOGIK terminal and Tools tab run real shell
 // commands on your machine during `vite dev`. Never included in production builds.
 function tokenize(cmdStr) {
   const tokens = []
@@ -35,7 +35,9 @@ function tokenize(cmdStr) {
 function execBridgePlugin() {
   return {
     name: 'logik-exec-bridge',
+    apply: 'serve',
     configureServer(server) {
+      if (!spawn) return
       server.middlewares.use('/api/exec-stream', (req, res) => {
         if (req.method !== 'POST') { res.statusCode = 405; res.end(); return }
         let body = ''
@@ -133,7 +135,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api\/proxy\/gemini/, '/v1beta/openai'),
       },
-      // ââ New providers ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+      // ── New providers ─────────────────────────────────────────────────────
       '/api/proxy/groq': {
         target: 'https://api.groq.com',
         changeOrigin: true,
