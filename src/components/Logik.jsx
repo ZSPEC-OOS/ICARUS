@@ -1632,6 +1632,19 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   // ── Tab config ──────────────────────────────────────────────────────────
   const isModulesPage = activeTab === 'modules'
   const effectiveActiveTab = isModulesPage ? 'modules' : 'code'
+  const hasOutputContent = Boolean(
+    (assistantMessage.code || generatedCode || '').trim()
+    || diffText?.trim()
+    || testCode?.trim()
+    || terminalLog.length
+    || sandboxOutput.length
+    || isGenerating
+    || isGenTests
+    || isRunning
+    || isRunningTests
+    || validationResults.length
+    || (assistantMessage.plan && assistantMessage.plan.length)
+  )
 
   // ══════════════════════════════════════════════════════════════════════════
   // ── Fine-tune filter string ────────────────────────────────────────────
@@ -1940,7 +1953,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           )}
 
           {/* ── Output area ────────────────────────────────────────────── */}
-          {!agentSession.isAgentRunning && (
+          {!agentSession.isAgentRunning && hasOutputContent && (
           <div className="lk-feed-output">
 
           {/* ── Code tab ────────────────────────────────────────────────────── */}
