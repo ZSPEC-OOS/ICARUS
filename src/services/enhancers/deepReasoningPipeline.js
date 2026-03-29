@@ -1,6 +1,9 @@
 import { enforceStructuredPrompt } from './structuredPrompting.js'
 import { retrieveContext } from './ragService.js'
 import { runCritiquePass } from './critiqueMiddleware.js'
+import { createReliabilityLoopFSM } from '../reliability/fsm.js'
+import { memoryGraphService } from '../memoryGraphService.js'
+import { setTraceLoopState } from '../toolTraceStore.js'
 
 /**
  * @typedef {'simple'|'moderate'|'complex'} TaskComplexity
@@ -16,48 +19,106 @@ export function createDeepReasoningWorkflow({
   planner,
   runAgent,
   logger = console,
+  onEvent = () => {},
 }) {
   return async function runDeepReasoningTask(task, ctx = {}) {
     const complexity = classifyTaskComplexity(task, enhancerConfig?.plannerExecutor)
-    const structured = enforceStructuredPrompt(task)
+    memoryGraphService.init()
 
-    const plan = planner
-      ? await planner({ task: structured.contract, complexity, context: ctx })
-      : buildFallbackPlan(structured.contract, complexity)
+    const workflow = {
+      structured: null,
+      plan: null,
+      retrieval: { contexts: [], promptContext: '' },
+      result: null,
+      critique: { passed: true, issues: [], summary: 'Not run yet.' },
+      executionTask: '',
+    }
 
-    const retrieval = enhancerConfig?.rag?.enabled
-      ? retrieveContext({ query: structured.contract.goal, shadowContext, config: enhancerConfig.rag })
-      : { contexts: [], promptContext: '' }
+    const fsm = createReliabilityLoopFSM({
+      task,
+      memoryGraphService,
+      onEvent: (event) => {
+        if (event?.type === 'fsm_state') {
+          const phase = event.state
+          setTraceLoopState({
+            workflow: 'deep_reasoning',
+            phase,
+            complexity,
+            at: new Date().toISOString(),
+          })
+        }
+        onEvent?.(event)
+      },
+      handlers: {
+        plan: async () => {
+          workflow.structured = enforceStructuredPrompt(task)
+          workflow.plan = planner
+            ? await planner({ task: workflow.structured.contract, complexity, context: ctx })
+            : buildFallbackPlan(workflow.structured.contract, complexity)
+          return workflow.plan
+        },
+        execute: async (plan) => {
+          workflow.retrieval = enhancerConfig?.rag?.enabled
+            ? retrieveContext({ query: workflow.structured.contract.goal, shadowContext, config: enhancerConfig.rag })
+            : { contexts: [], promptContext: '' }
+          workflow.executionTask = [
+            workflow.structured.promptText,
+            workflow.retrieval.promptContext ? `\n[RETRIEVED CONTEXT]\n${workflow.retrieval.promptContext}` : '',
+            `\n[PLAN]\n${plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
+          ].join('\n')
+          logger.info?.('[deep-reasoning] running task', { complexity, steps: plan.steps.length })
+          workflow.result = await runAgent(workflow.executionTask, { ...ctx, plan, complexity, retrieval: workflow.retrieval })
+          return workflow.result
+        },
+        verify: async ({ execution }) => {
+          workflow.critique = enhancerConfig?.critique?.enabled
+            ? runCritiquePass({
+              draftText: execution?.text || '',
+              contract: workflow.structured.contract,
+              ragContext: workflow.retrieval.contexts,
+              config: enhancerConfig.critique,
+            })
+            : { passed: true, issues: [], summary: 'Critique disabled.' }
+          return {
+            passed: workflow.critique.passed,
+            failedGateIds: workflow.critique.passed ? [] : ['critique'],
+            gates: [{ id: 'critique', passed: workflow.critique.passed }],
+            critique: workflow.critique,
+          }
+        },
+        rollback: async () => ({
+          rolledBack: false,
+          strategy: 'manual_review',
+          message: 'Deep reasoning run failed critique; preserving output for manual review.',
+        }),
+      },
+    })
 
-    const executionTask = [
-      structured.promptText,
-      retrieval.promptContext ? `\n[RETRIEVED CONTEXT]\n${retrieval.promptContext}` : '',
-      `\n[PLAN]\n${plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
-    ].join('\n')
+    let runState
+    try {
+      runState = await fsm.run()
+    } finally {
+      setTraceLoopState(null)
+    }
 
-    logger.info?.('[deep-reasoning] running task', { complexity, steps: plan.steps.length })
-    const result = await runAgent(executionTask, { ...ctx, plan, complexity })
-
-    const critique = enhancerConfig?.critique?.enabled
-      ? runCritiquePass({
-        draftText: result?.text || '',
-        contract: structured.contract,
-        ragContext: retrieval.contexts,
-        config: enhancerConfig.critique,
-      })
-      : { passed: true, issues: [], summary: 'Critique disabled.' }
-
+    const detailed = workflow.result?.text || ''
+    const concise = summarize(detailed)
+    const failedLoop = runState.current !== 'done' || !workflow.critique?.passed
     return {
       complexity,
-      structuredContract: structured.contract,
-      plan,
-      retrieval,
-      critique,
-      concise: summarize(result?.text || ''),
-      detailed: result?.text || '',
+      structuredContract: workflow.structured?.contract,
+      plan: workflow.plan || buildFallbackPlan(workflow.structured?.contract || { goal: task }, complexity),
+      retrieval: workflow.retrieval,
+      critique: workflow.critique,
+      reliability: {
+        state: runState.current,
+        history: runState.history,
+      },
+      concise,
+      detailed,
       text: enhancerConfig?.deepReasoning?.summaryStyle === 'concise_only'
-        ? summarize(result?.text || '')
-        : `${summarize(result?.text || '')}\n\n---\n\n${result?.text || ''}`,
+        ? concise
+        : `${concise}${failedLoop ? '\n\n[Reliability loop] Verification reported issues.' : ''}\n\n---\n\n${detailed}`,
     }
   }
 }

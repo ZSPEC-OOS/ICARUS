@@ -6,6 +6,7 @@ import { memoryGraphService } from './memoryGraphService.js'
 import { createReliabilityLoopFSM } from './reliability/fsm.js'
 import { evaluateReliabilityGates, detectApiSignatureChange } from './reliability/gateEvaluators.js'
 import { createRollbackHandler } from './reliability/rollbackHandler.js'
+import { setTraceLoopState } from './toolTraceStore.js'
 
 function makeSessionDiary() {
   const filesRead = new Set()
@@ -113,11 +114,17 @@ export async function runAgentLoop({
   const anthropicSystemField = isAnthropic ? systemPrompt : undefined
 
   const rollback = createRollbackHandler({ executeTool, onEvent, memoryGraphService })
+  const loopMeta = { workflow: 'agent_loop', task: String(task || '').slice(0, 180) }
 
   const fsm = createReliabilityLoopFSM({
     task,
     memoryGraphService,
-    onEvent,
+    onEvent: (event) => {
+      if (event?.type === 'fsm_state') {
+        setTraceLoopState({ ...loopMeta, phase: event.state, at: new Date().toISOString() })
+      }
+      onEvent?.(event)
+    },
     handlers: {
       plan: async () => {
         const structured = enforceStructuredPrompt(task)
@@ -260,7 +267,12 @@ export async function runAgentLoop({
     },
   })
 
-  const run = await fsm.run()
+  let run
+  try {
+    run = await fsm.run()
+  } finally {
+    setTraceLoopState(null)
+  }
   const verification = run.context.verification
 
   if (verification?.passed) {

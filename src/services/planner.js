@@ -8,13 +8,22 @@
 import { runPrompt } from './aiService.js'
 import { PLAN_MAX_FILES as MAX_PLAN_FILES } from '../config/constants.js'
 import { memoryGraphService } from './memoryGraphService.js'
+import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
+import { retrieveContext } from './enhancers/ragService.js'
+import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
+import { createReliabilityLoopFSM } from './reliability/fsm.js'
+import { setTraceLoopState } from './toolTraceStore.js'
 
 // ─── Main entry point ─────────────────────────────────────────────────────────
 // recentFiles — paths of files generated in prior conversation turns.
 // Lets the planner avoid redundant recreations and build on existing work.
 export async function buildFilePlan(task, fileIndex, conventions, model, signal, recentFiles = []) {
-  if (!model?.apiKey) return fallbackPlan(task, conventions)
   memoryGraphService.init()
+  if (!model?.apiKey) return fallbackPlan(task, conventions)
+
+  let structured = null
+  let retrieval = { contexts: [], promptContext: '' }
+  let planOutput = null
 
   // Give the planner a condensed snapshot of what exists (up to 400 paths)
   const existing = (fileIndex || []).slice(0, 400).map(f => f.path).join('\n')
@@ -63,31 +72,81 @@ export async function buildFilePlan(task, fileIndex, conventions, model, signal,
     { role: 'assistant', content: 'I will output only a valid JSON array for the plan.' },
   ]
 
-  try {
-    const raw = await runPrompt(
-      model,
-      `Project context:\n${convSummary}\n\nExisting files:\n${existing || '(none indexed yet)'}${recentCtx}${memoryCtx}\n\nTask: ${task}`,
-      context,
-      null,
-      signal,
-    )
-
-    // Robustly extract JSON array from the response
-    const jsonMatch = raw.match(/\[[\s\S]*\]/)
-    if (jsonMatch) {
-      const plan = JSON.parse(jsonMatch[0])
-      if (Array.isArray(plan) && plan.length > 0) {
-        return plan
-          .filter(e => e.path && (e.action === 'create' || e.action === 'modify'))
-          .slice(0, MAX_PLAN_FILES)
-          .map(e => ({ path: e.path.trim(), action: e.action, purpose: e.purpose || '' }))
+  const fsm = createReliabilityLoopFSM({
+    task,
+    memoryGraphService,
+    handlers: {
+      plan: async () => {
+        structured = enforceStructuredPrompt(task)
+        retrieval = retrieveContext({
+          query: structured.contract.goal || task,
+          shadowContext: { isReady: false },
+          config: { injectTopK: 0 },
+        })
+        return {
+          structured,
+          retrieval,
+          prompt: `Project context:\n${convSummary}\n\nExisting files:\n${existing || '(none indexed yet)'}${recentCtx}${memoryCtx}\n\nTask: ${structured.contract.goal || task}`,
+        }
+      },
+      execute: async ({ prompt }) => {
+        const raw = await runPrompt(model, prompt, context, null, signal)
+        planOutput = parsePlanJson(raw)
+        return { raw, plan: planOutput }
+      },
+      verify: async ({ execution }) => {
+        const critique = runCritiquePass({
+          draftText: JSON.stringify(execution?.plan || []),
+          contract: structured?.contract,
+          ragContext: retrieval?.contexts || [],
+          config: { minWords: 8 },
+        })
+        const hasPlan = Array.isArray(execution?.plan) && execution.plan.length > 0
+        return {
+          passed: critique.passed && hasPlan,
+          failedGateIds: [...(!hasPlan ? ['plan_non_empty'] : []), ...(!critique.passed ? ['critique'] : [])],
+          gates: [
+            { id: 'plan_non_empty', passed: hasPlan },
+            { id: 'critique', passed: critique.passed },
+          ],
+          critique,
+        }
+      },
+      rollback: async () => ({ rolledBack: false, strategy: 'fallback_plan' }),
+    },
+    onEvent: (event) => {
+      if (event?.type === 'fsm_state') {
+        setTraceLoopState({
+          workflow: 'planner',
+          phase: event.state,
+          at: new Date().toISOString(),
+        })
       }
-    }
+    },
+  })
+
+  try {
+    const run = await fsm.run()
+    const passed = run.context?.verification?.passed
+    if (passed && Array.isArray(planOutput) && planOutput.length) return planOutput
   } catch (e) {
     console.warn('[Planner] failed:', e.message)
+  } finally {
+    setTraceLoopState(null)
   }
 
-  return fallbackPlan(task, conventions)
+  return fallbackPlan(structured?.contract?.goal || task, conventions)
+}
+
+function parsePlanJson(raw = '') {
+  const jsonMatch = String(raw).match(/\[[\s\S]*\]/)
+  if (!jsonMatch) return []
+  const plan = JSON.parse(jsonMatch[0])
+  if (!Array.isArray(plan) || plan.length === 0) return []
+  return plan
+    .filter(e => e.path && (e.action === 'create' || e.action === 'modify'))
+    .slice(0, MAX_PLAN_FILES)
+    .map(e => ({ path: e.path.trim(), action: e.action, purpose: e.purpose || '' }))
 }
 
 // ─── Detect if task is standalone (don't force framework conventions on it) ───

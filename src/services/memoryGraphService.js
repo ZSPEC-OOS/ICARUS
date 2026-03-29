@@ -249,6 +249,13 @@ class MemoryGraphService {
   ingestReliabilityRun({ task = '', stateHistory = [], verification = null, rolledBack = false, rollback = null }) {
     this.init()
     const nodeId = `reliability:${stableHash(`${task}:${stateHistory.map(s => s.state).join('>')}`)}`
+    const phaseDurationsMs = {}
+    for (let i = 0; i < stateHistory.length - 1; i++) {
+      const current = stateHistory[i]
+      const next = stateHistory[i + 1]
+      const delta = Date.parse(next.at || '') - Date.parse(current.at || '')
+      if (current?.state && Number.isFinite(delta) && delta >= 0) phaseDurationsMs[current.state] = delta
+    }
     return this.upsertNode({
       id: nodeId,
       type: 'reliability_run',
@@ -257,9 +264,12 @@ class MemoryGraphService {
       tags: ['reliability', rolledBack ? 'rolled-back' : 'passed'],
       metadata: {
         rolledBack,
+        loopStates: stateHistory.map(row => row.state),
+        phaseDurationsMs,
         failedGateIds: verification?.failedGateIds || [],
         rollbackStrategy: rollback?.strategy || null,
       },
+      evidence: stateHistory.map(row => `${row.at || nowIso()} state=${row.state}`),
     })
   }
 
