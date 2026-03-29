@@ -289,7 +289,6 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [historyOpen,  setHistoryOpen]  = useState(false)
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false)
-  const [modulesOpen, setModulesOpen] = useState(false)
   const [sourceOpen,   setSourceOpen]   = useState(false)
   const [history,      setHistory]      = useState(loadHistory)
   // Ã¢ÂÂÃ¢ÂÂ Phase 4: ShadowContext Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
@@ -1082,12 +1081,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     if (!hasGithub) { setError('GitHub required to save LOGIK.md.'); return }
     setIsSavingLogikMd(true)
     try {
-      const existing = await import('../services/githubService').then(m =>
-        m.getFileContent(githubToken, repoOwner, repoName, 'LOGIK.md', baseBranch)
-      )
+      const existing = await getFileContent(githubToken, repoOwner, repoName, 'LOGIK.md', baseBranch)
       const sha = existing?.sha || null
-      await import('../services/githubService').then(m =>
-        m.createOrUpdateFile(githubToken, repoOwner, repoName, 'LOGIK.md', logikMdDraft, 'docs: update LOGIK.md project instructions', baseBranch, sha)
+      await createOrUpdateFile(
+        githubToken, repoOwner, repoName,
+        'LOGIK.md', logikMdDraft,
+        'docs: update LOGIK.md project instructions',
+        baseBranch, sha,
       )
       shadowContext.logikMd = logikMdDraft
       logActivity('done', 'Ã¢ÂÂ LOGIK.md saved to repo')
@@ -1561,21 +1561,68 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }
 
-  const handleKeyDown = e => {
+  const isConversationalPrompt = useCallback((value) => {
+    const text = String(value || '').trim().toLowerCase()
+    if (!text) return false
+    if (text.length < 80 && /^(hi|hello|hey|thanks|thank you|how are you|what can you do)/i.test(text)) return true
+    const codingSignals = /(create|build|implement|fix|refactor|add|remove|update|generate|write|bug|error|test|repo|file|component|api|function|class|css|ui|database|deploy|pipeline|module|route)/i
+    const chatSignals = /(explain|what is|why|how does|compare|difference|ideas|brainstorm|summary|summarize|help me understand)/i
+    if (codingSignals.test(text)) return false
+    return chatSignals.test(text) || text.endsWith('?')
+  }, [])
+
+  const handleConversationalReply = useCallback(async (userMsg) => {
+    const model = models?.find(m => m.id === activeModelId)
+    if (!model) { setError('Select a model.'); return }
+    if (!model.apiKey) { setError(`No API key for "${model.name}". Open Admin Panel.`); return }
+    const clean = userMsg.trim()
+    if (!clean) return
+    setError('')
+    setIsGenerating(true)
+    try {
+      const reply = await runPromptWithRetry(
+        model,
+        clean,
+        [
+          { role: 'system', content: 'You are LOGIK in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
+          ...conversation.slice(-10),
+        ],
+      )
+      setConversation(prev => [...prev, { role: 'user', content: clean }, { role: 'assistant', content: reply }])
+      setTurnCount(t => t + 1)
+      setPrompt('')
+    } catch (err) {
+      setError(`Chat response failed: ${err.message}`)
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [models, activeModelId, conversation, setConversation, setTurnCount])
+
+  const handleSubmitPrompt = useCallback(() => {
+    const userMsg = prompt.trim()
+    if (!userMsg) return
+    if (isConversationalPrompt(userMsg)) {
+      handleConversationalReply(userMsg)
+      return
+    }
+    if (hasGithub) agentSession.run(prompt, conversation.slice(-10))
+    else handleGenerate()
+  }, [prompt, isConversationalPrompt, handleConversationalReply, hasGithub, agentSession, conversation, handleGenerate])
+
+  const handleKeyDown = useCallback((e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       if (!isGenerating && !isPushing && !agentSession.isAgentRunning) {
         if (generatedCode && refinementPrompt.trim()) handleRefine()
-        else if (hasGithub) agentSession.run(prompt, conversation.slice(-10))
-        else handleGenerate()
+        else handleSubmitPrompt()
       }
     }
-  }
+  }, [isGenerating, isPushing, agentSession.isAgentRunning, generatedCode, refinementPrompt, handleRefine, handleSubmitPrompt])
 
   const busy = isGenerating || isPushing
 
   // Ã¢ÂÂÃ¢ÂÂ Tab config Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-  const effectiveActiveTab = 'code'
+  const effectiveActiveTab = activeTab === 'modules' ? 'modules' : 'code'
 
   // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
   // Ã¢ÂÂÃ¢ÂÂ Fine-tune filter string Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
@@ -1865,11 +1912,9 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               isGenerating={isGenerating}
               isPushing={isPushing}
               feedRef={activityFeedRef}
-              onViewCode={() => {}}
               conversation={conversation}
               agentIntent={agentSession.agentIntent}
               agentTask={agentSession.agentTask}
-              agentPhase={agentSession.agentPhase}
             />
           )}
 
@@ -1988,11 +2033,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             />
           )}
 
-          {modulesOpen && (
-            <div className="lk-modules-inline">
-              <div className="lk-modules-inline-hd">
-                <span>Modules</span>
-                <button className="lk-btn lk-btn--small" onClick={() => setModulesOpen(false)}>Close</button>
+          {activeTab === 'modules' && (
+            <div className="lk-modules-page">
+              <div className="lk-modules-page-hd">
+                <h2>Modules</h2>
+                <button className="lk-btn lk-btn--small" onClick={() => setActiveTab('code')}>Back to Chat</button>
               </div>
               <LogikModularTools />
             </div>
@@ -2021,7 +2066,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           {/* Prompt textarea */}
           <textarea
             className="lk-textarea"
-            placeholder={"Describe what you needÃ¢ÂÂ¦\ne.g. 'Build a snake game in HTML/JS' or 'Add auth to the API'"}
+            placeholder=""
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -2065,9 +2110,9 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                 >Ã°ÂÂÂ Attach folder</button>
               )}
               <button
-                className={`lk-btn lk-btn--small lk-btn--attach${modulesOpen ? ' lk-btn--active' : ''}`}
-                onClick={() => setModulesOpen(v => !v)}
-                title="Open modules"
+                className={`lk-btn lk-btn--small lk-btn--attach${activeTab === 'modules' ? ' lk-btn--active' : ''}`}
+                onClick={() => setActiveTab('modules')}
+                title="Open modules page"
               >Ã¢ÂÂ Modules</button>
             </div>
 
@@ -2100,7 +2145,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                   {/* Single Send button Ã¢ÂÂ agent when GitHub connected, generate otherwise */}
                   <button
                     className="lk-btn lk-btn--send"
-                    onClick={() => hasGithub ? agentSession.run(prompt, conversation.slice(-10)) : handleGenerate()}
+                    onClick={handleSubmitPrompt}
                     disabled={!prompt.trim() || agentSession.isAgentRunning || isGenerating}
                   >
                     <span className="lk-btn-icon">Ã¢ÂÂ¶</span>
@@ -2114,29 +2159,6 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                     </button>
                   )}
 
-                  {/* Persistent ready/status summary */}
-                  {(hasGithub || localDirHandle || agentSession.agentSummary) && (
-                    <div className="lk-agent-summary">
-                      {agentSession.agentSummary ? (
-                        <>
-                          <span className="lk-agent-summary-icon">Ã¢ÂÂ</span>
-                          <span>{agentSession.agentSummary.slice(0, 120)}</span>
-                          {agentSession.agentFiles.length > 0 && (
-                            <span className="lk-agent-files"> ÃÂ· {agentSession.agentFiles.length} file{agentSession.agentFiles.length !== 1 ? 's' : ''} changed</span>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <span className="lk-agent-summary-icon">Ã¢ÂÂ</span>
-                          <span>
-                            {localDirHandle
-                              ? `Ready to work in local folder ${localDirHandle.name}`
-                              : `Ready to work in ${repoOwner}/${repoName}`}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
               </>
             </div>
           </div>{/* end lk-input-actions */}

@@ -255,5 +255,39 @@ export async function loadUserSettings(uid) {
   return data
 }
 
+// ── Chat history persistence ──────────────────────────────────────────────────
+// Saved to: users/{uid}/data/conversation
+// This is intentionally separate from settings so chat writes can happen
+// immediately when a session starts without touching settings payload shape.
+export async function saveUserConversation(uid, messages = []) {
+  if (!uid) return
+  try {
+    const db = await getFirestore()
+    const { doc, setDoc } = await import('firebase/firestore')
+    await setDoc(
+      doc(db, 'users', uid, 'data', 'conversation'),
+      { messages: Array.isArray(messages) ? messages : [], _ts: Date.now(), _v: 1 },
+      { merge: true },
+    )
+  } catch (err) {
+    console.warn('[Logik] saveUserConversation failed:', err.message)
+  }
+}
+
+export async function loadUserConversation(uid) {
+  if (!uid) return []
+  try {
+    const db = await getFirestore()
+    const { doc, getDoc } = await import('firebase/firestore')
+    const snap = await getDoc(doc(db, 'users', uid, 'data', 'conversation'))
+    if (!snap.exists()) return []
+    const data = snap.data()
+    return Array.isArray(data?.messages) ? data.messages : []
+  } catch (err) {
+    console.warn('[Logik] loadUserConversation failed:', err.message)
+    return []
+  }
+}
+
 // ── Auto-init on module load ──────────────────────────────────────────────────
 initFirebaseSync(loadFirebaseConfig())
