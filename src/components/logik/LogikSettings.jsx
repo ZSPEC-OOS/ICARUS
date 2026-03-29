@@ -520,9 +520,6 @@ const LogikSettings = memo(function LogikSettings({
         <div className="lk-finetune-grid">
           {[
             { key: 'headerHeight', label: 'Header Height', min: 36, max: 96 },
-            { key: 'logoSize', label: 'Logo Size', min: 12, max: 64 },
-            { key: 'logoOffsetX', label: 'Logo X', min: -80, max: 80 },
-            { key: 'logoOffsetY', label: 'Logo Y', min: -40, max: 40 },
             { key: 'titleSize', label: 'Title Size', min: 9, max: 28 },
             { key: 'titleOffsetX', label: 'Title X', min: -120, max: 120 },
             { key: 'titleOffsetY', label: 'Title Y', min: -40, max: 40 },

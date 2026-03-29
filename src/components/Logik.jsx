@@ -50,7 +50,6 @@ import LogikTerminal     from './logik/LogikTerminal'
 import LogikToolsPane    from './logik/LogikToolsPane'
 import LogikSettings     from './logik/LogikSettings'
 import LogikModularTools from './logik/LogikModularTools'
-import logikLogo         from '../../LOGIKlogo.png'
 import './Logik.css'
 
 // ─── Persistence ────────────────────────────────────────────────────────────
@@ -174,7 +173,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const [dryRun,         setDryRun]         = useState(false)
 
   // ── Theme + fine-tune ──────────────────────────────────────────────────
-  const [theme, setTheme] = useState(saved.theme || 'graphite')
+  const [theme, setTheme] = useState(saved.theme || 'claude')
   const DEFAULT_FT = { brightness: 100, contrast: 100, saturation: 100, highlight: 50, shadow: 50 }
   const [fineTune, setFineTune] = useState({
     brightness: saved.ftBrightness ?? 100,
@@ -186,9 +185,6 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const DEFAULT_HEADER_LAYOUT = useMemo(() => ({
     headerHeight: 44,
     titleSize: 11,
-    logoSize: 18,
-    logoOffsetX: 0,
-    logoOffsetY: 0,
     titleOffsetX: 0,
     titleOffsetY: 0,
     toggleOffsetX: 0,
@@ -197,9 +193,6 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const [headerLayout, setHeaderLayout] = useState({
     headerHeight: saved.headerHeight ?? 44,
     titleSize:    saved.titleSize    ?? 11,
-    logoSize:     saved.logoSize     ?? 18,
-    logoOffsetX:  saved.logoOffsetX  ?? 0,
-    logoOffsetY:  saved.logoOffsetY  ?? 0,
     titleOffsetX: saved.titleOffsetX ?? 0,
     titleOffsetY: saved.titleOffsetY ?? 0,
     toggleOffsetX:saved.toggleOffsetX ?? 0,
@@ -333,8 +326,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   // not by object reference (which would fire this effect on every render).
   const { brightness, contrast, saturation, highlight, shadow } = fineTune
   const {
-    headerHeight, titleSize, logoSize,
-    logoOffsetX, logoOffsetY, titleOffsetX, titleOffsetY,
+    headerHeight, titleSize, titleOffsetX, titleOffsetY,
     toggleOffsetX, toggleOffsetY,
   } = headerLayout
   useEffect(() => {
@@ -344,8 +336,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       ftBrightness: brightness, ftContrast: contrast,
       ftSaturation: saturation, ftHighlight: highlight,
       ftShadow: shadow,
-      headerHeight, titleSize, logoSize,
-      logoOffsetX, logoOffsetY, titleOffsetX, titleOffsetY,
+      headerHeight, titleSize, titleOffsetX, titleOffsetY,
       toggleOffsetX, toggleOffsetY,
       creativity, enableThinking,
       webSearchApiKey,
@@ -356,8 +347,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     onSettingsChangedRef.current?.(s)
   }, [repoOwner, repoName, baseBranch, githubToken,
       theme, brightness, contrast, saturation, highlight, shadow,
-      headerHeight, titleSize, logoSize,
-      logoOffsetX, logoOffsetY, titleOffsetX, titleOffsetY,
+      headerHeight, titleSize, titleOffsetX, titleOffsetY,
       toggleOffsetX, toggleOffsetY,
       creativity, enableThinking, webSearchApiKey, permissionMode])
 
@@ -1391,9 +1381,9 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   // ─────────────────────────────────────────────────────────────────────────
   const confirmAction = useCallback((description) => {
     if (permissionMode === 'auto') return true
-    if (permissionMode === 'ask') return window.confirm(`LOGIK permission request\n\n${description}\n\nProceed?`)
+    if (permissionMode === 'ask') return window.confirm(`ICARUS permission request\n\n${description}\n\nProceed?`)
     // 'manual': same as 'ask' but with extra context
-    return window.confirm(`LOGIK — manual mode\n\n${description}\n\nThis action writes to GitHub. Confirm to continue.`)
+    return window.confirm(`ICARUS — manual mode\n\n${description}\n\nThis action writes to GitHub. Confirm to continue.`)
   }, [permissionMode])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1662,7 +1652,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
       onKeyDown={handleKeyDown}
     >
       {/* ── Invisible sandbox iframe ──────────────────────────────────────── */}
-      <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="LOGIK sandbox" aria-hidden="true" />
+      <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="ICARUS sandbox" aria-hidden="true" />
 
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — icon column (like Claude Code's narrow left rail)
@@ -1704,22 +1694,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         <div className="lk-topbar" style={{ height: `${headerLayout.headerHeight}px` }}>
           <>
 
-              <img
-                className="lk-brand-logo"
-                src={logikLogo}
-                alt="LOGIK"
-                style={{
-                  height: `${logoSize}px`,
-                  transform: `translate(${logoOffsetX}px, ${logoOffsetY}px)`,
-                }}
-              />
               <span
                 className="lk-brand-sub"
                 style={{
                   fontSize: `${titleSize}px`,
                   transform: `translate(${titleOffsetX}px, ${titleOffsetY}px)`,
                 }}
-              >AI Coding Assistant</span>
+              >ICARUS - AI professional coder</span>
 
               <div
                 className="lk-view-toggle"
@@ -1929,7 +1910,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               ) : (
                 conversation.slice(-8).map((msg, idx) => (
                   <div key={`${msg.role}-${idx}`} className="lk-inline-chat-item">
-                    <span className="lk-inline-chat-role">{msg.role === 'user' ? 'You' : 'LOGIK'}</span>
+                    <span className="lk-inline-chat-role">{msg.role === 'user' ? 'You' : 'ICARUS'}</span>
                     <span className="lk-inline-chat-text">{msg.content}</span>
                   </div>
                 ))
