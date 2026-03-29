@@ -245,6 +245,36 @@ class MemoryGraphService {
     return { nodes: addedNodes, edges: addedEdges }
   }
 
+
+  ingestReliabilityRun({ task = '', stateHistory = [], verification = null, rolledBack = false, rollback = null }) {
+    this.init()
+    const nodeId = `reliability:${stableHash(`${task}:${stateHistory.map(s => s.state).join('>')}`)}`
+    return this.upsertNode({
+      id: nodeId,
+      type: 'reliability_run',
+      title: rolledBack ? 'Reliability run (rolled back)' : 'Reliability run',
+      summary: shortSummary(`${task} | states: ${stateHistory.map(s => s.state).join(' -> ')} | gates: ${(verification?.gates || []).map(g => `${g.id}:${g.passed ? 'pass' : 'fail'}`).join(', ')}`, 420),
+      tags: ['reliability', rolledBack ? 'rolled-back' : 'passed'],
+      metadata: {
+        rolledBack,
+        failedGateIds: verification?.failedGateIds || [],
+        rollbackStrategy: rollback?.strategy || null,
+      },
+    })
+  }
+
+  ingestRollbackOutcome({ reason = '', passed = false, strategy = 'unknown', trace = [], errors = [] }) {
+    this.init()
+    return this.upsertNode({
+      id: `rollback:${stableHash(`${reason}:${strategy}:${trace.length}`)}`,
+      type: 'rollback_outcome',
+      title: passed ? 'Rollback succeeded' : 'Rollback failed',
+      summary: shortSummary(`reason=${reason} strategy=${strategy} touched=${trace.length} errors=${errors.join('; ')}`, 420),
+      tags: ['rollback', passed ? 'passed' : 'failed'],
+      metadata: { reason, strategy, traceLength: trace.length, errors },
+    })
+  }
+
   ingestCritiqueOutcome({ task = '', critiqueSummary = '', passed = true }) {
     this.init()
     const nodeId = `critique:${stableHash(`${task}:${critiqueSummary}`)}`

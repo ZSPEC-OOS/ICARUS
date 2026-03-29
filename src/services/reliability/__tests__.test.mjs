@@ -1,0 +1,40 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { evaluateReliabilityGates, detectApiSignatureChange } from './gateEvaluators.js'
+import { createReliabilityLoopFSM, RELIABILITY_STATES } from './fsm.js'
+
+test('detectApiSignatureChange detects export signature mutations', () => {
+  const before = 'export function run(a, b) { return a + b }'
+  const after = 'export function run(a, b, c) { return a + b + c }'
+  assert.equal(detectApiSignatureChange(before, after), true)
+})
+
+test('evaluateReliabilityGates passes for strong metrics', () => {
+  const report = evaluateReliabilityGates({
+    executionTrace: {
+      commandRuns: [{ result: 'exit 0\nall good' }],
+      mutations: [{ beforeContent: 'export function a(x){}', afterContent: 'export function a(x){ return x }', apiSignatureChanged: false }],
+    },
+    draftText: 'Implemented task with complete output.',
+    critiqueConfig: { enabled: true },
+    config: { minTestPassRate: 0.5, minSemanticSimilarity: 0, maxSemanticSimilarity: 1 },
+  })
+  assert.equal(report.passed, true)
+})
+
+test('fsm executes rollback path on verify failure', async () => {
+  const transitions = []
+  const fsm = createReliabilityLoopFSM({
+    task: 'demo',
+    onEvent: (ev) => { if (ev.type === 'fsm_state') transitions.push(ev.state) },
+    handlers: {
+      plan: async () => ({ ok: true }),
+      execute: async () => ({ mutationTrace: [{ path: 'a.js' }] }),
+      verify: async () => ({ passed: false, failedGateIds: ['critique'] }),
+      rollback: async () => ({ rolledBack: true, strategy: 'patch_undo' }),
+    },
+  })
+  const out = await fsm.run()
+  assert.equal(out.current, RELIABILITY_STATES.DONE)
+  assert.deepEqual(transitions, ['plan', 'execute', 'verify', 'rollback', 'done'])
+})
