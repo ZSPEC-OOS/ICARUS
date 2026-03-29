@@ -43,10 +43,10 @@ function Splash({ msg = 'Loading...' }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: '#0d0d14', color: '#555',
+      height: '100vh', background: '#12100d', color: '#b08f7a',
       fontFamily: "'EB Garamond', Georgia, serif", fontSize: '1rem', gap: '0.5rem',
     }}>
-      <span style={{ color: '#a78bfa' }}>*</span>{msg}
+      <span style={{ color: '#da7756' }}>*</span>{msg}
     </div>
   )
 }

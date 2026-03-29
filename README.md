@@ -1,4 +1,4 @@
-# LOGIK — Standalone AI Coding Assistant
+# ICARUS — AI professional coder
 
 ## Setup
 
