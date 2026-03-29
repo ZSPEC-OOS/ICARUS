@@ -20,6 +20,8 @@ class PlannerTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(graph.sub_tasks), 8)
         self.assertLessEqual(len(graph.sub_tasks), 15)
+        self.assertIsNotNone(graph.confidence)
+        self.assertGreaterEqual(graph.confidence.score, 0.0)
         order = graph.topological_sort()
         self.assertEqual(len(order), len(graph.sub_tasks))
 

@@ -15,6 +15,19 @@ class TaskStatus(str, Enum):
     BLOCKED = "blocked"
 
 
+class ConfidenceReport(BaseModel):
+    score: float
+    evidence: List[Dict[str, Any]] = Field(default_factory=list)
+    uncertainties: List[str] = Field(default_factory=list)
+    needs_human: bool = False
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> "ConfidenceReport":
+        if not (0.0 <= self.score <= 1.0):
+            raise ValueError("Confidence score must be between 0.0 and 1.0")
+        return self
+
+
 class AcceptanceTest(BaseModel):
     description: str
     type: str = Field(..., description="unit | integration | manual | policy")
@@ -64,6 +77,7 @@ class HandoffMessage(BaseModel):
     to_role: AgentRole
     payload: Dict[str, Any] = Field(default_factory=dict)
     evidence: List[str] = Field(default_factory=list)
+    confidence: Optional[ConfidenceReport] = None
     timestamp: datetime
 
 
@@ -73,6 +87,7 @@ class TaskGraph(BaseModel):
     sub_tasks: Dict[str, SubTask]
     dependencies: List[Dependency] = Field(default_factory=list)
     milestones: List[Milestone] = Field(default_factory=list)
+    confidence: Optional[ConfidenceReport] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @model_validator(mode="after")
@@ -128,6 +143,18 @@ class TaskGraph(BaseModel):
 
     def to_markdown(self, include_status: bool = True) -> str:
         lines = ["# Task Graph", "", f"## Objective", self.objective, ""]
+
+        if self.confidence:
+            lines.extend(
+                [
+                    "## Confidence",
+                    f"- score: {self.confidence.score:.2f}",
+                    f"- needs_human: {self.confidence.needs_human}",
+                ]
+            )
+            if self.confidence.uncertainties:
+                lines.append(f"- uncertainties: {', '.join(self.confidence.uncertainties)}")
+            lines.append("")
 
         if self.constraints:
             lines.append("## Constraints")
