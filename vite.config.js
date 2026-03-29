@@ -2,15 +2,18 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 let spawn = null
-if (process.env.NODE_ENV !== 'production') {
+
+async function ensureSpawn() {
+  if (spawn) return spawn
   try {
     ;({ spawn } = await import('node:child_process'))
   } catch {
     spawn = null
   }
+  return spawn
 }
 
-// Dev-only exec bridge — lets the LOGIK terminal and Tools tab run real shell
+// Dev-only exec bridge â lets the LOGIK terminal and Tools tab run real shell
 // commands on your machine during `vite dev`. Never included in production builds.
 function tokenize(cmdStr) {
   const tokens = []
@@ -135,7 +138,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api\/proxy\/gemini/, '/v1beta/openai'),
       },
-      // ── New providers ─────────────────────────────────────────────────────
+      // ââ New providers âââââââââââââââââââââââââââââââââââââââââââââââââââââ
       '/api/proxy/groq': {
         target: 'https://api.groq.com',
         changeOrigin: true,
