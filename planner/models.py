@@ -51,6 +51,22 @@ class Milestone(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
 
 
+class AgentRole(str, Enum):
+    ARCHITECT = "architect"
+    BUILDER = "builder"
+    REVIEWER = "reviewer"
+    VERIFIER = "verifier"
+
+
+class HandoffMessage(BaseModel):
+    task_id: str
+    from_role: AgentRole
+    to_role: AgentRole
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    evidence: List[str] = Field(default_factory=list)
+    timestamp: datetime
+
+
 class TaskGraph(BaseModel):
     objective: str
     constraints: List[str] = Field(default_factory=list)
