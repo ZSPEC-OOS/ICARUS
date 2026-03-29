@@ -29,6 +29,8 @@ import { decodeBase64 } from '../utils/base64.js'
 import { readLocalFile, writeLocalFile, listLocalDir } from './localFileService.js'
 import { shadowContext } from './shadowContext.js'
 import { EXEC_BRIDGE_TIMEOUT_MS } from '../config/constants.js'
+import { retrieveContext, hybridSearch } from './enhancers/ragService.js'
+import { resolveEnhancerConfig } from './enhancers/config.js'
 
 // ── Exec bridge call ──────────────────────────────────────────────────────────
 async function execBridge(cmd, cwd) {
@@ -146,7 +148,9 @@ function attemptJsonRepair(raw) {
   return next
 }
 
-export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, localDirHandle }) {
+export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, localDirHandle, enhancerConfig: enhancerConfigOverrides }) {
+  const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
+
   return async function executeTool(name, input) {
     switch (name) {
       // ── analyze_codebase ───────────────────────────────────────────────
@@ -356,6 +360,41 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         const items = await listDirectory(sToken || token, sOwner, sRepo, input.path || '', sBranch)
         if (items.length === 0) return `Empty or not found in source repo: ${input.path || '/'}`
         return items.map(i => `${i.type === 'dir' ? 'd' : 'f'} ${i.path}`).join('\n')
+      }
+
+
+      // ── hybrid_search ──────────────────────────────────────────────────
+      case 'hybrid_search': {
+        if (!enhancerConfig.rag.enabled) return 'RAG enhancer is disabled in settings/config.'
+        const results = hybridSearch({
+          query: input.query,
+          limit: Math.max(1, Math.min(input.limit || 8, 20)),
+          shadowContext,
+          weights: {
+            bm25: enhancerConfig.rag.bm25Weight,
+            vector: enhancerConfig.rag.vectorWeight,
+          },
+          minScore: enhancerConfig.rag.minScore,
+        })
+        if (!results.length) return `No retrieval candidates found for: ${input.query}`
+        return results
+          .map((r, idx) => `${idx + 1}. ${r.path} (score: ${r.score.toFixed(3)}, section: ${r.metadata.section}, owner: ${r.metadata.owner || 'n/a'})`)
+          .join('\n')
+      }
+
+      // ── retrieve_context ───────────────────────────────────────────────
+      case 'retrieve_context': {
+        if (!enhancerConfig.rag.enabled) return 'RAG enhancer is disabled in settings/config.'
+        const out = retrieveContext({ query: input.query, shadowContext, config: enhancerConfig.rag })
+        if (!out.contexts.length) return `No context retrieved for: ${input.query}`
+        return [
+          `Query: ${out.query}`,
+          `Candidates: ${out.totalCandidates}`,
+          '',
+          out.contexts
+            .map((c, idx) => `[#${idx + 1}] ${c.path} (score ${c.score.toFixed(3)})\n${c.text.slice(0, 240)}`)
+            .join('\n\n'),
+        ].join('\n')
       }
 
       // ── web_fetch ──────────────────────────────────────────────────────
