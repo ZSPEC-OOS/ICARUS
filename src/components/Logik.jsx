@@ -1940,6 +1940,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           )}
 
           {/* ── Output area ────────────────────────────────────────────── */}
+          {!agentSession.isAgentRunning && (
           <div className="lk-feed-output">
 
           {/* ── Code tab ────────────────────────────────────────────────────── */}
@@ -2054,7 +2055,8 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             />
           )}
 
-          </div>{/* end lk-feed-output */}
+          </div>
+          )}{/* end lk-feed-output */}
         </div>{/* end lk-feed */}
 
         <>{/* ══════════════════════════════════════════════════
