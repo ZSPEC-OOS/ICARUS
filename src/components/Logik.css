@@ -521,18 +521,22 @@
 .lk-inline-chat-role { color: var(--lk-accent); font-weight: 600; }
 .lk-inline-chat-text { color: var(--lk-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.lk-modules-inline {
-  border-top: 1px solid var(--lk-border);
+.lk-modules-page {
+  height: 100%;
+  border: 1px solid var(--lk-border);
+  border-radius: 10px;
+  padding: 10px;
   background: var(--lk-surface);
-  min-height: 240px;
+  overflow: auto;
 }
 
-.lk-modules-inline-hd {
+.lk-modules-page-hd {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
+  margin-bottom: 10px;
 }
+.lk-modules-page-hd h2 { margin: 0; font-size: 0.95rem; }
 
 /* ── Action row inside input bar ─────────────────────────────────── */
 .lk-input-actions {
@@ -2402,7 +2406,7 @@ kbd {
   }
 }
 
-
+/* ════════════════════════════════════════════════════════════════════
    MODAL OVERLAY — shared by Amplifier Confirm + Push Preview
    ════════════════════════════════════════════════════════════════════ */
 .lk-modal-overlay {
@@ -2654,9 +2658,28 @@ kbd {
   border-radius: 12px;
   font-size: 0.8rem;
   line-height: 1.55;
-  white-space: pre-wrap;
   word-break: break-word;
 }
+.lk-chat-bubble--markdown p { margin: 0 0 6px; }
+.lk-chat-bubble--markdown p:last-child { margin-bottom: 0; }
+.lk-chat-bubble--markdown h2,
+.lk-chat-bubble--markdown h3,
+.lk-chat-bubble--markdown h4 {
+  margin: 0 0 6px;
+  font-size: 0.86rem;
+}
+.lk-chat-bubble--markdown code {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-family: var(--lk-mono);
+  font-size: 0.75rem;
+}
+.lk-md-list {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.lk-md-spacer { height: 4px; }
 .lk-chat-msg--user .lk-chat-bubble {
   background: var(--lk-accent-dim);
   border: 1px solid var(--lk-accent-glow);
