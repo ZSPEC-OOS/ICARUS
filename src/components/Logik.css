@@ -354,9 +354,10 @@ html, body, #root {
 
 .lk-brand-sub {
   font-size: 0.68rem;
-  color: var(--lk-text-muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: #da7756;
+  font-family: 'Cormorant Upright', serif;
+  letter-spacing: 0.15em;
+  text-transform: none;
 }
 
 .lk-header-right {
