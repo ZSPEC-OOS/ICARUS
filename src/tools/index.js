@@ -21,3 +21,8 @@ export * as webFetch          from './web-fetch.js'
 export * as webSearch         from './web-search.js'
 export * as updateMemory      from './update-memory.js'
 export * as todo              from './todo.js'
+
+export * as analyzeStacktrace from './analyze-stacktrace.js'
+export * as findTechDebt     from './find-tech-debt.js'
+export * as checkUrlHealth   from './check-url-health.js'
+export * as jsonRepair       from './json-repair.js'
