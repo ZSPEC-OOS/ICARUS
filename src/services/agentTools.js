@@ -235,6 +235,55 @@ export const AGENT_TOOLS = [
       required: ['path'],
     },
   },
+  {
+    name: 'analyze_stacktrace',
+    description: 'Parse a JavaScript/TypeScript stacktrace into structured frames and return a concise debugging hint.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        stacktrace: { type: 'string', description: 'Raw stacktrace text including error header and frames' },
+        max_frames: { type: 'number', description: 'Maximum frames to return (default 8, max 25)' },
+      },
+      required: ['stacktrace'],
+    },
+  },
+  {
+    name: 'find_tech_debt',
+    description: 'Scan indexed code for debt markers (TODO/FIXME/HACK/BUG) and summarize hotspots.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        markers: { type: 'array', items: { type: 'string' }, description: 'Marker tokens to scan for (default TODO/FIXME/HACK/BUG)' },
+        path: { type: 'string', description: 'Optional path prefix filter, e.g. src/services' },
+        limit: { type: 'number', description: 'Max match rows to return (default 50, max 200)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'check_url_health',
+    description: 'Probe a URL and return status code, latency, redirect info, and timeout/network diagnostics.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'Absolute URL to probe (https://...)' },
+        timeout_ms: { type: 'number', description: 'Request timeout in milliseconds (default 8000, min 500, max 30000)' },
+        method: { type: 'string', description: 'HTTP method to use (default GET)' },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'json_repair',
+    description: 'Attempt lightweight repair of malformed JSON (single quotes, trailing commas) and validate output.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Raw JSON-like text to validate/repair' },
+      },
+      required: ['text'],
+    },
+  },
 ]
 
 // System prompt injected at the start of every agent session.

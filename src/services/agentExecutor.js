@@ -114,6 +114,38 @@ function buildCommitMsg(action, path, userMsg) {
   return `${type}(${stem}): ${verb} ${name}`
 }
 
+function inferStackHint(errorName = '', message = '') {
+  const hay = `${errorName} ${message}`.toLowerCase()
+  if (hay.includes('undefined') || hay.includes('null')) return 'Check null/undefined guards before property access.'
+  if (hay.includes('module') && hay.includes('not found')) return 'Verify import path, file casing, and dependency installation.'
+  if (hay.includes('syntaxerror')) return 'Inspect nearby syntax (missing bracket/comma/quote) at the first frame.'
+  if (hay.includes('typeerror')) return 'Inspect the top frame variables and expected object/function types.'
+  return 'Start at the top frame and inspect surrounding code plus recent edits.'
+}
+
+function parseStackFrame(line) {
+  const trimmed = String(line || '').trim()
+  const withFn = trimmed.match(/^at\s+(.*?)\s+\((.*?):(\d+):(\d+)\)$/)
+  if (withFn) return { fn: withFn[1], file: withFn[2], line: Number(withFn[3]), column: Number(withFn[4]) }
+
+  const anon = trimmed.match(/^at\s+(.*?):(\d+):(\d+)$/)
+  if (anon) return { fn: '(anonymous)', file: anon[1], line: Number(anon[2]), column: Number(anon[3]) }
+
+  return null
+}
+
+function attemptJsonRepair(raw) {
+  let next = String(raw)
+    .replace(/\r\n/g, '\n')
+    .replace(/,\s*([}\]])/g, '$1')
+
+  next = next
+    .replace(/'([^'\\]*(?:\\.[^'\\]*)*)'\s*:/g, '"$1":')
+    .replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, ': "$1"')
+
+  return next
+}
+
 export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, localDirHandle }) {
   return async function executeTool(name, input) {
     switch (name) {
@@ -435,6 +467,111 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         await createOrUpdateFile(token, owner, repo, input.path, content, msg, branch, current.sha)
         onFileWrite?.(input.path, 'edit')
         return `Reverted: ${input.path} → restored to state at ${targetSha.slice(0, 7)} (${commits[n].message})`
+      }
+
+      // ── analyze_stacktrace ─────────────────────────────────────────────
+      case 'analyze_stacktrace': {
+        if (!input?.stacktrace || typeof input.stacktrace !== 'string') {
+          return 'analyze_stacktrace error: stacktrace is required.'
+        }
+        const lines = input.stacktrace.split('\n').filter(Boolean)
+        const header = lines[0] || ''
+        const headMatch = header.match(/^([\w$.]+):\s*(.*)$/)
+        const errorName = headMatch?.[1] || 'Error'
+        const message = headMatch?.[2] || header
+        const maxFrames = Math.max(1, Math.min(Number(input.max_frames) || 8, 25))
+        const frames = []
+        for (const line of lines.slice(1)) {
+          const parsed = parseStackFrame(line)
+          if (parsed) frames.push(parsed)
+          if (frames.length >= maxFrames) break
+        }
+        return JSON.stringify({
+          error: { name: errorName, message },
+          frameCount: frames.length,
+          frames,
+          hint: inferStackHint(errorName, message),
+        }, null, 2)
+      }
+
+      // ── find_tech_debt ────────────────────────────────────────────────
+      case 'find_tech_debt': {
+        if (!shadowContext.isReady) {
+          return `Codebase index not ready (${shadowContext.indexedFileCount()} files indexed). Try grep when indexing completes.`
+        }
+        const markers = Array.isArray(input.markers) && input.markers.length
+          ? input.markers
+          : ['TODO', 'FIXME', 'HACK', 'BUG']
+        const escaped = markers.map(m => String(m).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        const pattern = `\\b(${escaped.join('|')})\\b`
+        const limit = Math.max(1, Math.min(Number(input.limit) || 50, 200))
+        const matches = shadowContext.grepContent(pattern, input.path || null, 'i') || []
+        const sliced = matches.slice(0, limit)
+        const byFile = {}
+        for (const match of sliced) byFile[match.path] = (byFile[match.path] || 0) + 1
+        const hotspots = Object.entries(byFile)
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+          .slice(0, 10)
+          .map(([file, count]) => ({ file, count }))
+        return JSON.stringify({
+          pattern,
+          total: matches.length,
+          returned: sliced.length,
+          hotspots,
+          matches: sliced,
+        }, null, 2)
+      }
+
+      // ── check_url_health ───────────────────────────────────────────────
+      case 'check_url_health': {
+        if (!input?.url) return 'check_url_health error: url is required.'
+        const timeoutMs = Math.max(500, Math.min(Number(input.timeout_ms) || 8000, 30000))
+        const method = String(input.method || 'GET').toUpperCase()
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), timeoutMs)
+        const started = Date.now()
+        try {
+          const res = await fetch(input.url, { method, signal: controller.signal })
+          return JSON.stringify({
+            url: input.url,
+            ok: res.ok,
+            status: res.status,
+            statusText: res.statusText,
+            latencyMs: Date.now() - started,
+            redirected: res.redirected,
+            finalUrl: res.url,
+          }, null, 2)
+        } catch (err) {
+          const msg = err?.name === 'AbortError' ? 'timeout' : err.message
+          return JSON.stringify({
+            url: input.url,
+            ok: false,
+            status: 0,
+            error: msg,
+            latencyMs: Date.now() - started,
+          }, null, 2)
+        } finally {
+          clearTimeout(timeout)
+        }
+      }
+
+      // ── json_repair ────────────────────────────────────────────────────
+      case 'json_repair': {
+        if (typeof input?.text !== 'string' || !input.text.trim()) {
+          return 'json_repair error: text is required.'
+        }
+        try {
+          const parsed = JSON.parse(input.text)
+          return JSON.stringify({ repaired: false, valid: true, json: JSON.stringify(parsed, null, 2) }, null, 2)
+        } catch {
+          const candidate = attemptJsonRepair(input.text)
+          try {
+            const parsed = JSON.parse(candidate)
+            return JSON.stringify({ repaired: true, valid: true, json: JSON.stringify(parsed, null, 2) }, null, 2)
+          } catch (e) {
+            return JSON.stringify({ repaired: true, valid: false, error: e.message, json: candidate }, null, 2)
+          }
+        }
       }
 
       default:
