@@ -1,0 +1,100 @@
+import { schemaVersion } from '../tools/contracts.js'
+
+const TRACE_STORAGE_KEY = 'logik:tool-traces:jsonl'
+const MAX_TRACE_LINES = 2000
+
+function nowIso() {
+  return new Date().toISOString()
+}
+
+function makeId() {
+  return `trace_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+function safeJson(value) {
+  try { return JSON.parse(JSON.stringify(value)) } catch { return String(value) }
+}
+
+function readLines() {
+  try {
+    const raw = localStorage.getItem(TRACE_STORAGE_KEY) || ''
+    return raw.split('\n').filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+function writeLines(lines) {
+  try {
+    const trimmed = lines.slice(-MAX_TRACE_LINES)
+    localStorage.setItem(TRACE_STORAGE_KEY, trimmed.join('\n'))
+  } catch {
+    // noop
+  }
+}
+
+function appendLine(entry) {
+  const lines = readLines()
+  lines.push(JSON.stringify(entry))
+  writeLines(lines)
+}
+
+export function beginToolTrace(toolName, input) {
+  const traceId = makeId()
+  const startedAt = performance.now()
+  const entry = {
+    traceId,
+    type: 'tool_call',
+    schemaVersion: schemaVersion(),
+    toolName,
+    input: safeJson(input),
+    timestamp: nowIso(),
+    status: 'started',
+  }
+  appendLine(entry)
+  return { traceId, startedAt }
+}
+
+export function endToolTrace({ traceId, toolName, input, output, error, startedAt }) {
+  const durationMs = Math.round(performance.now() - startedAt)
+  appendLine({
+    traceId,
+    type: 'tool_call',
+    schemaVersion: schemaVersion(),
+    toolName,
+    input: safeJson(input),
+    output: safeJson(output),
+    error: error ? String(error) : null,
+    durationMs,
+    timestamp: nowIso(),
+    status: error ? 'error' : 'ok',
+  })
+}
+
+export function getTraceById(traceId) {
+  const lines = readLines()
+  const entries = lines
+    .map(line => { try { return JSON.parse(line) } catch { return null } })
+    .filter(Boolean)
+    .filter(entry => entry.traceId === traceId)
+
+  if (!entries.length) return null
+
+  const final = [...entries].reverse().find(entry => entry.status === 'ok' || entry.status === 'error') || entries[entries.length - 1]
+  return final
+}
+
+export async function replayTrace(traceId, executeTool) {
+  const trace = getTraceById(traceId)
+  if (!trace) throw new Error(`Trace not found: ${traceId}`)
+  const output = await executeTool(trace.toolName, trace.input)
+  return {
+    replayed: true,
+    traceId,
+    toolName: trace.toolName,
+    originalTimestamp: trace.timestamp,
+    schemaVersion: trace.schemaVersion,
+    input: trace.input,
+    output,
+  }
+}

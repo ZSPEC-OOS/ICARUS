@@ -8,6 +8,8 @@
 //   export async function test()  { … return { passed: boolean, message: string } }
 
 import * as builtins from '../tools/index.js'
+import { withToolContractValidation } from '../tools/index.js'
+import { normalizeToolName, schemaVersion } from '../tools/contracts.js'
 
 const USER_TOOLS_KEY = 'logik:user-tools'   // localStorage key for installed tools
 
@@ -42,10 +44,13 @@ function checksum(str) {
 
 // ── Parse built-in modules ────────────────────────────────────────────────────
 function loadBuiltins() {
-  return Object.values(builtins).map(mod => ({
+  return Object.values(builtins)
+    .filter(mod => mod?.toolMeta && typeof mod?.execute === 'function')
+    .map(mod => ({
     ...mod.toolMeta,
-    _execute: mod.execute,
+    _execute: withToolContractValidation(normalizeToolName(mod.toolMeta.id), mod.execute),
     _test:    mod.test,
+    _schemaVersion: schemaVersion(),
     _builtin: true,
     _checksum: null,
   }))
