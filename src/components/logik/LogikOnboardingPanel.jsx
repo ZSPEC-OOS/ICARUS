@@ -96,7 +96,7 @@ const LogikOnboardingPanel = memo(function LogikOnboardingPanel({
               <span className="lk-onboarding-check">✓</span>
               <div>
                 <strong>You're all set!</strong>
-                <p>Type what you want to build below and press <kbd>Ctrl+Enter</kbd>.</p>
+                <p>Type what you want to build below and press <kbd>Enter</kbd> to send (<kbd>Shift+Enter</kbd> adds a new line).</p>
               </div>
             </div>
           ) : currentStep ? (
