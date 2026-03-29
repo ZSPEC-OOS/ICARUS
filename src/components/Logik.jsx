@@ -1630,7 +1630,8 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   const busy = isGenerating || isPushing
 
   // ── Tab config ──────────────────────────────────────────────────────────
-  const effectiveActiveTab = activeTab === 'modules' ? 'modules' : 'code'
+  const isModulesPage = activeTab === 'modules'
+  const effectiveActiveTab = isModulesPage ? 'modules' : 'code'
 
   // ══════════════════════════════════════════════════════════════════════════
   // ── Fine-tune filter string ────────────────────────────────────────────
@@ -1808,6 +1809,18 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         </div>
       )}
 
+        {isModulesPage ? (
+          <div className="lk-modules-shell">
+            <div className="lk-modules-page">
+              <div className="lk-modules-page-hd">
+                <h2>Modules</h2>
+                <button className="lk-btn lk-btn--small" onClick={() => setActiveTab('code')}>Back to Chat</button>
+              </div>
+              <LogikModularTools />
+            </div>
+          </div>
+        ) : (
+        <>
         {/* ══════════════════════════════════════════════════════════════════
             MAIN FEED — full-height scrollable output area
             ══════════════════════════════════════════════════════════════════ */}
@@ -2041,16 +2054,6 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             />
           )}
 
-          {activeTab === 'modules' && (
-            <div className="lk-modules-page">
-              <div className="lk-modules-page-hd">
-                <h2>Modules</h2>
-                <button className="lk-btn lk-btn--small" onClick={() => setActiveTab('code')}>Back to Chat</button>
-              </div>
-              <LogikModularTools />
-            </div>
-          )}
-
           </div>{/* end lk-feed-output */}
         </div>{/* end lk-feed */}
 
@@ -2172,6 +2175,8 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           </div>{/* end lk-input-actions */}
         </div>{/* end lk-input-bar */}
         </>
+        </>
+        )}
 
       </div>{/* end lk-main */}
     </div>

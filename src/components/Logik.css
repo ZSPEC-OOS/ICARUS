@@ -2,6 +2,13 @@
    LOGIK — Multi-theme system  ·  6 themes  ·  Fine-tune sliders
    ═══════════════════════════════════════════════════════════════════ */
 
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 /* ── Default theme: Graphite (Claude Code-ish dark, bright + easy on eyes) */
 .lk-root {
   /* Backgrounds */
@@ -523,11 +530,16 @@
 
 .lk-modules-page {
   height: 100%;
-  border: 1px solid var(--lk-border);
-  border-radius: 10px;
-  padding: 10px;
-  background: var(--lk-surface);
+  padding: 12px;
+  background: transparent;
   overflow: auto;
+}
+
+.lk-modules-shell {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--lk-surface);
 }
 
 .lk-modules-page-hd {
