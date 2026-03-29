@@ -11,7 +11,7 @@ export function useActivityLog(feedRef) {
   // Add a new entry; returns its id so callers can later update it.
   const logActivity = useCallback((type, msg, detail = null) => {
     const id    = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const entry = { id, type, msg, detail, status: 'active' }
+    const entry = { id, type, msg, detail, status: type === 'done' ? 'done' : 'active' }
     activityRef.current = [...activityRef.current, entry]
     setActivityLog([...activityRef.current])
     // Auto-scroll feed to bottom
