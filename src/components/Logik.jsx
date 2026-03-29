@@ -1081,12 +1081,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     if (!hasGithub) { setError('GitHub required to save LOGIK.md.'); return }
     setIsSavingLogikMd(true)
     try {
-      const existing = await import('../services/githubService').then(m =>
-        m.getFileContent(githubToken, repoOwner, repoName, 'LOGIK.md', baseBranch)
-      )
+      const existing = await getFileContent(githubToken, repoOwner, repoName, 'LOGIK.md', baseBranch)
       const sha = existing?.sha || null
-      await import('../services/githubService').then(m =>
-        m.createOrUpdateFile(githubToken, repoOwner, repoName, 'LOGIK.md', logikMdDraft, 'docs: update LOGIK.md project instructions', baseBranch, sha)
+      await createOrUpdateFile(
+        githubToken, repoOwner, repoName,
+        'LOGIK.md', logikMdDraft,
+        'docs: update LOGIK.md project instructions',
+        baseBranch, sha,
       )
       shadowContext.logikMd = logikMdDraft
       logActivity('done', 'Ã¢ÂÂ LOGIK.md saved to repo')
@@ -1560,7 +1561,55 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }
 
-  const handleKeyDown = e => {
+  const isConversationalPrompt = useCallback((value) => {
+    const text = String(value || '').trim().toLowerCase()
+    if (!text) return false
+    if (text.length < 80 && /^(hi|hello|hey|thanks|thank you|how are you|what can you do)/i.test(text)) return true
+    const codingSignals = /(create|build|implement|fix|refactor|add|remove|update|generate|write|bug|error|test|repo|file|component|api|function|class|css|ui|database|deploy|pipeline|module|route)/i
+    const chatSignals = /(explain|what is|why|how does|compare|difference|ideas|brainstorm|summary|summarize|help me understand)/i
+    if (codingSignals.test(text)) return false
+    return chatSignals.test(text) || text.endsWith('?')
+  }, [])
+
+  const handleConversationalReply = useCallback(async (userMsg) => {
+    const model = models?.find(m => m.id === activeModelId)
+    if (!model) { setError('Select a model.'); return }
+    if (!model.apiKey) { setError(`No API key for "${model.name}". Open Admin Panel.`); return }
+    const clean = userMsg.trim()
+    if (!clean) return
+    setError('')
+    setIsGenerating(true)
+    try {
+      const reply = await runPromptWithRetry(
+        model,
+        clean,
+        [
+          { role: 'system', content: 'You are LOGIK in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
+          ...conversation.slice(-10),
+        ],
+      )
+      setConversation(prev => [...prev, { role: 'user', content: clean }, { role: 'assistant', content: reply }])
+      setTurnCount(t => t + 1)
+      setPrompt('')
+    } catch (err) {
+      setError(`Chat response failed: ${err.message}`)
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [models, activeModelId, conversation, setConversation, setTurnCount])
+
+  const handleSubmitPrompt = useCallback(() => {
+    const userMsg = prompt.trim()
+    if (!userMsg) return
+    if (isConversationalPrompt(userMsg)) {
+      handleConversationalReply(userMsg)
+      return
+    }
+    if (hasGithub) agentSession.run(prompt, conversation.slice(-10))
+    else handleGenerate()
+  }, [prompt, isConversationalPrompt, handleConversationalReply, hasGithub, agentSession, conversation, handleGenerate])
+
+  const handleKeyDown = useCallback((e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       if (!isGenerating && !isPushing && !agentSession.isAgentRunning) {
@@ -1568,7 +1617,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         else handleSubmitPrompt()
       }
     }
-  }
+  }, [isGenerating, isPushing, agentSession.isAgentRunning, generatedCode, refinementPrompt, handleRefine, handleSubmitPrompt])
 
   const isConversationalPrompt = useCallback((value) => {
     const text = String(value || '').trim().toLowerCase()
