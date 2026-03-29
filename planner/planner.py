@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional
 
-from .models import AcceptanceTest, Dependency, Milestone, SubTask, TaskGraph
+from .models import AcceptanceTest, ConfidenceReport, Dependency, Milestone, SubTask, TaskGraph
 
 
 class Planner:
@@ -24,6 +24,7 @@ class Planner:
             sub_tasks={task.id: task for task in sub_tasks},
             dependencies=dependencies,
             milestones=milestones,
+            confidence=self._build_confidence(objective, constraints, sub_tasks),
         )
 
     def _build_objective(self, raw_prompt: str) -> str:
@@ -137,6 +138,25 @@ class Planner:
                 )
         return dependencies
 
+
+    def _build_confidence(self, objective: str, constraints: List[str], sub_tasks: List[SubTask]) -> ConfidenceReport:
+        score = min(0.98, 0.55 + min(len(sub_tasks), 12) * 0.02 + min(len(constraints), 8) * 0.015)
+        uncertainties: List[str] = []
+        if len(constraints) < 3:
+            uncertainties.append("Limited explicit constraints in prompt")
+        if len(sub_tasks) < 6:
+            uncertainties.append("Plan decomposition may be shallow for complex implementations")
+
+        return ConfidenceReport(
+            score=round(score, 3),
+            evidence=[
+                {"type": "objective", "value": objective},
+                {"type": "sub_task_count", "value": len(sub_tasks)},
+                {"type": "constraint_count", "value": len(constraints)},
+            ],
+            uncertainties=uncertainties,
+            needs_human=score < 0.7 or bool(uncertainties),
+        )
     def _build_milestones(self, sub_tasks: List[SubTask]) -> List[Milestone]:
         all_ids = [task.id for task in sub_tasks]
         chunks = [all_ids[:3], all_ids[3:7], all_ids[7:]]

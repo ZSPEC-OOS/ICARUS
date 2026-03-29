@@ -1,6 +1,18 @@
+from .benchmark import BenchmarkReport, BenchmarkRunner, BenchmarkScenarioResult
 from .change_simulator import ChangeSimulationResult, ChangeSimulator, ProposedEdit
 from .code_intelligence import CodeIntelligence, CodeIntelligenceSnapshot, SymbolDefinition
-from .models import AgentRole, AcceptanceTest, Dependency, HandoffMessage, Milestone, SubTask, TaskGraph, TaskStatus
+from .curriculum import AssessmentOutcome, CurriculumArtifact, CurriculumCheckpoint, CurriculumPhase, CurriculumPlanner
+from .models import (
+    AgentRole,
+    AcceptanceTest,
+    ConfidenceReport,
+    Dependency,
+    HandoffMessage,
+    Milestone,
+    SubTask,
+    TaskGraph,
+    TaskStatus,
+)
 from .orchestrator import (
     AgentRoleExecutor,
     ArchitectAgent,
@@ -17,6 +29,7 @@ from .planner import Planner
 __all__ = [
     "AgentRole",
     "AcceptanceTest",
+    "ConfidenceReport",
     "Dependency",
     "HandoffMessage",
     "Milestone",
@@ -30,6 +43,14 @@ __all__ = [
     "ChangeSimulationResult",
     "ChangeSimulator",
     "Planner",
+    "CurriculumPlanner",
+    "AssessmentOutcome",
+    "CurriculumCheckpoint",
+    "CurriculumPhase",
+    "CurriculumArtifact",
+    "BenchmarkScenarioResult",
+    "BenchmarkReport",
+    "BenchmarkRunner",
     "AgentRoleExecutor",
     "RoleResult",
     "ArchitectAgent",

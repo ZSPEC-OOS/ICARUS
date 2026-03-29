@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from .change_simulator import ChangeSimulationResult, ChangeSimulator, ProposedEdit
-from .models import AgentRole, HandoffMessage, SubTask, TaskGraph, TaskStatus
+from .models import AgentRole, ConfidenceReport, HandoffMessage, SubTask, TaskGraph, TaskStatus
 
 
 class RoleResult(BaseModel):
@@ -17,6 +17,7 @@ class RoleResult(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
     evidence: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
+    confidence: ConfidenceReport
 
 
 class AgentRoleExecutor(ABC):
@@ -44,6 +45,12 @@ class ArchitectAgent(AgentRoleExecutor):
             payload=decisions,
             evidence=[f"architect:refined:{sub_task.id}"],
             notes="Architecture refinement complete",
+            confidence=ConfidenceReport(
+                score=0.87,
+                evidence=[{"type": "task_id", "value": sub_task.id}, {"type": "dependencies", "value": len(sub_task.dependencies)}],
+                uncertainties=[],
+                needs_human=False,
+            ),
         )
 
 
@@ -57,6 +64,12 @@ class BuilderAgent(AgentRoleExecutor):
                 payload={"patches": []},
                 evidence=[f"builder:failed:{sub_task.id}"],
                 notes="Patch generation failed",
+                confidence=ConfidenceReport(
+                    score=0.25,
+                    evidence=[{"type": "forced_failure", "value": True}],
+                    uncertainties=["Builder failure was externally forced"],
+                    needs_human=True,
+                ),
             )
 
         patch_plan = context.get("builder_patch_plan") or [
@@ -73,6 +86,15 @@ class BuilderAgent(AgentRoleExecutor):
                 payload={"patch_plan": patch_plan, "simulation": simulated_result.model_dump(mode="json")},
                 evidence=[f"builder:simulation_block:{sub_task.id}"],
                 notes="Change simulation blocked unsafe patch before any filesystem write",
+                confidence=ConfidenceReport(
+                    score=max(0.1, 1.0 - simulated_result.risk_score),
+                    evidence=[
+                        {"type": "risk_score", "value": simulated_result.risk_score},
+                        {"type": "warning_count", "value": len(simulated_result.warnings)},
+                    ],
+                    uncertainties=simulated_result.warnings,
+                    needs_human=True,
+                ),
             )
 
         return RoleResult(
@@ -80,6 +102,15 @@ class BuilderAgent(AgentRoleExecutor):
             payload={"patch_plan": patch_plan, "simulation": simulated_result.model_dump(mode="json")},
             evidence=[patch["file"] for patch in patch_plan],
             notes="Patch generation complete",
+            confidence=ConfidenceReport(
+                score=round(max(0.6, 1.0 - simulated_result.risk_score), 3),
+                evidence=[
+                    {"type": "patch_count", "value": len(patch_plan)},
+                    {"type": "risk_score", "value": simulated_result.risk_score},
+                ],
+                uncertainties=simulated_result.warnings,
+                needs_human=simulated_result.risk_score > 0.6,
+            ),
         )
 
     def _simulate_changes(self, context: Dict[str, Any]) -> ChangeSimulationResult:
@@ -126,6 +157,12 @@ class ReviewerAgent(AgentRoleExecutor):
                 payload={"coverage": coverage, "policy_ok": policy_ok, "simulation": simulated.model_dump(mode="json")},
                 evidence=[f"reviewer:block:{sub_task.id}"],
                 notes="Reviewer blocked task due to quality gate failure",
+                confidence=ConfidenceReport(
+                    score=0.35,
+                    evidence=[{"type": "coverage", "value": coverage}, {"type": "policy_ok", "value": policy_ok}],
+                    uncertainties=simulated.warnings,
+                    needs_human=True,
+                ),
             )
 
         return RoleResult(
@@ -133,6 +170,12 @@ class ReviewerAgent(AgentRoleExecutor):
             payload={"coverage": coverage, "policy_ok": policy_ok, "simulation": simulated.model_dump(mode="json")},
             evidence=[f"reviewer:approved:{sub_task.id}"],
             notes="Static analysis and policy checks passed",
+            confidence=ConfidenceReport(
+                score=0.9,
+                evidence=[{"type": "coverage", "value": coverage}, {"type": "policy_ok", "value": policy_ok}],
+                uncertainties=simulated.warnings,
+                needs_human=False,
+            ),
         )
 
 
@@ -147,6 +190,12 @@ class VerifierAgent(AgentRoleExecutor):
                 payload={"accepted": False, "reroute": AgentRole.BUILDER.value},
                 evidence=[f"verifier:failed:{sub_task.id}"],
                 notes="Acceptance tests failed",
+                confidence=ConfidenceReport(
+                    score=0.3,
+                    evidence=[{"type": "acceptance", "value": False}],
+                    uncertainties=["Acceptance criteria unmet"],
+                    needs_human=True,
+                ),
             )
 
         return RoleResult(
@@ -154,6 +203,12 @@ class VerifierAgent(AgentRoleExecutor):
             payload={"accepted": True},
             evidence=[f"verifier:passed:{sub_task.id}"],
             notes="Final acceptance tests passed",
+            confidence=ConfidenceReport(
+                score=0.93,
+                evidence=[{"type": "acceptance", "value": True}],
+                uncertainties=[],
+                needs_human=False,
+            ),
         )
 
 
@@ -161,13 +216,23 @@ class ExecutionTrace(BaseModel):
     objective: str
     task_states: Dict[str, TaskStatus]
     handoffs: List[HandoffMessage]
+    confidence: ConfidenceReport
 
     def to_markdown(self) -> str:
         lines = ["# Execution Trace", "", f"## Objective", self.objective, "", "## Task States"]
         for task_id in sorted(self.task_states):
             lines.append(f"- {task_id}: {self.task_states[task_id].value}")
 
-        lines.extend(["", "## Handoffs"])
+        lines.extend(
+            [
+                "",
+                "## Confidence",
+                f"- score: {self.confidence.score:.2f}",
+                f"- needs_human: {self.confidence.needs_human}",
+                "",
+                "## Handoffs",
+            ]
+        )
         for handoff in self.handoffs:
             lines.append(
                 f"- {handoff.timestamp.isoformat()} | {handoff.task_id} | "
@@ -227,6 +292,7 @@ class Orchestrator:
                     to_role=next_role,
                     payload=result.payload,
                     evidence=result.evidence,
+                    confidence=result.confidence,
                     timestamp=datetime.now(timezone.utc),
                 )
             )
@@ -262,7 +328,25 @@ class Orchestrator:
 
     def build_trace(self) -> ExecutionTrace:
         states = {task_id: sub_task.status for task_id, sub_task in self.task_graph.sub_tasks.items()}
-        return ExecutionTrace(objective=self.task_graph.objective, task_states=states, handoffs=self.handoff_history)
+        return ExecutionTrace(
+            objective=self.task_graph.objective,
+            task_states=states,
+            handoffs=self.handoff_history,
+            confidence=self._build_trace_confidence(states),
+        )
+
+    def _build_trace_confidence(self, states: Dict[str, TaskStatus]) -> ConfidenceReport:
+        total = max(1, len(states))
+        completed = len([state for state in states.values() if state == TaskStatus.COMPLETED])
+        blocked = len([state for state in states.values() if state == TaskStatus.BLOCKED])
+        score = max(0.05, min(0.99, (completed / total) - (blocked / total) * 0.3 + 0.55))
+        uncertainties = ["One or more tasks were blocked and need rerun"] if blocked else []
+        return ConfidenceReport(
+            score=round(score, 3),
+            evidence=[{"type": "completed", "value": completed}, {"type": "blocked", "value": blocked}],
+            uncertainties=uncertainties,
+            needs_human=blocked > 0,
+        )
 
     def persist_trace(self, output_path: str | Path) -> Path:
         path = Path(output_path)

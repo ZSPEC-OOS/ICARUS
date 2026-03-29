@@ -20,6 +20,7 @@ class OrchestratorTests(unittest.TestCase):
         trace = run_prompt_with_orchestration(self.prompt, planner=self.planner)
 
         self.assertGreater(len(trace.handoffs), 0)
+        self.assertIsNotNone(trace.confidence)
         self.assertTrue(all(state == TaskStatus.COMPLETED for state in trace.task_states.values()))
 
         first_task_handoffs = [h for h in trace.handoffs if h.task_id == sorted(trace.task_states.keys())[0]][:4]
@@ -76,6 +77,7 @@ class OrchestratorTests(unittest.TestCase):
         markdown = orchestrator.build_trace().to_markdown()
         self.assertIn("# Execution Trace", markdown)
         self.assertIn("## Handoffs", markdown)
+        self.assertIn("## Confidence", markdown)
 
 
 if __name__ == "__main__":
