@@ -17,6 +17,9 @@
 
 import { callWithToolsStreaming } from './aiService.js'
 import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS } from '../config/constants.js'
+import { resolveEnhancerConfig } from './enhancers/config.js'
+import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
+import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
 
 // ââ Session diary â Claude Code /compact pattern ââââââââââââââââââââââââââââââ
 // Accumulates a lightweight log of what has happened in the session.
@@ -167,12 +170,14 @@ export async function runAgentLoop({
   onEvent,
   signal,
   conversationHistory,  // optional prior turns [{role,content}] for context continuity
+  enhancerConfig: enhancerConfigOverrides,
 }) {
   // Detect once â avoids repeated URL-sniffing in every turn.
   // Supports proxy setups by checking the provider field if present, then URL.
   const isAnthropic = modelConfig.provider === 'anthropic' ||
     (!modelConfig.provider && modelConfig.baseUrl?.includes('api.anthropic.com'))
 
+  const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
   const filesChanged = []
   const recentSigs   = []   // rolling window of tool-call signatures for loop detection
   const diary        = makeSessionDiary()   // Claude Code-style session digest
@@ -187,7 +192,12 @@ export async function runAgentLoop({
     ...(conversationHistory?.length
       ? conversationHistory   // prior session turns for context continuity
       : []),
-    { role: 'user', content: task },
+    {
+      role: 'user',
+      content: enhancerConfig.structuredPrompting.enabled
+        ? enforceStructuredPrompt(task).promptText
+        : task,
+    },
   ]
 
   // Anthropic tool call needs system at top level, not in messages
@@ -230,7 +240,18 @@ export async function runAgentLoop({
 
     // ââ Model is done âââââââââââââââââââââââââââââââââââââââââââââââââââââ
     if (response.isDone || response.toolCalls.length === 0) {
-      onEvent({ type: 'done', text: response.text, filesChanged })
+      let finalText = response.text
+      if (enhancerConfig.critique.enabled) {
+        const critique = runCritiquePass({ draftText: response.text, config: enhancerConfig.critique })
+        onEvent({ type: 'critique', critique })
+        if (!critique.passed || critique.issues.length) {
+          finalText = `${response.text}
+
+[Self-check]
+${critique.summary}`
+        }
+      }
+      onEvent({ type: 'done', text: finalText, filesChanged })
       return
     }
 

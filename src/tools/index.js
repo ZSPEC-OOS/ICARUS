@@ -26,3 +26,6 @@ export * as analyzeStacktrace from './analyze-stacktrace.js'
 export * as findTechDebt     from './find-tech-debt.js'
 export * as checkUrlHealth   from './check-url-health.js'
 export * as jsonRepair       from './json-repair.js'
+
+export * as hybridSearch     from './hybrid-search.js'
+export * as retrieveContext  from './retrieve-context.js'

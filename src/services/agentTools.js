@@ -164,6 +164,30 @@ export const AGENT_TOOLS = [
       required: ['paths'],
     },
   },
+
+  {
+    name: 'hybrid_search',
+    description: 'Run hybrid lexical + vector retrieval over the indexed repo. Returns scored chunks with metadata.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query describing required context' },
+        limit: { type: 'number', description: 'Maximum number of chunks (default 8, max 20)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'retrieve_context',
+    description: 'Retrieve and rerank context for prompt grounding. Use before complex implementation decisions.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Grounding query, usually the task goal' },
+      },
+      required: ['query'],
+    },
+  },
   {
     name: 'web_fetch',
     description: 'Fetch a URL and return its text content. Best for reading documentation, API specs, or GitHub raw files. When the exec bridge is active the response is automatically converted from HTML to plain text.',

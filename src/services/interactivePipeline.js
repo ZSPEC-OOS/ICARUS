@@ -127,6 +127,8 @@ const TOOL_PHASE_MAP = {
   update_memory:       'finalizing',
   revert_file:         'coding',
   web_search:          'scoping',
+  hybrid_search:       'scoping',
+  retrieve_context:    'scoping',
   web_fetch:           'scoping',
 }
 
@@ -165,6 +167,8 @@ export function toolToLogMessage(name, input = {}) {
     case 'run_command':         return `Running: ${(input.cmd || '').slice(0, 60)}…`
     case 'lint_file':           return `Linting ${input.path || 'file'}…`
     case 'web_search':          return `Searching web: "${(input.query || '').slice(0, 40)}"…`
+    case 'hybrid_search':       return `Running hybrid retrieval for "${(input.query || '').slice(0, 40)}"…`
+    case 'retrieve_context':    return `Retrieving grounded context for "${(input.query || '').slice(0, 40)}"…`
     case 'web_fetch':           return `Fetching ${(input.url || '').slice(0, 50)}…`
     case 'create_pull_request': return `Creating PR: "${(input.title || '').slice(0, 50)}"…`
     case 'update_memory':       return 'Saving note to LOGIK.md…'

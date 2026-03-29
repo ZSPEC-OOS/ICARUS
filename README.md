@@ -40,3 +40,57 @@ If you deploy from the Render UI instead of a Blueprint, use:
 - **Build Command:** `npm ci && npm run build`
 - **Publish Directory:** `dist`
 
+
+## Enhancer Modules (Incremental Integration)
+
+This branch adds pluggable "high-impact enhancer" modules on top of the existing tool framework without breaking legacy flows.
+
+### New enhancer capabilities
+
+- **Structured Prompt Contract** middleware (Goal, Constraints, Inputs, Expected Outputs, Acceptance Tests).
+- **Self-check / Critique pass** after draft responses (rule-based checks by default).
+- **RAG retrieval tools** with hybrid scoring + reranking:
+  - `hybrid_search`
+  - `retrieve_context`
+- **Deep Reasoning workflow builder** (`createDeepReasoningWorkflow`) that composes:
+  1) complexity classification,
+  2) planning,
+  3) retrieval,
+  4) execution,
+  5) critique,
+  6) concise+detailed output rendering.
+
+### Central configuration
+
+Use `src/services/enhancers/config.js` to enable/disable each enhancer independently.
+By default, high-coupling enhancers are **off** to preserve backward compatibility.
+
+### Integration points
+
+- Agent loop middleware: `src/services/agentLoop.js`
+  - Structured prompt injection (optional)
+  - Critique event emitted before final `done`
+- Tool execution engine: `src/services/agentExecutor.js`
+  - Added RAG-backed tool handlers (`hybrid_search`, `retrieve_context`)
+- Modular tools registry: `src/tools/index.js`
+  - Added built-in tools (`hybrid-search`, `retrieve-context`) for tool pane usage.
+
+### Example deep-reasoning usage
+
+```js
+import { createDeepReasoningWorkflow } from './src/services/enhancers/deepReasoningPipeline.js'
+import { resolveEnhancerConfig } from './src/services/enhancers/config.js'
+
+const run = createDeepReasoningWorkflow({
+  enhancerConfig: resolveEnhancerConfig({ deepReasoning: { enabled: true }, rag: { enabled: true } }),
+  shadowContext,
+  planner: async ({ task }) => ({
+    steps: [`Analyze: ${task.goal}`, 'Implement change', 'Run validation', 'Summarize results'],
+    dependencies: [],
+  }),
+  runAgent: async (taskText) => ({ text: `Executed with task:\n${taskText}` }),
+})
+
+const result = await run('Goal: hard task\nConstraints: keep API stable')
+console.log(result.concise)
+```
