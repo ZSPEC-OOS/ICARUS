@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { highlightCode } from '../../utils/codeUtils.js'
 
-// âââ LogikCodePane ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ LogikCodePane Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 // Renders the Generated Code tab, including the refinement bar.
 const LogikCodePane = memo(function LogikCodePane({
   generatedCode,
@@ -19,18 +19,13 @@ const LogikCodePane = memo(function LogikCodePane({
   validationResults,
   livePlan = [],
 }) {
+  void hasGithub
+  void filePath
+  void pipelinePhase
+  void pipelineSteps
+
   return (
     <div className="lk-output" style={{ display: 'flex', flexDirection: 'column' }}>
-      {!!pipelineSteps?.length && (
-        <div className="lk-phase-tracker" aria-live="polite">
-          {pipelineSteps.map((step) => (
-            <span key={step.key} className={`lk-phase-pill lk-phase-pill--${step.state}`}>
-              {step.state === 'done' ? 'â' : step.state === 'active' ? 'â' : 'â'} {step.label}
-            </span>
-          ))}
-          <span className="lk-phase-current">Current: {pipelinePhase}</span>
-        </div>
-      )}
       {!!livePlan.length && (
         <div className="lk-validation-panel" style={{ marginTop: 8, marginBottom: 8 }}>
           <div className="lk-validation-title">Live Plan</div>
@@ -41,7 +36,7 @@ const LogikCodePane = memo(function LogikCodePane({
       )}
       <div className="lk-code-scroll" style={{ flex: 1 }}>
         {isGenerating && !generatedCode && (
-          <div className="lk-generating"><span className="lk-spinner" /> Generatingâ¦</div>
+          <div className="lk-generating"><span className="lk-spinner" /> GeneratingÃ¢ÂÂ¦</div>
         )}
         {generatedCode ? (
           <pre className="lk-pre">
@@ -66,16 +61,16 @@ const LogikCodePane = memo(function LogikCodePane({
           )}
           <input
             className="lk-input lk-refine-input"
-            placeholder={`Refine: 'make it async', 'add error handling', 'add JSDoc'â¦`}
+            placeholder={`Refine: 'make it async', 'add error handling', 'add JSDoc'Ã¢ÂÂ¦`}
             value={refinementPrompt}
             onChange={e => onRefinementChange(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onRefine() } }}
           />
           <button className="lk-btn lk-btn--refine" onClick={onRefine} disabled={!refinementPrompt.trim()}>
-            âº Refine
+            Ã¢ÂÂº Refine
           </button>
           <button className="lk-btn lk-btn--reset" onClick={onReset} title="Clear conversation and start over">
-            â
+            Ã¢ÂÂ
           </button>
         </div>
       )}
