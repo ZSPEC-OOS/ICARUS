@@ -13,6 +13,9 @@ class MemoryNodeType(str, Enum):
     CONVENTION = "convention"
     PRIOR_FIX = "prior_fix"
     CRITIQUE_OUTCOME = "critique_outcome"
+    RELIABILITY_RUN = "reliability_run"
+    ROLLBACK_OUTCOME = "rollback_outcome"
+    BENCHMARK_RUN = "benchmark_run"
 
 
 class MemoryEdgeType(str, Enum):

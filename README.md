@@ -94,3 +94,25 @@ const run = createDeepReasoningWorkflow({
 const result = await run('Goal: hard task\nConstraints: keep API stable')
 console.log(result.concise)
 ```
+
+## Nightly Benchmark Suite (Evaluation Moat)
+
+Run the local benchmark harness:
+
+```bash
+npm run benchmark:nightly
+```
+
+Outputs are written to `.logik/benchmarks/`:
+- `latest.json` machine-readable metrics and regression signals
+- `<suite>.json` historical report snapshot
+- `<suite>.md` comparative markdown summary
+
+Tracked metrics:
+- correctness rate
+- AST-aware edit distance (normalized syntax proxy)
+- test pass rate
+- time-to-green
+- cost per task
+
+CI automation is defined in `.github/workflows/nightly-benchmark.yml` and uploads nightly artifacts.
