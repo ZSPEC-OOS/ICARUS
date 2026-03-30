@@ -122,3 +122,22 @@ export function detectApiSignatureChange(beforeContent = '', afterContent = '') 
   }
   return serialize(beforeContent) !== serialize(afterContent)
 }
+
+
+export function evaluateBenchmarkRegressionGate({ benchmarkReport = null, required = false } = {}) {
+  if (!benchmarkReport) {
+    return {
+      id: 'benchmark_regression',
+      passed: !required,
+      detail: required ? 'benchmark report required but missing' : 'benchmark gate skipped',
+      regressions: [],
+    }
+  }
+  const regressions = benchmarkReport.regressions || []
+  return {
+    id: 'benchmark_regression',
+    passed: regressions.length === 0,
+    detail: regressions.length ? regressions.join('; ') : 'no regressions detected',
+    regressions,
+  }
+}

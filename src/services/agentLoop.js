@@ -4,7 +4,7 @@ import { resolveEnhancerConfig } from './enhancers/config.js'
 import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
 import { memoryGraphService } from './memoryGraphService.js'
 import { createReliabilityLoopFSM } from './reliability/fsm.js'
-import { evaluateReliabilityGates, detectApiSignatureChange } from './reliability/gateEvaluators.js'
+import { evaluateReliabilityGates, detectApiSignatureChange, evaluateBenchmarkRegressionGate } from './reliability/gateEvaluators.js'
 import { createRollbackHandler } from './reliability/rollbackHandler.js'
 import { setTraceLoopState } from './toolTraceStore.js'
 import { semanticCacheService } from './efficiency/cacheService.js'
@@ -297,6 +297,15 @@ export async function runAgentLoop({
         if (!qualityFloor.passed) {
           verification.passed = false
           verification.failedGateIds = [...(verification.failedGateIds || []), 'quality_floor']
+        }
+        const benchmarkGate = evaluateBenchmarkRegressionGate({
+          benchmarkReport: enhancerConfig?.reliability?.benchmarkReport || null,
+          required: Boolean(enhancerConfig?.reliability?.requireBenchmarkPass),
+        })
+        verification.gates = [...(verification.gates || []), benchmarkGate]
+        if (!benchmarkGate.passed) {
+          verification.passed = false
+          verification.failedGateIds = [...(verification.failedGateIds || []), benchmarkGate.id]
         }
         onEvent({ type: 'quality_floor', qualityFloor })
         onEvent({ type: 'verification', verification })

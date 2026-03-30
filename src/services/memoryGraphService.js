@@ -60,7 +60,7 @@ class MemoryGraphService {
     this.nodes = new Map()
     this.edges = new Map()
     this.meta = {
-      version: 1,
+      version: 2,
       updatedAt: nowIso(),
       repoKey: null,
       persistence: 'localStorage',
@@ -282,6 +282,32 @@ class MemoryGraphService {
       summary: shortSummary(`reason=${reason} strategy=${strategy} touched=${trace.length} errors=${errors.join('; ')}`, 420),
       tags: ['rollback', passed ? 'passed' : 'failed'],
       metadata: { reason, strategy, traceLength: trace.length, errors },
+    })
+  }
+
+
+
+  ingestBenchmarkRun(report = {}) {
+    this.init()
+    const suiteVersion = report.suiteVersion || `suite-${Date.now()}`
+    const nodeId = `benchmark:${stableHash(suiteVersion)}`
+    return this.upsertNode({
+      id: nodeId,
+      type: 'benchmark_run',
+      title: `Benchmark ${suiteVersion}`,
+      summary: shortSummary(`correctness=${report.correctnessRate} passRate=${report.testPassRate} t2gMs=${report.timeToGreenMs} costPerTask=${report.costPerTask} regressions=${(report.regressions || []).join(', ')}`),
+      tags: ['benchmark', report.regressions?.length ? 'regression' : 'healthy'],
+      metadata: {
+        suiteVersion,
+        baselineVersion: report.baselineVersion || null,
+        correctnessRate: report.correctnessRate,
+        astEditDistance: report.astEditDistance,
+        testPassRate: report.testPassRate,
+        timeToGreenMs: report.timeToGreenMs,
+        costPerTask: report.costPerTask,
+        regressions: report.regressions || [],
+      },
+      evidence: (report.tasks || []).map(task => `${task.name}:${task.correctness ? 'pass' : 'fail'}`),
     })
   }
 
