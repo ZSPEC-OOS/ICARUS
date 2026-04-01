@@ -47,6 +47,7 @@ import LogikActivityFeed     from './logik/LogikActivityFeed'
 import LogikCodePane         from './logik/LogikCodePane'
 import LogikDiffViewer       from './logik/LogikDiffViewer'
 import LogikDiffConfidence   from './logik/LogikDiffConfidence'
+import LogikTaskContext      from './logik/LogikTaskContext'
 import LogikTaskLanes        from './logik/LogikTaskLanes'
 import LogikTerminal         from './logik/LogikTerminal'
 import LogikToolsPane        from './logik/LogikToolsPane'
@@ -1921,6 +1922,16 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             </div>
           )}
 
+          {/* ── Task context header — intent, goal, phase strip ──────────────── */}
+          {agentSession.isAgentRunning && (
+            <LogikTaskContext
+              intent={agentSession.agentIntent}
+              task={agentSession.agentTask}
+              agentPhase={agentSession.agentPhase}
+              orchDecision={agentSession.orchDecision}
+            />
+          )}
+
           {/* ── Parallel task lanes — shown when orchestration is active ──────── */}
           {agentSession.orchLanes?.length > 0 && (
             <LogikTaskLanes lanes={agentSession.orchLanes} />
@@ -1938,6 +1949,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               conversation={conversation}
               agentIntent={agentSession.agentIntent}
               agentTask={agentSession.agentTask}
+              agentPhase={agentSession.agentPhase}
             />
           )}
 
