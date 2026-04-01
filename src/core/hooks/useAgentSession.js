@@ -19,6 +19,7 @@ import {
   inferPhaseFromTool,
   toolToLogMessage,
 } from '../../services/interactivePipeline.js'
+import { applyLaneEvent } from '../../components/logik/LogikTaskLanes.jsx'
 
 // Read-only tools — used when planMode is active (no writes, no shell exec)
 const PLAN_MODE_TOOLS = new Set([
@@ -47,6 +48,7 @@ export function useAgentSession({
   onAgentStart,       // (task) => void — fires immediately when agent begins (add user bubble)
   onAgentComplete,    // (task, text) => void — fires on every done (add assistant bubble)
   localDirHandle,     // FileSystemDirectoryHandle | null — local folder instead of GitHub
+  availableModels,    // object[] — full model list for orchestration router
 }) {
   const [isAgentRunning,  setIsAgentRunning]  = useState(false)
   const [agentSummary,    setAgentSummary]    = useState('')
@@ -57,6 +59,11 @@ export function useAgentSession({
   const [agentTask,       setAgentTask]       = useState(null)
   // Layer 3: current inferred phase (updates on each tool call)
   const [agentPhase,      setAgentPhase]      = useState('understanding')
+  // 4.1 / 4.2: orchestration routing state
+  const [orchLanes,       setOrchLanes]       = useState([])   // task lane cards
+  const [orchDecision,    setOrchDecision]    = useState(null) // latest routing decision
+  const [lastVerification,setLastVerification]= useState(null) // reliability gate result
+  const [lastCritique,    setLastCritique]    = useState(null) // critique pass result
 
   const streamTextRef   = useRef('')
   const abortRef        = useRef(null)
@@ -131,12 +138,19 @@ export function useAgentSession({
     const startId = logActivity('agent', `⚡ [${intentLabel}] "${task.slice(0, 60)}"`)
     onSetActiveTab?.('activity')
 
+    // Reset orchestration state for this run
+    setOrchLanes([])
+    setOrchDecision(null)
+    setLastVerification(null)
+    setLastCritique(null)
+
     try { await runAgentLoop({
       task,
       systemPrompt,
       tools,
       executeTool: executor,
       modelConfig,
+      availableModels: availableModels || [],
       signal:      ctrl.signal,
       conversationHistory,
       onEvent: (ev) => {
@@ -215,6 +229,7 @@ export function useAgentSession({
             // Layer 2: mark task completed
             setAgentTask(prev => prev ? { ...prev, status: 'completed' } : prev)
             setAgentPhase('complete')
+            setOrchLanes(prev => applyLaneEvent(prev, ev))
             updateActivity(startId, {
               status: 'done',
               msg: `⚡ Agent done — ${ev.filesChanged?.length || 0} file(s) changed`,
@@ -229,8 +244,47 @@ export function useAgentSession({
           case 'error':
             // Layer 2: mark task interrupted
             setAgentTask(prev => prev ? { ...prev, status: 'interrupted' } : prev)
+            setOrchLanes(prev => applyLaneEvent(prev, ev))
             logActivity('error', `✗ Agent error: ${ev.message}`)
             updateActivity(startId, { status: 'error', msg: `⚡ Agent failed — ${ev.message}` })
+            break
+
+          // ── 4.1 / 4.2: Orchestration events ─────────────────────────────
+          case 'orchestration': {
+            setOrchDecision({
+              role:       ev.role,
+              confidence: ev.confidence,
+              strategy:   ev.strategy,
+              modelId:    ev.modelId,
+              reasoning:  ev.reasoning,
+              scores:     ev.scores,
+            })
+            setOrchLanes(prev => applyLaneEvent(prev, ev))
+            const confPct = Math.round((ev.confidence ?? 0) * 100)
+            logActivity('agent', `◈ ${ev.role} → ${ev.modelId || '—'} (${confPct}% conf)`)
+            break
+          }
+
+          case 'orchestration_fallback':
+            setOrchLanes(prev => applyLaneEvent(prev, ev))
+            logActivity('warn', `⚠ fallback: ${ev.fromModelId} → ${ev.toModelId}`)
+            break
+
+          case 'orchestration_fallback_used':
+            setOrchLanes(prev => applyLaneEvent(prev, ev))
+            break
+
+          case 'orchestration_ensemble':
+            setOrchLanes(prev => applyLaneEvent(prev, ev))
+            logActivity('agent', `≡ ensemble: [${(ev.modelsUsed || []).join(', ')}]`)
+            break
+
+          case 'verification':
+            setLastVerification(ev.verification || null)
+            break
+
+          case 'critique':
+            setLastCritique(ev.critique || null)
             break
 
           default: break
@@ -251,7 +305,7 @@ export function useAgentSession({
     }
   }, [modelConfig, githubConfig, sourceRepoConfig, bridgeAvailable, webSearchApiKey, planMode,
       logActivity, updateActivity, clearActivity, activityRef, onFileWrite, onSetActiveTab, onSetError, onPromptClear,
-      onPlanDone, onAgentStart, onAgentComplete])
+      onPlanDone, onAgentStart, onAgentComplete, availableModels])
 
   const abort = useCallback(() => {
     abortRef.current?.abort()
@@ -263,6 +317,8 @@ export function useAgentSession({
     isAgentRunning, agentSummary, agentFiles, agentStreamText,
     // Layer 1+2+3 new exports
     agentIntent, agentTask, agentPhase,
+    // 4.1 / 4.2: orchestration exports
+    orchLanes, orchDecision, lastVerification, lastCritique,
     abortRef, run, abort,
   }
 }

@@ -43,13 +43,15 @@ import {
   LOGIK_MD_CAP,
   STYLE_EXAMPLES_LIMIT,
 } from '../config/constants'
-import LogikActivityFeed from './logik/LogikActivityFeed'
-import LogikCodePane     from './logik/LogikCodePane'
-import LogikDiffViewer   from './logik/LogikDiffViewer'
-import LogikTerminal     from './logik/LogikTerminal'
-import LogikToolsPane    from './logik/LogikToolsPane'
-import LogikSettings     from './logik/LogikSettings'
-import LogikModularTools from './logik/LogikModularTools'
+import LogikActivityFeed     from './logik/LogikActivityFeed'
+import LogikCodePane         from './logik/LogikCodePane'
+import LogikDiffViewer       from './logik/LogikDiffViewer'
+import LogikDiffConfidence   from './logik/LogikDiffConfidence'
+import LogikTaskLanes        from './logik/LogikTaskLanes'
+import LogikTerminal         from './logik/LogikTerminal'
+import LogikToolsPane        from './logik/LogikToolsPane'
+import LogikSettings         from './logik/LogikSettings'
+import LogikModularTools     from './logik/LogikModularTools'
 import './Logik.css'
 
 // ─── Persistence ────────────────────────────────────────────────────────────
@@ -414,6 +416,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     onAgentStart:    (task) => setConversation(prev => [...prev, { role: 'user', content: task }]),
     onAgentComplete: (task, text) => { if (text?.trim()) setConversation(prev => [...prev, { role: 'assistant', content: text }]) },
     localDirHandle,
+    availableModels: models || [],
   })
 
   // ── Cost estimate (memoized) ───────────────────────────────────────────
@@ -1918,6 +1921,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             </div>
           )}
 
+          {/* ── Parallel task lanes — shown when orchestration is active ──────── */}
+          {agentSession.orchLanes?.length > 0 && (
+            <LogikTaskLanes lanes={agentSession.orchLanes} />
+          )}
+
           {/* ── Agent activity feed — shown when agent is running or has output ── */}
           {(agentSession.isAgentRunning || activityLog.length > 0) && (
             <LogikActivityFeed
@@ -1990,7 +1998,14 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           </div>
 
           {effectiveActiveTab === 'diff' && (
-            <LogikDiffViewer diffText={diffText} patchEdits={patchEdits} />
+            <LogikDiffConfidence
+              diffText={diffText}
+              patchEdits={patchEdits}
+              verification={agentSession.lastVerification}
+              critique={agentSession.lastCritique}
+              orchestration={agentSession.orchDecision}
+              usedFallback={agentSession.orchLanes?.some(l => l.usedFallback)}
+            />
           )}
 
 
