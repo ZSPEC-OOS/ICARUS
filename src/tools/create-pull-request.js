@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Create a GitHub pull request from the current working branch to the base branch.',
   category: 'coding',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

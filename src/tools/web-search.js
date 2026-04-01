@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Search the web for up-to-date information using Tavily. Requires a Tavily API key in Settings.',
   category: 'utility',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

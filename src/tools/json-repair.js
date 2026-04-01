@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Attempt lightweight repair of malformed JSON (single quotes, trailing commas) and validate output.',
   category: 'coding',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 function attemptRepair(raw) {

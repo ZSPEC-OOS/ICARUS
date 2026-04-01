@@ -1,8 +1,8 @@
 import { memo } from 'react'
 
-// ─── LogikTerminal ────────────────────────────────────────────────────────────
+// ─── IcarusTerminal ────────────────────────────────────────────────────────────
 // Interactive terminal: JS/Python sandbox execution + real shell via exec bridge.
-const LogikTerminal = memo(function LogikTerminal({
+const IcarusTerminal = memo(function IcarusTerminal({
   terminalLog,
   terminalInput,
   onInputChange,
@@ -66,4 +66,4 @@ const LogikTerminal = memo(function LogikTerminal({
   )
 })
 
-export default LogikTerminal
+export default IcarusTerminal

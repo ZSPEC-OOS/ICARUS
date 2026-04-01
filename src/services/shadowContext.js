@@ -1,5 +1,5 @@
 // ─── ShadowContext — Phase 4 ─────────────────────────────────────────────────
-// Background indexes the connected GitHub repo so LOGIK knows which files exist,
+// Background indexes the connected GitHub repo so ICARUS knows which files exist,
 // what conventions the project uses, and can suggest file paths without asking.
 // Now also indexes file contents (symbols, imports, previews) for content-aware
 // relevance scoring and cached context delivery.
@@ -48,7 +48,7 @@ class ShadowContextStore {
     this._conventions  = null
     this._repoKey      = null
     this._config       = null
-    this.logikMd       = null
+    this.icarusMd       = null
     this.isIndexing    = false
     this.isReady       = false
     this._onUpdate     = null
@@ -87,7 +87,7 @@ class ShadowContextStore {
     this._importGraph  = {}
     this._importedBy   = {}
     this._conventions  = null
-    this.logikMd       = null
+    this.icarusMd       = null
     this._repoKey      = key
     this._config       = { token, owner, repo, branch }
     this.isReady       = false
@@ -120,7 +120,7 @@ class ShadowContextStore {
   }
 
   getConventions() { return this._conventions }
-  getLogikMd()     { return this.logikMd }
+  getIcarusMd()     { return this.icarusMd }
 
   // Regex search across indexed file content.
   // Returns [{path, line, text}] — max 200 results.
@@ -149,7 +149,7 @@ class ShadowContextStore {
   // Aider-style repo map: a compact symbol index ranked by import-graph centrality.
   // Returns a string like:
   //   src/services/agentLoop.js: runAgentLoop, pruneMessages
-  //   src/components/Logik.jsx: Logik
+  //   src/components/Icarus.jsx: Icarus
   // Ranked by in-degree (most-imported files first), token-budgeted by maxChars.
   buildRepoMap(maxChars = 3000) {
     const index = this._contentIndex
@@ -580,13 +580,13 @@ class ShadowContextStore {
       } catch {}
     }
 
-    // Fetch LOGIK.md for standing project instructions
+    // Fetch ICARUS.md for standing project instructions
     if (this._config) {
       try {
         const { token, owner, repo, branch } = this._config
-        const logikFile = await getFileContent(token, owner, repo, 'LOGIK.md', branch)
-        if (logikFile?.content) {
-          this.logikMd = decodeBase64(logikFile.content)
+        const icarusFile = await getFileContent(token, owner, repo, 'ICARUS.md', branch)
+        if (icarusFile?.content) {
+          this.icarusMd = decodeBase64(icarusFile.content)
         }
       } catch {}
     }

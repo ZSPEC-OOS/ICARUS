@@ -6,7 +6,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Hybrid lexical + vector-like retrieval over indexed repository content.',
   category: 'analysis',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

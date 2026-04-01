@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'logik:memory-graph:v1'
+const STORAGE_KEY = 'icarus:memory-graph:v1'
 const VECTOR_DIM = 128
 const MAX_FILE_INGEST_CHARS = 4000
 
@@ -64,7 +64,7 @@ class MemoryGraphService {
       updatedAt: nowIso(),
       repoKey: null,
       persistence: 'localStorage',
-      sqlitePath: '.logik/memory/graph.sqlite',
+      sqlitePath: '.icarus/memory/graph.sqlite',
       vectorIndex: 'hashed-cosine:v1',
     }
     this._loaded = false
@@ -116,7 +116,7 @@ class MemoryGraphService {
         dynamicImport('node:fs/promises'),
         dynamicImport('node:path'),
       ])
-      const dir = pathMod.resolve(process.cwd(), '.logik', 'memory')
+      const dir = pathMod.resolve(process.cwd(), '.icarus', 'memory')
       await mkdir(dir, { recursive: true })
       await writeFile(pathMod.join(dir, 'graph.json'), JSON.stringify(snapshot, null, 2), 'utf8')
     } catch {

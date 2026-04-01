@@ -1,4 +1,4 @@
-// ─── LogikFusionPanel ────────────────────────────────────────────────────────
+// ─── IcarusFusionPanel ────────────────────────────────────────────────────────
 // Full-page Fusion view: attach a source repo, then absorb its best material.
 
 import { memo } from 'react'
@@ -112,7 +112,7 @@ Close with a structured summary:
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const LogikFusionPanel = memo(function LogikFusionPanel({
+const IcarusFusionPanel = memo(function IcarusFusionPanel({
   sourceRepo,      // { owner, repo, branch }
   targetRepo,      // { owner, repo, branch }
   onRunRitual,     // (prompt: string) => void
@@ -271,4 +271,4 @@ const LogikFusionPanel = memo(function LogikFusionPanel({
   )
 })
 
-export default LogikFusionPanel
+export default IcarusFusionPanel

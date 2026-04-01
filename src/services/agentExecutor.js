@@ -13,7 +13,7 @@
 //   grep              → ShadowContext content index (regex search)
 //   web_fetch         → exec bridge curl | direct fetch fallback
 //   web_search        → Tavily REST API
-//   update_memory     → appends note to LOGIK.md via GitHub API
+//   update_memory     → appends note to ICARUS.md via GitHub API
 //   token_io_optimizer → returns a quality-preserving token optimization plan
 //   run_command       → Vite exec bridge (POST /api/exec)
 //   create_pull_request → GitHub Pulls API
@@ -476,7 +476,7 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
       // ── update_memory ──────────────────────────────────────────────────
       case 'update_memory': {
-        const memPath = 'LOGIK.md'
+        const memPath = 'ICARUS.md'
         const existing = await getFileContent(token, owner, repo, memPath, branch)
         const current  = existing?.content ? decodeBase64(existing.content) : ''
         const today    = new Date().toISOString().slice(0, 10)

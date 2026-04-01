@@ -1,6 +1,6 @@
 // ─── firebaseService ──────────────────────────────────────────────────────────
 // Firebase initialisation, authentication, and cloud settings persistence.
-// Project: logik-89579
+// Project: icarus-89579
 //
 // Settings are saved to Firestore at users/{uid}/settings.
 // Sensitive fields (API keys, tokens) are XOR-encrypted with the user's UID
@@ -8,14 +8,14 @@
 
 import { initializeApp, getApps } from 'firebase/app'
 
-const FB_CONFIG_KEY = 'logik:firebase'
+const FB_CONFIG_KEY = 'icarus:firebase'
 
 // ── Hardcoded project config ──────────────────────────────────────────────────
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey:            'AIzaSyDvrUk8NGHI3H7LV02Y0bIyoku-WXEzhDE',
-  authDomain:        'logik-89579.firebaseapp.com',
-  projectId:         'logik-89579',
-  storageBucket:     'logik-89579.firebasestorage.app',
+  authDomain:        'icarus-89579.firebaseapp.com',
+  projectId:         'icarus-89579',
+  storageBucket:     'icarus-89579.firebasestorage.app',
   messagingSenderId: '940295059330',
   appId:             '1:940295059330:web:30d7b075de7ca9450c419b',
 }
@@ -132,7 +132,7 @@ export function onAuthStateChange(callback) {
       if (cancelled) return
       realUnsub = onAuthStateChanged(auth, callback)
     } catch (err) {
-      console.warn('[Logik] onAuthStateChange setup failed:', err.message)
+      console.warn('[Icarus] onAuthStateChange setup failed:', err.message)
       // Fire callback with null so the app doesn't stay on the loading screen
       if (!cancelled) callback(null)
     }
@@ -227,7 +227,7 @@ export async function saveUserSettings(uid, settings) {
 
     await setDoc(doc(db, 'users', uid, 'data', 'settings'), payload)
   } catch (err) {
-    console.warn('[Logik] saveUserSettings failed:', err.message)
+    console.warn('[Icarus] saveUserSettings failed:', err.message)
   }
 }
 
@@ -270,7 +270,7 @@ export async function saveUserConversation(uid, messages = []) {
       { merge: true },
     )
   } catch (err) {
-    console.warn('[Logik] saveUserConversation failed:', err.message)
+    console.warn('[Icarus] saveUserConversation failed:', err.message)
   }
 }
 
@@ -284,7 +284,7 @@ export async function loadUserConversation(uid) {
     const data = snap.data()
     return Array.isArray(data?.messages) ? data.messages : []
   } catch (err) {
-    console.warn('[Logik] loadUserConversation failed:', err.message)
+    console.warn('[Icarus] loadUserConversation failed:', err.message)
     return []
   }
 }

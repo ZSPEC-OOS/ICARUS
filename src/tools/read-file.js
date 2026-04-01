@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Read the contents of a file from the connected GitHub repository, with optional line range.',
   category: 'coding',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

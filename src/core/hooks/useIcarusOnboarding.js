@@ -1,11 +1,11 @@
-// ─── useLogikOnboarding — non-coder setup wizard hook ─────────────────────────
+// ─── useIcarusOnboarding — non-coder setup wizard hook ─────────────────────────
 //
 // Drives the step-by-step onboarding experience for users with no coding
 // background. Persists progress in localStorage so they can close and return.
 //
-// Usage in Logik.jsx (or a wrapper component):
+// Usage in Icarus.jsx (or a wrapper component):
 //
-//   import { useLogikOnboarding } from '../core/hooks/useLogikOnboarding'
+//   import { useIcarusOnboarding } from '../core/hooks/useIcarusOnboarding'
 //
 //   const {
 //     showOnboarding,      // boolean — whether to render the onboarding panel
@@ -21,7 +21,7 @@
 //     addTip,              // (triggerId) => void — surface a tip for a trigger
 //     dismissTip,          // (tipId) => void
 //     activeTips,          // currently visible tips
-//   } = useLogikOnboarding(settings)
+//   } = useIcarusOnboarding(settings)
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -32,10 +32,10 @@ import {
   getIncompleteSteps,
   isOnboardingComplete,
   isSimpleMode,
-} from '../../services/logikSimpleMode.js'
+} from '../../services/icarusSimpleMode.js'
 
-const ONBOARDING_KEY  = 'logik:onboarding'       // localStorage — persisted state
-const MANUAL_DONE_KEY = 'logik:onboarding:manual' // which manual steps user confirmed
+const ONBOARDING_KEY  = 'icarus:onboarding'       // localStorage — persisted state
+const MANUAL_DONE_KEY = 'icarus:onboarding:manual' // which manual steps user confirmed
 
 // ── State helpers ─────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ function saveManualDone(ids) {
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useLogikOnboarding(settings = {}) {
+export function useIcarusOnboarding(settings = {}) {
 
   // Onboarding panel visibility
   const [dismissed, setDismissed] = useState(() => {
@@ -181,4 +181,4 @@ export function useLogikOnboarding(settings = {}) {
   }
 }
 
-export default useLogikOnboarding
+export default useIcarusOnboarding

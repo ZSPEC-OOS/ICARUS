@@ -1,6 +1,6 @@
 import { schemaVersion } from '../tools/contracts.js'
 
-const TRACE_STORAGE_KEY = 'logik:tool-traces:jsonl'
+const TRACE_STORAGE_KEY = 'icarus:tool-traces:jsonl'
 const MAX_TRACE_LINES = 2000
 let activeLoopState = null
 

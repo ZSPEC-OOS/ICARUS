@@ -40,26 +40,26 @@ import { pickDirectory }     from '../services/localFileService.js'
 import {
   CONTEXT_FILES_LIMIT,
   FILE_CONTENT_CAP_CHARS,
-  LOGIK_MD_CAP,
+  ICARUS_MD_CAP,
   STYLE_EXAMPLES_LIMIT,
 } from '../config/constants'
-import LogikActivityFeed     from './logik/LogikActivityFeed'
-import LogikCodePane         from './logik/LogikCodePane'
-import LogikDiffViewer       from './logik/LogikDiffViewer'
-import LogikDiffConfidence   from './logik/LogikDiffConfidence'
-import LogikTaskContext      from './logik/LogikTaskContext'
-import LogikTaskLanes        from './logik/LogikTaskLanes'
-import LogikTerminal         from './logik/LogikTerminal'
-import LogikToolsPane        from './logik/LogikToolsPane'
-import LogikSettings         from './logik/LogikSettings'
-import LogikModularTools     from './logik/LogikModularTools'
-import './Logik.css'
+import IcarusActivityFeed     from './icarus/IcarusActivityFeed'
+import IcarusCodePane         from './icarus/IcarusCodePane'
+import IcarusDiffViewer       from './icarus/IcarusDiffViewer'
+import IcarusDiffConfidence   from './icarus/IcarusDiffConfidence'
+import IcarusTaskContext      from './icarus/IcarusTaskContext'
+import IcarusTaskLanes        from './icarus/IcarusTaskLanes'
+import IcarusTerminal         from './icarus/IcarusTerminal'
+import IcarusToolsPane        from './icarus/IcarusToolsPane'
+import IcarusSettings         from './icarus/IcarusSettings'
+import IcarusModularTools     from './icarus/IcarusModularTools'
+import './Icarus.css'
 
 // ─── Persistence ────────────────────────────────────────────────────────────
-const SETTINGS_KEY    = 'logik:settings'
-const HISTORY_KEY     = 'logik:history'
-const GHTOKEN_SS_KEY  = 'logik:ghtoken'
-const GHTOKEN2_SS_KEY = 'logik:ghtoken2'
+const SETTINGS_KEY    = 'icarus:settings'
+const HISTORY_KEY     = 'icarus:history'
+const GHTOKEN_SS_KEY  = 'icarus:ghtoken'
+const GHTOKEN2_SS_KEY = 'icarus:ghtoken2'
 
 function loadSettings() {
   try {
@@ -89,7 +89,7 @@ function saveHistory(h) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify
 // ─── Utilities imported from ../utils/codeUtils and ../utils/diff ────────────
 
 // ─── Pure system-prompt builder (no hooks — safe to call inside async loops) ──
-function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName, forTests = false, logikMd = null, contextFiles = [], styleExamples = []) {
+function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName, forTests = false, icarusMd = null, contextFiles = [], styleExamples = []) {
   const repoCtx  = repoOwner && repoName ? `\nRepository: ${repoOwner}/${repoName}.` : ''
   const editMode = existingContent !== null ? 'patch' : 'replace'
   // Suppress framework conventions for standalone file types (html, sh, yaml, etc.)
@@ -109,8 +109,8 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
       ? `  Import aliases: ${Object.entries(conv.pathAliases).map(([k, v]) => `${k}/ → ${v}/`).join(', ')}` : '',
   ].filter(Boolean).join('\n') : ''
 
-  // LOGIK.md standing instructions
-  const logikMdCtx = logikMd ? `\nPROJECT INSTRUCTIONS (from LOGIK.md — follow exactly):\n${logikMd.slice(0, LOGIK_MD_CAP)}` : ''
+  // ICARUS.md standing instructions
+  const icarusMdCtx = icarusMd ? `\nPROJECT INSTRUCTIONS (from ICARUS.md — follow exactly):\n${icarusMd.slice(0, ICARUS_MD_CAP)}` : ''
 
   // Style patterns: short excerpts from existing similar files — model should match this style
   const styleCtx = styleExamples.length > 0
@@ -126,18 +126,18 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
 
   if (forTests) {
     const tf = conv?.testFramework !== 'unknown' ? conv.testFramework : 'Jest/Vitest for JS/TS, pytest for Python'
-    return [`You are LOGIK, an expert test-writing assistant.${repoCtx}`,
+    return [`You are ICARUS, an expert test-writing assistant.${repoCtx}`,
       `Generate a complete, production-ready test file for the provided ${lang} code.`,
-      `Use ${tf}.`, convCtx, logikMdCtx,
+      `Use ${tf}.`, convCtx, icarusMdCtx,
       `Output ONLY the test code — no markdown fences, no explanations.`,
     ].filter(Boolean).join('\n')
   }
 
   const lines = [
-    `You are LOGIK, an expert coding assistant. Generate clean, production-ready ${lang} code.${repoCtx}`,
+    `You are ICARUS, an expert coding assistant. Generate clean, production-ready ${lang} code.${repoCtx}`,
     `Follow existing codebase conventions. Add comments only where logic is non-obvious.`,
     convCtx,
-    logikMdCtx,
+    icarusMdCtx,
     styleCtx,
     contextCtx,
   ].filter(Boolean)
@@ -162,7 +162,7 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-export default function Logik({ onClose, models, setModels, selectedModelId, onModelChange, onSettingsChanged, onLogout, userEmail }) {
+export default function Icarus({ onClose, models, setModels, selectedModelId, onModelChange, onSettingsChanged, onLogout, userEmail }) {
   const saved = loadSettings()
 
   // ── Config ─────────────────────────────────────────────────────────────
@@ -268,13 +268,13 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
   // 'ask'    — confirm dialog before any GitHub write
   // 'manual' — user must click a second time (dry-run first, then confirm)
   const [permissionMode, setPermissionMode] = useState(
-    () => localStorage.getItem('logik:permMode') || 'ask'
+    () => localStorage.getItem('icarus:permMode') || 'ask'
   )
 
   // ── Agent mode ─────────────────────────────────────────────────────────────
   const [isRunningPostPushTests, setIsRunningPostPushTests] = useState(false)
-  const [logikMdDraft,    setLogikMdDraft]    = useState('')
-  const [isSavingLogikMd, setIsSavingLogikMd] = useState(false)
+  const [icarusMdDraft,    setIcarusMdDraft]    = useState('')
+  const [isSavingIcarusMd, setIsSavingIcarusMd] = useState(false)
 
   // ── UI state ───────────────────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false)
@@ -557,7 +557,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         // Pipe code directly to eslint via stdin — catches real parse + lint errors
         const ext = lang === 'typescript' ? 'ts' : 'js'
         const lint = await callExecBridge(
-          `npx eslint --stdin --stdin-filename=logik-check.${ext} --format=compact --rule '{"no-undef":"error","no-unused-vars":"warn"}'`,
+          `npx eslint --stdin --stdin-filename=icarus-check.${ext} --format=compact --rule '{"no-undef":"error","no-unused-vars":"warn"}'`,
           undefined, 15000, current
         )
         const lintOut = [lint.stdout, lint.stderr].filter(Boolean).join('\n').trim()
@@ -684,7 +684,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         const lang   = detectLanguage(entry.path, entry.code || '')
         const mode   = entry.existingContent !== null ? 'patch' : 'replace'
         const refStyleExamples = shadowContext.getStyleExamples(effectiveMsg, STYLE_EXAMPLES_LIMIT)
-        const sys    = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, shadowContext.getLogikMd(), [], refStyleExamples)
+        const sys    = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, shadowContext.getIcarusMd(), [], refStyleExamples)
         const refMsg = `Current code:\n${entry.code || ''}\n\nChange request: ${effectiveMsg}`
         const ctx    = [
           { role: 'user', content: sys },
@@ -809,8 +809,8 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           }
         }
 
-        // Gather ambient context + LOGIK.md + style examples once before generation loop
-        const logikMd = shadowContext.getLogikMd()
+        // Gather ambient context + ICARUS.md + style examples once before generation loop
+        const icarusMd = shadowContext.getIcarusMd()
         let ambientFiles = []
         try {
           ambientFiles = await shadowContext.getContextContent(effectiveMsg, CONTEXT_FILES_LIMIT)
@@ -837,7 +837,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           const contextFiles = ambientFiles.filter(f => f.path !== entry.path)
           // Exclude current file from style examples too
           const fileStyleExamples = styleExamples.filter(s => s.path !== entry.path)
-          const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, logikMd, contextFiles, fileStyleExamples)
+          const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, icarusMd, contextFiles, fileStyleExamples)
           const fileTask = `${effectiveMsg}\n\nFor this file: ${entry.path} — ${entry.purpose}`
 
           updatePlanEntry(i, { status: 'generating' })
@@ -1030,7 +1030,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
     try {
       const lang     = detectLanguage(entry.path, '')
-      const logikMd  = shadowContext.getLogikMd()
+      const icarusMd  = shadowContext.getIcarusMd()
       // Fetch ambient context so the retry has the same repo awareness as first-shot generation
       let retryContextFiles = []
       try {
@@ -1039,7 +1039,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         )
         retryContextFiles = retryContextFiles.filter(f => f.path !== entry.path)
       } catch {}
-      const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, logikMd, retryContextFiles)
+      const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, icarusMd, retryContextFiles)
       const fileTask = `${prompt || 'Regenerate this file.'}\n\nFor this file: ${entry.path} — ${entry.purpose}`
       const mode     = entry.existingContent !== null ? 'patch' : 'replace'
 
@@ -1072,27 +1072,27 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     }
   }, [isGenerating, models, activeModelId, repoOwner, repoName, prompt, autoRemediate, updatePlanEntry, logActivity]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── LOGIK.md save ───────────────────────────────────────────────────────
-  const handleSaveLogikMd = useCallback(async () => {
-    if (!hasGithub) { setError('GitHub required to save LOGIK.md.'); return }
-    setIsSavingLogikMd(true)
+  // ── ICARUS.md save ───────────────────────────────────────────────────────
+  const handleSaveIcarusMd = useCallback(async () => {
+    if (!hasGithub) { setError('GitHub required to save ICARUS.md.'); return }
+    setIsSavingIcarusMd(true)
     try {
-      const existing = await getFileContent(githubToken, repoOwner, repoName, 'LOGIK.md', baseBranch)
+      const existing = await getFileContent(githubToken, repoOwner, repoName, 'ICARUS.md', baseBranch)
       const sha = existing?.sha || null
       await createOrUpdateFile(
         githubToken, repoOwner, repoName,
-        'LOGIK.md', logikMdDraft,
-        'docs: update LOGIK.md project instructions',
+        'ICARUS.md', icarusMdDraft,
+        'docs: update ICARUS.md project instructions',
         baseBranch, sha,
       )
-      shadowContext.logikMd = logikMdDraft
-      logActivity('done', '✓ LOGIK.md saved to repo')
+      shadowContext.icarusMd = icarusMdDraft
+      logActivity('done', '✓ ICARUS.md saved to repo')
     } catch (e) {
-      setError(`Failed to save LOGIK.md: ${e.message}`)
+      setError(`Failed to save ICARUS.md: ${e.message}`)
     } finally {
-      setIsSavingLogikMd(false)
+      setIsSavingIcarusMd(false)
     }
-  }, [hasGithub, githubToken, repoOwner, repoName, baseBranch, logikMdDraft, logActivity])
+  }, [hasGithub, githubToken, repoOwner, repoName, baseBranch, icarusMdDraft, logActivity])
 
   // ── Post-push test runner ───────────────────────────────────────────────
   // Runs npm test / pytest in streaming mode after a successful push.
@@ -1399,7 +1399,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
     if (!githubToken)             { setError('GitHub token required — open Settings.'); setSettingsOpen(true); return }
     if (!repoOwner || !repoName)  { setError('Repo owner and name required — open Settings.'); setSettingsOpen(true); return }
 
-    const promptSummary = (history[0]?.prompt || prompt || 'LOGIK generated code').slice(0, 80)
+    const promptSummary = (history[0]?.prompt || prompt || 'ICARUS generated code').slice(0, 80)
 
     // Permission gate
     if (!dryRun && !confirmAction(
@@ -1470,7 +1470,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         const existing    = await getFileContent(githubToken, repoOwner, repoName, entry.path, targetBranch)
         const existingSha = existing?.sha || entry._sha || null
         const action      = existingSha ? 'update' : 'add'
-        const commitMsg   = `feat(logik): ${action} ${entry.path}\n\nGenerated by LOGIK: "${promptSummary}"`
+        const commitMsg   = `feat(icarus): ${action} ${entry.path}\n\nGenerated by ICARUS: "${promptSummary}"`
         if (!dryRun) await pushWithRetry(entry.path, entry.code, commitMsg, targetBranch, existingSha)
         log(`${dryRun ? '○' : '✓'} ${dryRun ? '[dry run] ' : ''}${action === 'update' ? 'Updated' : 'Created'} ${entry.path}`)
         updateActivity(fileId, { status: 'done', msg: `⬆ ${action === 'update' ? 'Updated' : 'Created'} ${entry.path}${dryRun ? ' (dry run)' : ''}` })
@@ -1481,7 +1481,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           setPushStep(`Pushing tests "${tp}"…`)
           const testPushId = logActivity('push', `⬆ ${tp}`)
           const existingTest = await getFileContent(githubToken, repoOwner, repoName, tp, targetBranch)
-          if (!dryRun) await pushWithRetry(tp, entry.testCode, `test(logik): add tests for ${entry.path}`, targetBranch, existingTest?.sha || null)
+          if (!dryRun) await pushWithRetry(tp, entry.testCode, `test(icarus): add tests for ${entry.path}`, targetBranch, existingTest?.sha || null)
           log(`${dryRun ? '○' : '✓'} ${dryRun ? '[dry run] ' : ''}Tests: ${tp}`)
           updateActivity(testPushId, { status: 'done', msg: `⬆ Tests: ${tp}${dryRun ? ' (dry run)' : ''}` })
         }
@@ -1493,7 +1493,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         const prId = logActivity('push', '⬆ Creating pull request…')
         const fileList = filesToPush.map(e => `- \`${e.path}\`${e.purpose ? ` — ${e.purpose}` : ''}`).join('\n')
         const prBody = [
-          `## LOGIK AI Generated Code`,
+          `## ICARUS AI Generated Code`,
           ``,
           `**Prompt:** ${promptSummary}`,
           `**Model:** ${modelName}`,
@@ -1502,11 +1502,11 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           turnCount > 1 ? `**Refinement turns:** ${turnCount}` : '',
           ``,
           `---`,
-          `*Generated by LOGIK — WolfKrow AI Coding Assistant*`,
+          `*Generated by ICARUS — WolfKrow AI Coding Assistant*`,
         ].filter(Boolean).join('\n')
 
         let pr = null
-        if (!dryRun) pr = await createPullRequest(githubToken, repoOwner, repoName, `LOGIK: ${promptSummary}`, targetBranch, baseBranch, prBody)
+        if (!dryRun) pr = await createPullRequest(githubToken, repoOwner, repoName, `ICARUS: ${promptSummary}`, targetBranch, baseBranch, prBody)
         prUrl = pr?.html_url || `https://github.com/${repoOwner}/${repoName}/compare/${targetBranch}`
         setPrResult({ url: prUrl, number: pr?.number })
         log(`${dryRun ? '○' : '✓'} PR ${dryRun ? 'preview' : 'created'}: ${prUrl}`)
@@ -1580,7 +1580,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
         model,
         clean,
         [
-          { role: 'system', content: 'You are LOGIK in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
+          { role: 'system', content: 'You are ICARUS in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
           ...conversation.slice(-10),
         ],
       )
@@ -1670,7 +1670,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           onClick={() => {
             setSettingsOpen(v => !v)
             setHistoryOpen(false)
-            setLogikMdDraft(shadowContext.logikMd || '')
+            setIcarusMdDraft(shadowContext.icarusMd || '')
           }} title="Settings">⚙</button>
         <button
           className="lk-sidebar-btn"
@@ -1756,7 +1756,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
         {/* ── Drawers (overlay inside lk-main) ─────────────────────────────── */}
         {settingsOpen && (
-          <LogikSettings
+          <IcarusSettings
             githubToken={githubToken}     setGithubToken={setGithubToken}
             repoOwner={repoOwner}         setRepoOwner={setRepoOwner}
             repoName={repoName}           setRepoName={setRepoName}
@@ -1776,9 +1776,9 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
             headerLayout={headerLayout}     setHeaderLayout={setHeaderLayout}
             DEFAULT_HEADER_LAYOUT={DEFAULT_HEADER_LAYOUT}
             permissionMode={permissionMode} setPermissionMode={setPermissionMode}
-            logikMdDraft={logikMdDraft}     setLogikMdDraft={setLogikMdDraft}
-            onSaveLogikMd={handleSaveLogikMd}
-            isSavingLogikMd={isSavingLogikMd}
+            icarusMdDraft={icarusMdDraft}     setIcarusMdDraft={setIcarusMdDraft}
+            onSaveIcarusMd={handleSaveIcarusMd}
+            isSavingIcarusMd={isSavingIcarusMd}
             models={models}                setModels={setModels}
             onLogout={onLogout}            userEmail={userEmail}
           />
@@ -1814,7 +1814,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
                 <h2>Modules</h2>
                 <button className="lk-btn lk-btn--small" onClick={() => setActiveTab('code')}>Back to Chat</button>
               </div>
-              <LogikModularTools />
+              <IcarusModularTools />
             </div>
           </div>
         ) : (
@@ -1852,7 +1852,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
               {isAmplifying && <div className="lk-feed-pill"><span className="lk-spinner" /> Amplifying intent…</div>}
               {amplifierDecisions.length > 0 && (
                 <div className="lk-amplifier-panel">
-                  <div className="lk-amplifier-hd">◆ LOGIK decided:</div>
+                  <div className="lk-amplifier-hd">◆ ICARUS decided:</div>
                   {amplifierDecisions.map((d, i) => <div key={i} className="lk-amplifier-item">· {d}</div>)}
                 </div>
               )}
@@ -1924,7 +1924,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
           {/* ── Task context header — intent, goal, phase strip ──────────────── */}
           {agentSession.isAgentRunning && (
-            <LogikTaskContext
+            <IcarusTaskContext
               intent={agentSession.agentIntent}
               task={agentSession.agentTask}
               agentPhase={agentSession.agentPhase}
@@ -1934,12 +1934,12 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
           {/* ── Parallel task lanes — shown when orchestration is active ──────── */}
           {agentSession.orchLanes?.length > 0 && (
-            <LogikTaskLanes lanes={agentSession.orchLanes} />
+            <IcarusTaskLanes lanes={agentSession.orchLanes} />
           )}
 
           {/* ── Agent activity feed — shown when agent is running or has output ── */}
           {(agentSession.isAgentRunning || activityLog.length > 0) && (
-            <LogikActivityFeed
+            <IcarusActivityFeed
               activityLog={activityLog}
               isAgentRunning={agentSession.isAgentRunning}
               agentStreamText={agentSession.agentStreamText}
@@ -1959,7 +1959,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
 
           {/* ── Code tab ────────────────────────────────────────────────────── */}
           {effectiveActiveTab === 'code' && (
-            <LogikCodePane
+            <IcarusCodePane
               generatedCode={assistantMessage.code || generatedCode}
               isGenerating={isGenerating}
               language={language}
@@ -2010,7 +2010,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           </div>
 
           {effectiveActiveTab === 'diff' && (
-            <LogikDiffConfidence
+            <IcarusDiffConfidence
               diffText={diffText}
               patchEdits={patchEdits}
               verification={agentSession.lastVerification}
@@ -2058,7 +2058,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           </div>
 
           {effectiveActiveTab === 'terminal' && (
-            <LogikTerminal
+            <IcarusTerminal
               terminalLog={terminalLog}
               terminalInput={terminalInput}
               onInputChange={e => setTerminalInput(e.target.value)}
@@ -2069,7 +2069,7 @@ export default function Logik({ onClose, models, setModels, selectedModelId, onM
           )}
 
           {effectiveActiveTab === 'tools' && (
-            <LogikToolsPane
+            <IcarusToolsPane
               bridgeAvailable={bridgeAvailable}
               callExecBridge={callExecBridge}
               onSetActiveTab={setActiveTab}

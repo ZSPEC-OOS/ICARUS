@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Regex search across indexed file contents. Returns matching lines with file paths and line numbers.',
   category: 'analysis',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

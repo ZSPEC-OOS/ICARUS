@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Parse JS/TS stack traces into structured frames and actionable debugging hints.',
   category: 'analysis',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 function inferHint(errorName = '', message = '') {

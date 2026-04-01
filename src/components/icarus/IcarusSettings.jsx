@@ -10,10 +10,10 @@ import {
   getFirebaseStatus,
 } from '../../services/firebaseService.js'
 
-// ─── LogikSettings ────────────────────────────────────────────────────────────
+// ─── IcarusSettings ────────────────────────────────────────────────────────────
 // Settings drawer: GitHub credentials, theme picker, fine-tune sliders,
-// permission mode, and LOGIK.md editor.
-const LogikSettings = memo(function LogikSettings({
+// permission mode, and ICARUS.md editor.
+const IcarusSettings = memo(function IcarusSettings({
   // GitHub config — primary (target) repo
   githubToken, setGithubToken,
   repoOwner,   setRepoOwner,
@@ -45,8 +45,8 @@ const LogikSettings = memo(function LogikSettings({
   // Permission mode
   permissionMode, setPermissionMode,
 
-  // LOGIK.md
-  logikMdDraft, setLogikMdDraft, onSaveLogikMd, isSavingLogikMd,
+  // ICARUS.md
+  icarusMdDraft, setIcarusMdDraft, onSaveIcarusMd, isSavingIcarusMd,
 
   // AI models (API keys)
   models, setModels,
@@ -57,7 +57,7 @@ const LogikSettings = memo(function LogikSettings({
   // Auth
   onLogout, userEmail,
 }) {
-  const GHTOKEN_SS_KEY = 'logik:ghtoken'
+  const GHTOKEN_SS_KEY = 'icarus:ghtoken'
 
   // ── Firebase state ──────────────────────────────────────────────────────────
   const [fbDraft, setFbDraft]   = useState(() => {
@@ -340,7 +340,7 @@ const LogikSettings = memo(function LogikSettings({
 
             <label className="lk-label">Firebase Config (JSON)</label>
             <textarea
-              className="lk-logikmd-editor lk-firebase-textarea"
+              className="lk-icarusmd-editor lk-firebase-textarea"
               placeholder={`Paste your Firebase config here, e.g.:\n{\n  "apiKey": "AIzaSy...",\n  "authDomain": "your-project.firebaseapp.com",\n  "projectId": "your-project",\n  "storageBucket": "your-project.appspot.com",\n  "messagingSenderId": "123456789",\n  "appId": "1:123456789:web:abcdef"\n}`}
               value={fbDraft}
               onChange={e => { setFbDraft(e.target.value); setFbError(null) }}
@@ -431,7 +431,7 @@ const LogikSettings = memo(function LogikSettings({
 
       <div className="lk-drawer-toggles">
         <label className="lk-toggle"><input type="checkbox" checked={generateTests} onChange={e => setGenerateTests(e.target.checked)} /><span>Generate test file alongside code</span></label>
-        <label className="lk-toggle"><input type="checkbox" checked={doCreateBranch} onChange={e => setDoCreateBranch(e.target.checked)} /><span>Auto-create branch (<code>logik/…</code>)</span></label>
+        <label className="lk-toggle"><input type="checkbox" checked={doCreateBranch} onChange={e => setDoCreateBranch(e.target.checked)} /><span>Auto-create branch (<code>icarus/…</code>)</span></label>
         <label className="lk-toggle"><input type="checkbox" checked={doCreatePR} onChange={e => setDoCreatePR(e.target.checked)} /><span>Auto-create pull request</span></label>
         <label className="lk-toggle lk-toggle--warn"><input type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} /><span>Dry run — preview only, no commits</span></label>
         <label className="lk-toggle"><input type="checkbox" checked={enableThinking} onChange={e => setEnableThinking(e.target.checked)} /><span>Extended thinking <span className="lk-hint-inline">(Claude only — deeper reasoning, slower)</span></span></label>
@@ -567,7 +567,7 @@ const LogikSettings = memo(function LogikSettings({
                   title={m.title}
                   onClick={() => {
                     setPermissionMode(m.id)
-                    try { localStorage.setItem('logik:permMode', m.id) } catch {}
+                    try { localStorage.setItem('icarus:permMode', m.id) } catch {}
                   }}
                 >{m.label}</button>
               ))}
@@ -587,27 +587,27 @@ const LogikSettings = memo(function LogikSettings({
         </div>
       </div>
 
-      {/* LOGIK.md editor */}
+      {/* ICARUS.md editor */}
       <div className="lk-security-section">
-        <div className="lk-security-label">Project Instructions (LOGIK.md)</div>
+        <div className="lk-security-label">Project Instructions (ICARUS.md)</div>
         <div className="lk-security-body">
           <span className="lk-security-note">
-            Standing instructions injected into every generation prompt. Saved as LOGIK.md in your repo root.
+            Standing instructions injected into every generation prompt. Saved as ICARUS.md in your repo root.
           </span>
           <textarea
-            className="lk-logikmd-editor"
-            placeholder={'# LOGIK.md\nDescribe conventions, patterns, and rules for this project.\nExample: "Always use Tailwind for styling. Prefer hooks over class components."'}
-            value={logikMdDraft}
-            onChange={e => setLogikMdDraft(e.target.value)}
+            className="lk-icarusmd-editor"
+            placeholder={'# ICARUS.md\nDescribe conventions, patterns, and rules for this project.\nExample: "Always use Tailwind for styling. Prefer hooks over class components."'}
+            value={icarusMdDraft}
+            onChange={e => setIcarusMdDraft(e.target.value)}
             rows={8}
           />
           <button
             className="lk-btn lk-btn--primary"
-            onClick={onSaveLogikMd}
-            disabled={isSavingLogikMd || !hasGithub}
-            title={hasGithub ? 'Save LOGIK.md to repository' : 'GitHub connection required'}
+            onClick={onSaveIcarusMd}
+            disabled={isSavingIcarusMd || !hasGithub}
+            title={hasGithub ? 'Save ICARUS.md to repository' : 'GitHub connection required'}
           >
-            {isSavingLogikMd ? 'Saving…' : '↑ Save to repo'}
+            {isSavingIcarusMd ? 'Saving…' : '↑ Save to repo'}
           </button>
         </div>
       </div>
@@ -615,4 +615,4 @@ const LogikSettings = memo(function LogikSettings({
   )
 })
 
-export default LogikSettings
+export default IcarusSettings

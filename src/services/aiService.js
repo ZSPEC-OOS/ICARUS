@@ -19,7 +19,7 @@ function getSessionKey() {
     return sk
   } catch {
     // Fallback: fixed key (same behaviour as before, but only reached in restricted environments)
-    return 'logik-fallback-key-xor'
+    return 'icarus-fallback-key-xor'
   }
 }
 
@@ -126,7 +126,7 @@ export function saveModels(models) {
 }
 
 // ── Web-search API key (Tavily) ───────────────────────────────────────────────
-const SEARCH_KEY_SS = 'logik:searchkey'
+const SEARCH_KEY_SS = 'icarus:searchkey'
 
 export function loadSearchKey() {
   try {
@@ -382,7 +382,7 @@ async function readSSEStream(res, onChunk, extractDelta, signal) {
           onChunk?.(fullText)
         }
       } catch (e) {
-        console.warn('[LOGIK] readSSEStream: skipped malformed event —', e.message, '| data:', data?.slice(0, 80))
+        console.warn('[ICARUS] readSSEStream: skipped malformed event —', e.message, '| data:', data?.slice(0, 80))
       }
     }
   }

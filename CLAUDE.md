@@ -1,4 +1,4 @@
-# LOGIK — Claude Code Project Instructions
+# ICARUS — Claude Code Project Instructions
 
 ## Repository
 - **GitHub**: `zspec-oos/logik`
@@ -62,12 +62,12 @@ No PR creation. No auto-merge. No branch cleanup.
 
 ## Project Context
 
-LOGIK is an AI-powered developer assistant built as a React SPA with a Node.js service layer. Key areas:
+ICARUS is an AI-powered developer assistant built as a React SPA with a Node.js service layer. Key areas:
 
 - `src/services/` — agent loop, orchestration, memory graph, trace store, enhancers
-- `src/components/logik/` — UI components (activity feed, diff viewer, task lanes, code pane)
+- `src/components/icarus/` — UI components (activity feed, diff viewer, task lanes, code pane)
 - `src/core/hooks/` — React hooks for agent session state
-- `src/cli/` — headless CLI (`logik-cli.mjs`)
+- `src/cli/` — headless CLI (`icarus-cli.mjs`)
 - `tests/` — benchmark and unit tests
 
 See `README.md` for setup. See `docs/` for architecture details.

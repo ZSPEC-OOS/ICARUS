@@ -1,16 +1,16 @@
 // ─── selfImproveService.js ────────────────────────────────────────────────────
-// Manages the self-improvement cycle between two Logik repositories.
+// Manages the self-improvement cycle between two Icarus repositories.
 // Each full cycle runs two agent phases plus two clone operations.
 //
 // Phase A (steps 1–7):
-//   1-2: Agent analyzes logik2, implements ONE enhancement IN logik2
-//   3-4: logik2 auto-committed (by agent writes), re-index logik2
-//   5-7: Clone logik2 → logik, re-index logik
+//   1-2: Agent analyzes icarus2, implements ONE enhancement IN icarus2
+//   3-4: icarus2 auto-committed (by agent writes), re-index icarus2
+//   5-7: Clone icarus2 → icarus, re-index icarus
 //
 // Phase B (steps 8–14):
-//   8-9:  Agent analyzes logik, implements ONE enhancement IN logik
-//   10-11: logik auto-committed, re-index logik
-//   12-14: Clone logik → logik2, re-index logik2
+//   8-9:  Agent analyzes icarus, implements ONE enhancement IN icarus
+//   10-11: icarus auto-committed, re-index icarus
+//   12-14: Clone icarus → icarus2, re-index icarus2
 //
 // → Loop (up to maxCycles)
 
@@ -24,10 +24,10 @@ import { shadowContext, shadowContext2 } from './shadowContext.js'
 // ── Prompts ───────────────────────────────────────────────────────────────────
 
 const PHASE_A_PROMPT = cycle => `You are running self-improvement cycle #${cycle}.
-Your task: improve the LOGIK2 repository (the secondary instance).
+Your task: improve the ICARUS2 repository (the secondary instance).
 
-STEP 1 — Explore logik2 using list_directory and read_file (logik2 is your write target).
-STEP 2 — Optionally read the primary logik repo using read_source_file and list_source_directory for reference/inspiration.
+STEP 1 — Explore icarus2 using list_directory and read_file (icarus2 is your write target).
+STEP 2 — Optionally read the primary icarus repo using read_source_file and list_source_directory for reference/inspiration.
 STEP 3 — Choose EXACTLY ONE specific, focused improvement:
   • Affect 1–3 files maximum
   • Improve real functionality, robustness, clarity, or user experience
@@ -36,10 +36,10 @@ STEP 4 — Implement the improvement now using write_file or edit_file.
 STEP 5 — Output a one-line summary: "Enhancement: <what you implemented>"`
 
 const PHASE_B_PROMPT = cycle => `You are running self-improvement cycle #${cycle}, Phase B.
-Your task: improve the primary LOGIK repository.
+Your task: improve the primary ICARUS repository.
 
-STEP 1 — Explore logik using list_directory and read_file (logik is your write target).
-STEP 2 — Optionally read logik2 using read_source_file and list_source_directory for reference.
+STEP 1 — Explore icarus using list_directory and read_file (icarus is your write target).
+STEP 2 — Optionally read icarus2 using read_source_file and list_source_directory for reference.
 STEP 3 — Choose EXACTLY ONE specific, focused improvement:
   • Affect 1–3 files maximum
   • Improve real functionality, robustness, clarity, or user experience
@@ -153,11 +153,11 @@ export async function runSelfImproveLoop(config, callbacks) {
   for (let cycle = 1; cycle <= maxCycles; cycle++) {
     if (aborted()) break
 
-    // ── Phase A: logik's agent improves logik2 ────────────────────────────
+    // ── Phase A: icarus's agent improves icarus2 ────────────────────────────
 
-    step(cycle, 1, 'A', 'Analyzing logik2 for an enhancement…')
+    step(cycle, 1, 'A', 'Analyzing icarus2 for an enhancement…')
 
-    // executor: writes to logik2, reads logik as source
+    // executor: writes to icarus2, reads icarus as source
     const executorA = makeExecutor({
       token:         repo2.token || mainRepo.token,
       owner:         repo2.owner,
@@ -174,7 +174,7 @@ export async function runSelfImproveLoop(config, callbacks) {
 
     const sysPromptA = buildAgentSystemPrompt(
       shadowContext2.getConventions?.() || {},
-      shadowContext2.getLogikMd?.() || '',
+      shadowContext2.getIcarusMd?.() || '',
       repo2.owner, repo2.repo,
       false,
       { token: mainRepo.token, owner: mainRepo.owner, repo: mainRepo.repo, branch: mainRepo.branch },
@@ -201,20 +201,20 @@ export async function runSelfImproveLoop(config, callbacks) {
     }
 
     // Extract enhancement description from output
-    const descA = phaseAOutput.match(/Enhancement:\s*(.+)/)?.[1]?.trim() || 'Enhancement applied to logik2'
-    onLog?.({ cycle, phase: 'A', description: descA, timestamp: Date.now(), target: 'logik2' })
-    step(cycle, 3, 'A', 'logik2 changes committed (via agent writes)')
+    const descA = phaseAOutput.match(/Enhancement:\s*(.+)/)?.[1]?.trim() || 'Enhancement applied to icarus2'
+    onLog?.({ cycle, phase: 'A', description: descA, timestamp: Date.now(), target: 'icarus2' })
+    step(cycle, 3, 'A', 'icarus2 changes committed (via agent writes)')
 
     if (aborted()) break
 
-    // Re-index logik2
-    step(cycle, 4, 'A', 'Re-indexing logik2…')
+    // Re-index icarus2
+    step(cycle, 4, 'A', 'Re-indexing icarus2…')
     await reindex(shadowContext2, repo2.token || mainRepo.token, repo2.owner, repo2.repo, repo2.branch, null)
 
     if (aborted()) break
 
-    // Clone logik2 → logik
-    step(cycle, 5, 'A', 'Cloning logik2 → logik…')
+    // Clone icarus2 → icarus
+    step(cycle, 5, 'A', 'Cloning icarus2 → icarus…')
     try {
       await cloneRepo(
         { ...repo2, token: repo2.token || mainRepo.token },
@@ -227,15 +227,15 @@ export async function runSelfImproveLoop(config, callbacks) {
       onEvent?.({ type: 'error', text: `Clone A→main error: ${e.message}`, phase: 'A', cycle })
     }
 
-    step(cycle, 6, 'A', 'logik updated (clone complete)')
-    step(cycle, 7, 'A', 'Re-indexing logik…')
+    step(cycle, 6, 'A', 'icarus updated (clone complete)')
+    step(cycle, 7, 'A', 'Re-indexing icarus…')
     await reindex(shadowContext, mainRepo.token, mainRepo.owner, mainRepo.repo, mainRepo.branch, null)
 
     if (aborted()) break
 
-    // ── Phase B: logik2's agent improves logik ────────────────────────────
+    // ── Phase B: icarus2's agent improves icarus ────────────────────────────
 
-    step(cycle, 8, 'B', 'Analyzing logik for an enhancement…')
+    step(cycle, 8, 'B', 'Analyzing icarus for an enhancement…')
 
     const executorB = makeExecutor({
       token:  mainRepo.token,
@@ -253,7 +253,7 @@ export async function runSelfImproveLoop(config, callbacks) {
 
     const sysPromptB = buildAgentSystemPrompt(
       shadowContext.getConventions?.() || {},
-      shadowContext.getLogikMd?.() || '',
+      shadowContext.getIcarusMd?.() || '',
       mainRepo.owner, mainRepo.repo,
       false,
       { token: repo2.token || mainRepo.token, owner: repo2.owner, repo: repo2.repo, branch: repo2.branch },
@@ -279,19 +279,19 @@ export async function runSelfImproveLoop(config, callbacks) {
       onEvent?.({ type: 'error', text: `Phase B error: ${e.message}`, phase: 'B', cycle })
     }
 
-    const descB = phaseBOutput.match(/Enhancement:\s*(.+)/)?.[1]?.trim() || 'Enhancement applied to logik'
-    onLog?.({ cycle, phase: 'B', description: descB, timestamp: Date.now(), target: 'logik' })
-    step(cycle, 10, 'B', 'logik changes committed (via agent writes)')
+    const descB = phaseBOutput.match(/Enhancement:\s*(.+)/)?.[1]?.trim() || 'Enhancement applied to icarus'
+    onLog?.({ cycle, phase: 'B', description: descB, timestamp: Date.now(), target: 'icarus' })
+    step(cycle, 10, 'B', 'icarus changes committed (via agent writes)')
 
     if (aborted()) break
 
-    step(cycle, 11, 'B', 'Re-indexing logik…')
+    step(cycle, 11, 'B', 'Re-indexing icarus…')
     await reindex(shadowContext, mainRepo.token, mainRepo.owner, mainRepo.repo, mainRepo.branch, null)
 
     if (aborted()) break
 
-    // Clone logik → logik2
-    step(cycle, 12, 'B', 'Cloning logik → logik2…')
+    // Clone icarus → icarus2
+    step(cycle, 12, 'B', 'Cloning icarus → icarus2…')
     try {
       await cloneRepo(
         mainRepo,
@@ -304,8 +304,8 @@ export async function runSelfImproveLoop(config, callbacks) {
       onEvent?.({ type: 'error', text: `Clone main→B error: ${e.message}`, phase: 'B', cycle })
     }
 
-    step(cycle, 13, 'B', 'logik2 updated (clone complete)')
-    step(cycle, 14, 'B', 'Re-indexing logik2…')
+    step(cycle, 13, 'B', 'icarus2 updated (clone complete)')
+    step(cycle, 14, 'B', 'Re-indexing icarus2…')
     await reindex(shadowContext2, repo2.token || mainRepo.token, repo2.owner, repo2.repo, repo2.branch, null)
 
     onCycleEnd?.(cycle)

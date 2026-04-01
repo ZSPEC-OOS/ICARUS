@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Fetch a URL and return its text content. Best for reading documentation, API specs, or raw files.',
   category: 'utility',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

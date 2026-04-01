@@ -16,7 +16,7 @@
 │     │  ├─ features/
 │     │  │  ├─ workspace/
 │     │  │  │  ├─ components/
-│     │  │  │  │  ├─ WorkspaceShell.jsx        # from Logik.jsx
+│     │  │  │  │  ├─ WorkspaceShell.jsx        # from Icarus.jsx
 │     │  │  │  │  ├─ ActivityFeed.jsx
 │     │  │  │  │  ├─ CodePane.jsx
 │     │  │  │  │  ├─ DiffViewer.jsx
@@ -58,10 +58,10 @@
 |---|---|
 | `src/main.jsx` | `apps/web/src/app/main.jsx` |
 | `src/App.jsx` | `apps/web/src/app/App.jsx` |
-| `src/components/Logik.jsx` | `apps/web/src/features/workspace/components/WorkspaceShell.jsx` |
-| `src/components/Logik.css` | `apps/web/src/features/workspace/styles/workspace.css` |
+| `src/components/Icarus.jsx` | `apps/web/src/features/workspace/components/WorkspaceShell.jsx` |
+| `src/components/Icarus.css` | `apps/web/src/features/workspace/styles/workspace.css` |
 | `src/components/LoginScreen.jsx` | `apps/web/src/features/auth/components/LoginScreen.jsx` |
-| `src/components/logik/*` | `apps/web/src/features/workspace/components/*` |
+| `src/components/icarus/*` | `apps/web/src/features/workspace/components/*` |
 | `src/core/hooks/*` | `apps/web/src/features/workspace/hooks/*` (or `shared/hooks` if reused cross-feature) |
 | `src/services/aiService.js` | `apps/web/src/services/ai/aiService.js` |
 | `src/services/githubService.js` | `apps/web/src/services/github/githubService.js` |
@@ -91,10 +91,10 @@
 
 ## 4) Structural issues identified in current repo
 
-1. **Monolithic UI shell**: `src/components/Logik.jsx` contains UI rendering, state orchestration, GitHub write flows, prompt assembly, and agent execution orchestration in one large file.
+1. **Monolithic UI shell**: `src/components/Icarus.jsx` contains UI rendering, state orchestration, GitHub write flows, prompt assembly, and agent execution orchestration in one large file.
 2. **Mixed frontend + Python package roots** at top-level without clear workspace boundaries.
 3. **Cross-cutting service directory** with many unrelated concerns mixed together (`ai`, `agent`, `firebase`, `github`, file system, planning).
-4. **Branding inconsistency** (`LOGIK` naming in many user-facing and internal strings).
+4. **Branding inconsistency** (`ICARUS` naming in many user-facing and internal strings).
 5. **Theme concerns spread between large CSS and component state**; difficult to evolve design tokens safely.
 6. **No clear architecture boundary** between feature code and shared primitives.
 
@@ -103,7 +103,7 @@
 1. Create folder skeleton (`apps/web`, `packages/planner-py`) and move files with **git mv** only.
 2. Add Vite aliases and keep old relative imports compiling incrementally.
 3. Move `main.jsx` and `App.jsx` into `app/`, then fix entry imports.
-4. Move workspace feature files (`Logik.jsx`, `logik/*`, `Logik.css`) into `features/workspace/` and update imports.
+4. Move workspace feature files (`Icarus.jsx`, `icarus/*`, `Icarus.css`) into `features/workspace/` and update imports.
 5. Move auth component (`LoginScreen.jsx`) into `features/auth/` and update imports.
 6. Split `services/` into concern-based subfolders and update imports.
 7. Move `config/` and `utils/` into `shared/` and update imports.
@@ -127,14 +127,14 @@ If tests are missing in the frontend, add minimal smoke coverage:
 
 ## Optional naming and modular design improvements
 
-- Rename `Logik.jsx` to `WorkspaceShell.jsx` and keep `Logik` as exported compatibility alias during transition.
+- Rename `Icarus.jsx` to `WorkspaceShell.jsx` and keep `Icarus` as exported compatibility alias during transition.
 - Normalize component file names to feature-oriented names (`SettingsPanel`, `ToolsPane`, etc.).
 - Standardize token and settings key names behind a single `settingsKeys` module.
 - Introduce typed boundaries (JSDoc typedefs or TS migration) for service contracts.
 
 ## Technical debt to track (without refactor yet)
 
-- Very large component file with mixed concerns (`Logik.jsx`).
+- Very large component file with mixed concerns (`Icarus.jsx`).
 - Long CSS file with broad scope and limited token encapsulation.
 - Brand string duplication across many files.
 - Implicit storage schema in local/session storage without centralized versioning.

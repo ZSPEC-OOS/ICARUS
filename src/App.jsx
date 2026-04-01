@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import LoginScreen from './components/LoginScreen'
-import Logik from './components/Logik'
+import Icarus from './components/Icarus'
 import { loadModels, saveModels, saveSearchKey } from './services/aiService'
 import {
   onAuthStateChange,
@@ -10,8 +10,8 @@ import {
 } from './services/firebaseService'
 
 // Populate localStorage + sessionStorage from cloud settings
-// Called after login so that Logik's loadSettings() reads the cloud values on
-// first render. Each value uses the same storage path that Logik writes to,
+// Called after login so that Icarus's loadSettings() reads the cloud values on
+// first render. Each value uses the same storage path that Icarus writes to,
 // so the component initialises transparently with persisted data.
 function injectCloudSettings(settings) {
   if (!settings) return
@@ -19,15 +19,15 @@ function injectCloudSettings(settings) {
     const { githubToken, repo2Token, webSearchApiKey, models,
             permissionMode, _v, _ts, ...rest } = settings
 
-    // Non-secret settings -> localStorage (same key Logik uses)
-    localStorage.setItem('logik:settings', JSON.stringify(rest))
+    // Non-secret settings -> localStorage (same key Icarus uses)
+    localStorage.setItem('icarus:settings', JSON.stringify(rest))
 
     // permissionMode has its own key in localStorage
-    if (permissionMode) localStorage.setItem('logik:permMode', permissionMode)
+    if (permissionMode) localStorage.setItem('icarus:permMode', permissionMode)
 
-    // GitHub tokens -> sessionStorage as plaintext (matching Logik's read path)
-    if (githubToken !== undefined) sessionStorage.setItem('logik:ghtoken', githubToken || '')
-    if (repo2Token !== undefined) sessionStorage.setItem('logik:ghtoken2', repo2Token || '')
+    // GitHub tokens -> sessionStorage as plaintext (matching Icarus's read path)
+    if (githubToken !== undefined) sessionStorage.setItem('icarus:ghtoken', githubToken || '')
+    if (repo2Token !== undefined) sessionStorage.setItem('icarus:ghtoken2', repo2Token || '')
 
     // Search key must be stored via saveSearchKey() because loadSearchKey() decrypts it
     if (webSearchApiKey !== undefined) saveSearchKey(webSearchApiKey || '')
@@ -35,7 +35,7 @@ function injectCloudSettings(settings) {
     // Models (with API keys) -> aiService storage (handles its own encryption)
     if (Array.isArray(models) && models.length > 0) saveModels(models)
   } catch (err) {
-    console.warn('[Logik] injectCloudSettings failed:', err.message)
+    console.warn('[Icarus] injectCloudSettings failed:', err.message)
   }
 }
 
@@ -52,12 +52,12 @@ function Splash({ msg = 'Loading...' }) {
 }
 
 export default function App() {
-  const [pinUnlocked, setPinUnlocked] = useState(() => sessionStorage.getItem('logik:pinUnlocked') === '1')
+  const [pinUnlocked, setPinUnlocked] = useState(() => sessionStorage.getItem('icarus:pinUnlocked') === '1')
   // Three-phase state:
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
   //   authUser=null      -> Not logged in (show LoginScreen)
   //   settingsReady=false -> Logged in but loading Firestore (show splash)
-  //   settingsReady=true  -> Ready (show Logik)
+  //   settingsReady=true  -> Ready (show Icarus)
   const [authChecked, setAuthChecked] = useState(false)
   const [authUser, setAuthUser] = useState(null)
   const [settingsReady, setSettingsReady] = useState(false)
@@ -74,20 +74,20 @@ export default function App() {
   // Firebase auth listener - single source of truth
   // We do NOT set authUser from the LoginScreen onLogin callback.
   // This listener fires when Firebase confirms login, giving us time to load
-  // Firestore settings BEFORE rendering Logik (so it initialises with correct values).
+  // Firestore settings BEFORE rendering Icarus (so it initialises with correct values).
   useEffect(() => {
     const unsub = onAuthStateChange(async (user) => {
       if (user) {
         authUserRef.current = user
         setCloudError('')
 
-        // Load cloud settings and hydrate localStorage before mounting Logik
+        // Load cloud settings and hydrate localStorage before mounting Icarus
         let cloud = null
         try {
           cloud = await loadUserSettings(user.uid)
         } catch (err) {
           // Real error (permissions, network) - log it and proceed with local defaults
-          console.warn('[Logik] Could not load cloud settings:', err.message)
+          console.warn('[Icarus] Could not load cloud settings:', err.message)
           setCloudError('Could not load cloud settings - using local data. Check Firestore rules.')
         }
 
@@ -117,13 +117,13 @@ export default function App() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       saveUserSettings(uid, pendingSettingsRef.current).catch(err =>
-        console.warn('[Logik] Cloud save failed:', err.message)
+        console.warn('[Icarus] Cloud save failed:', err.message)
       )
     }, 1500)
   }, [])
 
-  // Settings changes from Logik (github tokens, theme, repo config, etc.)
-  // Logik calls this whenever any persisted setting changes.
+  // Settings changes from Icarus (github tokens, theme, repo config, etc.)
+  // Icarus calls this whenever any persisted setting changes.
   // We merge with the latest models so the cloud doc is always complete.
   const handleSettingsChanged = useCallback((settings) => {
     const uid = authUserRef.current?.uid
@@ -131,7 +131,7 @@ export default function App() {
     scheduleCloudSave(uid, { ...settings, models: loadModels() })
   }, [scheduleCloudSave])
 
-  // Model changes from LogikSettings (API key entered/changed)
+  // Model changes from IcarusSettings (API key entered/changed)
   const handleSetModels = useCallback((updated) => {
     setModels(updated)
     const uid = authUserRef.current?.uid
@@ -152,9 +152,9 @@ export default function App() {
     await signOutUser().catch(() => {})
     // Clear sensitive local session data
     try {
-      sessionStorage.removeItem('logik:ghtoken')
-      sessionStorage.removeItem('logik:ghtoken2')
-      sessionStorage.removeItem('logik:searchkey')
+      sessionStorage.removeItem('icarus:ghtoken')
+      sessionStorage.removeItem('icarus:ghtoken2')
+      sessionStorage.removeItem('icarus:searchkey')
       sessionStorage.removeItem('wrkflow:keys')
       sessionStorage.removeItem('wrkflow:sk')
     } catch {}
@@ -162,14 +162,14 @@ export default function App() {
     setModels(loadModels())
     setPinUnlocked(false)
     try {
-      sessionStorage.removeItem('logik:pinUnlocked')
+      sessionStorage.removeItem('icarus:pinUnlocked')
     } catch {}
   }, [])
 
   const handlePinUnlock = useCallback(() => {
     setPinUnlocked(true)
     try {
-      sessionStorage.setItem('logik:pinUnlocked', '1')
+      sessionStorage.setItem('icarus:pinUnlocked', '1')
     } catch {}
   }, [])
 
@@ -188,7 +188,7 @@ export default function App() {
           Warning: {cloudError}
         </div>
       )}
-      <Logik
+      <Icarus
         models={models}
         setModels={handleSetModels}
         selectedModelId={selectedModelId}

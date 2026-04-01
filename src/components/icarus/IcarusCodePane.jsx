@@ -78,7 +78,7 @@ function ValidationPanel({ results }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-const LogikCodePane = memo(function LogikCodePane({
+const IcarusCodePane = memo(function IcarusCodePane({
   generatedCode,
   isGenerating,
   language,
@@ -145,4 +145,4 @@ const LogikCodePane = memo(function LogikCodePane({
   )
 })
 
-export default LogikCodePane
+export default IcarusCodePane

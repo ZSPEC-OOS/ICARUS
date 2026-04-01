@@ -1,26 +1,26 @@
 #!/usr/bin/env node
-// ─── Logik CLI — headless agent runner + trace replay ─────────────────────────
+// ─── Icarus CLI — headless agent runner + trace replay ─────────────────────────
 //
 // Usage:
-//   node src/cli/logik-cli.mjs run "<task>" [options]
-//   node src/cli/logik-cli.mjs plan "<task>" [options]
-//   node src/cli/logik-cli.mjs replay <traceId>
-//   node src/cli/logik-cli.mjs traces [--limit=N]
+//   node src/cli/icarus-cli.mjs run "<task>" [options]
+//   node src/cli/icarus-cli.mjs plan "<task>" [options]
+//   node src/cli/icarus-cli.mjs replay <traceId>
+//   node src/cli/icarus-cli.mjs traces [--limit=N]
 //
 // Options:
-//   --model=<id|name>      Model ID or name (default: env LOGIK_MODEL_ID)
-//   --api-key=<key>        API key          (default: env LOGIK_API_KEY)
-//   --base-url=<url>       API base URL     (default: env LOGIK_BASE_URL)
+//   --model=<id|name>      Model ID or name (default: env ICARUS_MODEL_ID)
+//   --api-key=<key>        API key          (default: env ICARUS_API_KEY)
+//   --base-url=<url>       API base URL     (default: env ICARUS_BASE_URL)
 //   --dir=<path>           Working directory for file ops (default: cwd)
 //   --config=<path>        JSON config file: { apiKey, baseUrl, modelId }
 //   --dry-run              Print plan only — do not execute file writes
 //   --no-color             Disable ANSI colours
 //
 // Environment variables:
-//   LOGIK_MODEL_ID         e.g. claude-sonnet-4-6
-//   LOGIK_API_KEY          Provider API key
-//   LOGIK_BASE_URL         e.g. https://api.anthropic.com/v1
-//   LOGIK_WORK_DIR         Defaults to process.cwd()
+//   ICARUS_MODEL_ID         e.g. claude-sonnet-4-6
+//   ICARUS_API_KEY          Provider API key
+//   ICARUS_BASE_URL         e.g. https://api.anthropic.com/v1
+//   ICARUS_WORK_DIR         Defaults to process.cwd()
 
 import { readFile, writeFile, readdir, stat, mkdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -88,10 +88,10 @@ async function resolveModelConfig(args) {
     return JSON.parse(raw)
   }
 
-  // 2. Auto-detect .logik/config.json in cwd or ancestors
+  // 2. Auto-detect .icarus/config.json in cwd or ancestors
   let dir = process.cwd()
   for (let i = 0; i < 5; i++) {
-    const candidate = join(dir, '.logik', 'config.json')
+    const candidate = join(dir, '.icarus', 'config.json')
     if (existsSync(candidate)) {
       const raw = await readFile(candidate, 'utf8')
       const cfg = JSON.parse(raw)
@@ -104,13 +104,13 @@ async function resolveModelConfig(args) {
   }
 
   // 3. CLI flags / environment variables
-  const apiKey  = args.opts['api-key']  || process.env.LOGIK_API_KEY  || ''
-  const baseUrl = args.opts['base-url'] || process.env.LOGIK_BASE_URL || 'https://api.anthropic.com/v1'
-  const modelId = args.opts['model']    || process.env.LOGIK_MODEL_ID || 'claude-sonnet-4-6'
+  const apiKey  = args.opts['api-key']  || process.env.ICARUS_API_KEY  || ''
+  const baseUrl = args.opts['base-url'] || process.env.ICARUS_BASE_URL || 'https://api.anthropic.com/v1'
+  const modelId = args.opts['model']    || process.env.ICARUS_MODEL_ID || 'claude-sonnet-4-6'
 
   if (!apiKey) {
-    console.error(fmt.err('Error: No API key found. Set LOGIK_API_KEY or use --api-key=<key>.'))
-    console.error(fmt.dim('  Alternatively create .logik/config.json: { "apiKey": "...", "baseUrl": "...", "modelId": "..." }'))
+    console.error(fmt.err('Error: No API key found. Set ICARUS_API_KEY or use --api-key=<key>.'))
+    console.error(fmt.dim('  Alternatively create .icarus/config.json: { "apiKey": "...", "baseUrl": "...", "modelId": "..." }'))
     process.exit(1)
   }
 
@@ -285,11 +285,11 @@ function makeEventRenderer(verbosity = 'normal') {
 
 async function cmdRun(task, args) {
   const modelConfig = await resolveModelConfig(args)
-  const workDir     = resolve(args.opts.dir || process.env.LOGIK_WORK_DIR || process.cwd())
+  const workDir     = resolve(args.opts.dir || process.env.ICARUS_WORK_DIR || process.cwd())
   const isDryRun    = args.flags['dry-run']
   const verbosity   = args.flags.quiet ? 'quiet' : args.flags.verbose ? 'verbose' : 'normal'
 
-  console.log(`${fmt.bold('Logik CLI')} — ${fmt.info('run')} mode`)
+  console.log(`${fmt.bold('Icarus CLI')} — ${fmt.info('run')} mode`)
   console.log(`  Task:  ${task.slice(0, 120)}`)
   console.log(`  Model: ${modelConfig.modelId}`)
   console.log(`  Dir:   ${workDir}`)
@@ -311,7 +311,7 @@ async function cmdRun(task, args) {
     : executor
 
   const tools = AGENT_TOOLS
-  const systemPrompt = `You are Logik, an expert coding assistant. Work in the directory: ${workDir}. Follow project conventions.`
+  const systemPrompt = `You are Icarus, an expert coding assistant. Work in the directory: ${workDir}. Follow project conventions.`
 
   await runAgentLoop({
     task,
@@ -327,9 +327,9 @@ async function cmdRun(task, args) {
 async function cmdPlan(task, args) {
   // Plan mode: agent may only read files, not write them
   const modelConfig = await resolveModelConfig(args)
-  const workDir     = resolve(args.opts.dir || process.env.LOGIK_WORK_DIR || process.cwd())
+  const workDir     = resolve(args.opts.dir || process.env.ICARUS_WORK_DIR || process.cwd())
 
-  console.log(`${fmt.bold('Logik CLI')} — ${fmt.info('plan')} mode`)
+  console.log(`${fmt.bold('Icarus CLI')} — ${fmt.info('plan')} mode`)
   console.log(`  Task:  ${task.slice(0, 120)}`)
   console.log(`  Model: ${modelConfig.modelId}`)
   console.log('')
@@ -344,7 +344,7 @@ async function cmdPlan(task, args) {
 
   await runAgentLoop({
     task: `[PLAN MODE — analysis only, no file writes]\n${task}`,
-    systemPrompt: `You are Logik in plan mode. Analyze the codebase in ${workDir} and output a detailed plan. Do NOT write any files.`,
+    systemPrompt: `You are Icarus in plan mode. Analyze the codebase in ${workDir} and output a detailed plan. Do NOT write any files.`,
     tools: readonlyTools,
     executeTool: executor,
     modelConfig,
@@ -354,10 +354,10 @@ async function cmdPlan(task, args) {
 }
 
 async function cmdReplay(traceId, args) {
-  const workDir  = resolve(args.opts.dir || process.env.LOGIK_WORK_DIR || process.cwd())
+  const workDir  = resolve(args.opts.dir || process.env.ICARUS_WORK_DIR || process.cwd())
   const executor = makeLocalExecutor(workDir)
 
-  console.log(`${fmt.bold('Logik CLI')} — ${fmt.info('replay')} trace ${traceId}`)
+  console.log(`${fmt.bold('Icarus CLI')} — ${fmt.info('replay')} trace ${traceId}`)
   try {
     const result = await traceStore.replayTrace(traceId, executor)
     console.log(fmt.ok('✓ Replay complete'))
@@ -373,9 +373,9 @@ async function cmdReplay(traceId, args) {
 async function cmdTraces(args) {
   const limit = parseInt(args.opts.limit || '20', 10)
   // traceStore stores in localStorage — in CLI we read from the disk file if available
-  const tracePath = resolve(process.env.LOGIK_WORK_DIR || process.cwd(), '.logik', 'traces.jsonl')
+  const tracePath = resolve(process.env.ICARUS_WORK_DIR || process.cwd(), '.icarus', 'traces.jsonl')
   if (!existsSync(tracePath)) {
-    console.log(fmt.dim('No trace file found at .logik/traces.jsonl'))
+    console.log(fmt.dim('No trace file found at .icarus/traces.jsonl'))
     console.log(fmt.dim('Traces are written by the web UI to localStorage and optionally to disk.'))
     return
   }
@@ -396,19 +396,19 @@ async function cmdTraces(args) {
 // ── Help ──────────────────────────────────────────────────────────────────────
 function printHelp() {
   console.log(`
-${fmt.bold('logik-cli')} — headless agent runner + trace replay
+${fmt.bold('icarus-cli')} — headless agent runner + trace replay
 
 ${fmt.bold('USAGE')}
-  logik-cli run "<task>"   [options]   Run agent on a task
-  logik-cli plan "<task>"  [options]   Analyse only, no file writes
-  logik-cli replay <id>    [options]   Re-execute a recorded tool trace
-  logik-cli traces         [options]   List recent trace entries
+  icarus-cli run "<task>"   [options]   Run agent on a task
+  icarus-cli plan "<task>"  [options]   Analyse only, no file writes
+  icarus-cli replay <id>    [options]   Re-execute a recorded tool trace
+  icarus-cli traces         [options]   List recent trace entries
 
 ${fmt.bold('OPTIONS')}
-  --model=<id>          Model ID / name  (env: LOGIK_MODEL_ID)
-  --api-key=<key>       API key          (env: LOGIK_API_KEY)
-  --base-url=<url>      API base URL     (env: LOGIK_BASE_URL)
-  --dir=<path>          Working directory (env: LOGIK_WORK_DIR, default: cwd)
+  --model=<id>          Model ID / name  (env: ICARUS_MODEL_ID)
+  --api-key=<key>       API key          (env: ICARUS_API_KEY)
+  --base-url=<url>      API base URL     (env: ICARUS_BASE_URL)
+  --dir=<path>          Working directory (env: ICARUS_WORK_DIR, default: cwd)
   --config=<path>       JSON config file { apiKey, baseUrl, modelId }
   --dry-run             Skip file writes (run mode only)
   --verbose             Extra token usage output
@@ -417,16 +417,16 @@ ${fmt.bold('OPTIONS')}
   --limit=N             Max traces to show (traces command, default: 20)
 
 ${fmt.bold('ZERO-CONFIG ONBOARDING')}
-  1. Create .logik/config.json in your project root:
+  1. Create .icarus/config.json in your project root:
      ${fmt.dim('{ "apiKey": "sk-...", "baseUrl": "https://api.anthropic.com/v1", "modelId": "claude-sonnet-4-6" }')}
-  2. Run: ${fmt.info('logik-cli run "add error handling to utils/api.js"')}
+  2. Run: ${fmt.info('icarus-cli run "add error handling to utils/api.js"')}
 
 ${fmt.bold('EXAMPLES')}
-  logik-cli run "fix the authentication bug in auth/login.js"
-  logik-cli plan "refactor the data layer to use a repository pattern"
-  logik-cli run "write tests for src/utils/" --dry-run
-  logik-cli replay trace_1h2x3y_abc123
-  LOGIK_API_KEY=sk-... logik-cli run "create a CI workflow" --model=claude-haiku-4-5-20251001
+  icarus-cli run "fix the authentication bug in auth/login.js"
+  icarus-cli plan "refactor the data layer to use a repository pattern"
+  icarus-cli run "write tests for src/utils/" --dry-run
+  icarus-cli replay trace_1h2x3y_abc123
+  ICARUS_API_KEY=sk-... icarus-cli run "create a CI workflow" --model=claude-haiku-4-5-20251001
 `)
 }
 
@@ -445,19 +445,19 @@ async function main() {
     switch (subcmd) {
       case 'run': {
         const task = rest.join(' ').trim()
-        if (!task) { console.error(fmt.err('Error: task is required — logik-cli run "<task>"')); process.exit(1) }
+        if (!task) { console.error(fmt.err('Error: task is required — icarus-cli run "<task>"')); process.exit(1) }
         await cmdRun(task, args)
         break
       }
       case 'plan': {
         const task = rest.join(' ').trim()
-        if (!task) { console.error(fmt.err('Error: task is required — logik-cli plan "<task>"')); process.exit(1) }
+        if (!task) { console.error(fmt.err('Error: task is required — icarus-cli plan "<task>"')); process.exit(1) }
         await cmdPlan(task, args)
         break
       }
       case 'replay': {
         const traceId = rest[0]
-        if (!traceId) { console.error(fmt.err('Error: traceId is required — logik-cli replay <traceId>')); process.exit(1) }
+        if (!traceId) { console.error(fmt.err('Error: traceId is required — icarus-cli replay <traceId>')); process.exit(1) }
         await cmdReplay(traceId, args)
         break
       }
