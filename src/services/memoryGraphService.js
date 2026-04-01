@@ -311,6 +311,64 @@ class MemoryGraphService {
     })
   }
 
+  /**
+   * Log a model-routing decision so future sessions can learn preferred
+   * role→model pairings and avoid repeated fallback chains.
+   *
+   * @param {{
+   *   task: string,
+   *   role: string,
+   *   confidence: number,
+   *   strategy: string,
+   *   modelId: string,
+   *   modelName?: string,
+   *   reasoning: string,
+   *   usedFallback?: boolean,
+   *   fallbackIndex?: number,
+   *   scores?: Record<string,number>,
+   *   durationMs?: number,
+   * }} decision
+   */
+  logOrchestrationDecision({
+    task = '',
+    role = '',
+    confidence = 0,
+    strategy = 'single',
+    modelId = '',
+    modelName = '',
+    reasoning = '',
+    usedFallback = false,
+    fallbackIndex = 0,
+    scores = {},
+    durationMs = null,
+  }) {
+    this.init()
+    const nodeId = `orchestration:${stableHash(`${role}:${modelId}:${strategy}:${String(task).slice(0, 80)}`)}`
+    return this.upsertNode({
+      id: nodeId,
+      type: 'orchestration_run',
+      title: `Route ${role} → ${modelName || modelId}`,
+      summary: shortSummary(
+        `role=${role} conf=${confidence.toFixed(2)} model=${modelName || modelId} strategy=${strategy}` +
+        (usedFallback ? ` fallbackIdx=${fallbackIndex}` : '') +
+        ` | ${reasoning}`, 420
+      ),
+      tags: ['orchestration', role, strategy, usedFallback ? 'fallback' : 'primary'],
+      metadata: {
+        role,
+        confidence,
+        strategy,
+        modelId,
+        modelName,
+        usedFallback,
+        fallbackIndex,
+        scores,
+        durationMs,
+      },
+      evidence: [`${nowIso()} orchestration: ${reasoning}`],
+    })
+  }
+
   ingestCritiqueOutcome({ task = '', critiqueSummary = '', passed = true }) {
     this.init()
     const nodeId = `critique:${stableHash(`${task}:${critiqueSummary}`)}`
