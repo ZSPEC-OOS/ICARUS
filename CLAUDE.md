@@ -7,21 +7,35 @@
 
 ---
 
-## Capabilities — Local Folder and GitHub Repo
+## Capabilities — Local Folder vs GitHub Repo
 
-Whether working via the local folder or via GitHub MCP tools, the following capabilities are always available:
+The two contexts have the same logical capabilities but different commit semantics:
+
+### Local folder (primary — use by default)
+
+- File edits (`Edit`, `Write`) modify files **on disk only** — nothing is committed or pushed until explicitly requested.
+- Changes accumulate locally; `git commit` + `git push` are separate, deliberate steps.
+- Automatic file edits are allowed freely; automatic git pushes are not.
+
+### GitHub MCP (for PR/issue management only)
+
+- `mcp__github__create_or_update_file` and `mcp__github__push_files` **commit directly to GitHub** — there is no staging area; every edit is an immediate push to the remote branch.
+- Because of this, only use GitHub MCP file-write tools when there is no local branch, or when the user explicitly asks to edit via GitHub directly.
+- Automatic file edits via MCP are **not** allowed without explicit user instruction, precisely because they push immediately.
+
+### Capability map
 
 | Capability | Local (git + fs tools) | GitHub (MCP tools) |
 |---|---|---|
 | Read files / browse code | Read, Glob, Grep | `mcp__github__get_file_contents`, `mcp__github__search_code` |
-| Edit / write files | Edit, Write | `mcp__github__create_or_update_file` |
-| Commit changes | `git commit` | `mcp__github__push_files` |
+| Edit / write files | Edit, Write — **local only, no auto-push** | `mcp__github__create_or_update_file` — **immediate remote commit** |
+| Commit + push | `git commit` then `git push` (explicit) | `mcp__github__push_files` (always pushes) |
 | View branches | `git branch` | `mcp__github__list_branches` |
 | View commits / history | `git log` | `mcp__github__list_commits` |
 | Issues | N/A | `mcp__github__issue_read`, `mcp__github__issue_write` |
 | Pull requests | N/A | `mcp__github__pull_request_read`, `mcp__github__create_pull_request` |
 
-**Default**: prefer local tools (Read, Edit, Bash, git) for all file and code operations. GitHub MCP tools are for PR/issue management only.
+**Default**: always prefer local tools. GitHub MCP file-write tools are a last resort.
 
 ---
 
@@ -30,8 +44,7 @@ Whether working via the local folder or via GitHub MCP tools, the following capa
 **NEVER create a pull request automatically.**
 
 Only create a PR when:
-1. The user **explicitly asks** ("create a PR", "open a pull request", "make a PR"), OR
-2. Changes were made **directly via `mcp__github__push_files`** (i.e., no local branch exists)
+1. The user **explicitly asks** ("create a PR", "open a pull request", "make a PR")
 
 In all other cases: commit and push to the branch, then stop. Do not offer to create a PR unprompted.
 
