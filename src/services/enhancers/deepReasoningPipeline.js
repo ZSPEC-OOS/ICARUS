@@ -3,10 +3,11 @@ import { retrieveContext } from './ragService.js'
 import { runCritiquePass } from './critiqueMiddleware.js'
 import { createReliabilityLoopFSM } from '../reliability/fsm.js'
 import { memoryGraphService } from '../memoryGraphService.js'
-import { setTraceLoopState } from '../toolTraceStore.js'
+import { setTraceLoopState, traceOrchestrationDecision } from '../toolTraceStore.js'
 import { packContextSections } from './contextPacker.js'
 import { enforceQualityFloor } from './qualityFloor.js'
 import { efficiencyMetricsService } from '../efficiency/metricsService.js'
+import { classifyTask } from '../orchestration/taskClassifier.js'
 
 /**
  * @typedef {'simple'|'moderate'|'complex'} TaskComplexity
@@ -15,12 +16,24 @@ import { efficiencyMetricsService } from '../efficiency/metricsService.js'
 /**
  * Build a configurable deep reasoning workflow runner around existing executor.
  * Integrates planner/rag/critique stages while preserving existing agent loop.
+ *
+ * @param {object}  options
+ * @param {object}  options.enhancerConfig
+ * @param {object}  [options.shadowContext]
+ * @param {Function} [options.planner]
+ * @param {Function} options.runAgent          async (task, ctx) => { text }
+ * @param {object}  [options.modelRouter]      Router from createModelRouter — enables per-step dispatch
+ * @param {object}  [options.defaultModelConfig]  Fallback model config for router
+ * @param {object}  [options.logger]
+ * @param {Function} [options.onEvent]
  */
 export function createDeepReasoningWorkflow({
   enhancerConfig,
   shadowContext,
   planner,
   runAgent,
+  modelRouter = null,
+  defaultModelConfig = null,
   logger = console,
   onEvent = () => {},
 }) {
@@ -66,6 +79,45 @@ export function createDeepReasoningWorkflow({
           workflow.retrieval = enhancerConfig?.rag?.enabled
             ? retrieveContext({ query: workflow.structured.contract.goal, shadowContext, config: enhancerConfig.rag })
             : { contexts: [], promptContext: '' }
+
+          // Per-step model routing: classify the goal to pick the specialist model
+          workflow.routing = null
+          if (modelRouter && defaultModelConfig) {
+            const stepClassification = classifyTask(workflow.structured.contract.goal || task)
+            workflow.routing = modelRouter.route(stepClassification, defaultModelConfig)
+            const orchCfg = enhancerConfig?.orchestration
+            if (orchCfg?.logDecisions) {
+              onEvent?.({
+                type: 'orchestration',
+                source: 'deep_reasoning',
+                role: workflow.routing.role,
+                confidence: workflow.routing.confidence,
+                strategy: workflow.routing.strategy,
+                modelId: workflow.routing.modelConfig?.modelId || workflow.routing.modelConfig?.id,
+                reasoning: workflow.routing.reasoning,
+              })
+              traceOrchestrationDecision({
+                taskSnippet: String(workflow.structured.contract.goal || task).slice(0, 200),
+                role: workflow.routing.role,
+                confidence: workflow.routing.confidence,
+                strategy: workflow.routing.strategy,
+                modelId: workflow.routing.modelConfig?.modelId || workflow.routing.modelConfig?.id || '',
+                reasoning: `[deep-reasoning] ${workflow.routing.reasoning}`,
+                scores: workflow.routing.scores,
+              })
+              memoryGraphService.logOrchestrationDecision({
+                task: String(workflow.structured.contract.goal || task).slice(0, 160),
+                role: workflow.routing.role,
+                confidence: workflow.routing.confidence,
+                strategy: workflow.routing.strategy,
+                modelId: workflow.routing.modelConfig?.modelId || workflow.routing.modelConfig?.id || '',
+                modelName: workflow.routing.modelConfig?.name || '',
+                reasoning: `[deep-reasoning] ${workflow.routing.reasoning}`,
+                scores: workflow.routing.scores,
+              })
+            }
+          }
+
           const packed = packContextSections([
             { heading: 'TASK', content: workflow.structured.promptText },
             { heading: 'RETRIEVED CONTEXT', content: workflow.retrieval.promptContext || '' },
@@ -73,8 +125,15 @@ export function createDeepReasoningWorkflow({
           ], ctx.previousPackedContext || '')
           workflow.executionTask = packed.text
           workflow.packing = packed
-          logger.info?.('[deep-reasoning] running task', { complexity, steps: plan.steps.length })
-          workflow.result = await runAgent(workflow.executionTask, { ...ctx, plan, complexity, retrieval: workflow.retrieval })
+          logger.info?.('[deep-reasoning] running task', { complexity, steps: plan.steps.length, role: workflow.routing?.role })
+          workflow.result = await runAgent(workflow.executionTask, {
+            ...ctx,
+            plan,
+            complexity,
+            retrieval: workflow.retrieval,
+            routedModelConfig: workflow.routing?.modelConfig || null,
+            orchestrationRole: workflow.routing?.role || null,
+          })
           return workflow.result
         },
         verify: async ({ execution }) => {
@@ -145,6 +204,9 @@ export function createDeepReasoningWorkflow({
         state: runState.current,
         history: runState.history,
       },
+      orchestration: workflow.routing
+        ? { role: workflow.routing.role, confidence: workflow.routing.confidence, strategy: workflow.routing.strategy, modelId: workflow.routing.modelConfig?.modelId || null }
+        : null,
       concise,
       detailed,
       text: enhancerConfig?.deepReasoning?.summaryStyle === 'concise_only'

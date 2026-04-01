@@ -6,11 +6,12 @@ import { memoryGraphService } from './memoryGraphService.js'
 import { createReliabilityLoopFSM } from './reliability/fsm.js'
 import { evaluateReliabilityGates, detectApiSignatureChange, evaluateBenchmarkRegressionGate } from './reliability/gateEvaluators.js'
 import { createRollbackHandler } from './reliability/rollbackHandler.js'
-import { setTraceLoopState } from './toolTraceStore.js'
+import { setTraceLoopState, traceOrchestrationDecision, traceOrchestrationFallback } from './toolTraceStore.js'
 import { semanticCacheService } from './efficiency/cacheService.js'
 import { efficiencyMetricsService } from './efficiency/metricsService.js'
 import { packContextSections } from './enhancers/contextPacker.js'
 import { enforceQualityFloor } from './enhancers/qualityFloor.js'
+import { createModelRouter } from './orchestration/modelRouter.js'
 
 function makeSessionDiary() {
   const filesRead = new Set()
@@ -98,10 +99,55 @@ export async function runAgentLoop({
   signal,
   conversationHistory,
   enhancerConfig: enhancerConfigOverrides,
+  availableModels,
 }) {
-  const isAnthropic = modelConfig.provider === 'anthropic' || (!modelConfig.provider && modelConfig.baseUrl?.includes('api.anthropic.com'))
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
   memoryGraphService.init()
+
+  // ── Model Orchestration: classify task → route to specialised model ────────
+  const orchCfg = enhancerConfig.orchestration
+  const router = createModelRouter(orchCfg, availableModels || [])
+  const routeStart = Date.now()
+  const routing = router.classifyAndRoute(task, modelConfig)
+  const routeDurationMs = Date.now() - routeStart
+
+  // Effective model config — may differ from the caller-supplied default
+  let activeModelConfig = routing.modelConfig
+
+  if (orchCfg?.logDecisions) {
+    onEvent?.({
+      type: 'orchestration',
+      role: routing.role,
+      confidence: routing.confidence,
+      strategy: routing.strategy,
+      modelId: activeModelConfig.modelId || activeModelConfig.id,
+      reasoning: routing.reasoning,
+      scores: routing.scores,
+    })
+    traceOrchestrationDecision({
+      taskSnippet: String(task || '').slice(0, 200),
+      role: routing.role,
+      confidence: routing.confidence,
+      strategy: routing.strategy,
+      modelId: activeModelConfig.modelId || activeModelConfig.id || '',
+      reasoning: routing.reasoning,
+      scores: routing.scores,
+      durationMs: routeDurationMs,
+    })
+    memoryGraphService.logOrchestrationDecision({
+      task: String(task || '').slice(0, 160),
+      role: routing.role,
+      confidence: routing.confidence,
+      strategy: routing.strategy,
+      modelId: activeModelConfig.modelId || activeModelConfig.id || '',
+      modelName: activeModelConfig.name || '',
+      reasoning: routing.reasoning,
+      scores: routing.scores,
+      durationMs: routeDurationMs,
+    })
+  }
+
+  const isAnthropic = activeModelConfig.provider === 'anthropic' || (!activeModelConfig.provider && activeModelConfig.baseUrl?.includes('api.anthropic.com'))
 
   const filesChanged = []
   const diary = makeSessionDiary()
@@ -154,8 +200,8 @@ export async function runAgentLoop({
           const turnStarted = Date.now()
           try {
             const modelCacheKey = {
-              modelId: modelConfig.modelId,
-              provider: modelConfig.provider || '',
+              modelId: activeModelConfig.modelId,
+              provider: activeModelConfig.provider || '',
               messages: messages.slice(-6),
             }
             const cachedResponse = semanticCacheService.get('model_response', modelCacheKey)
@@ -163,7 +209,33 @@ export async function runAgentLoop({
               response = cachedResponse
               onEvent({ type: 'cache', layer: 'model_response', hit: true })
             } else {
-              response = await callWithToolsStreaming(modelConfig, messages, tools, signal, anthropicSystemField, (delta) => onEvent({ type: 'text_delta', delta }))
+              const callModel = (cfg) => callWithToolsStreaming(cfg, messages, tools, signal, isAnthropic ? anthropicSystemField : undefined, (delta) => onEvent({ type: 'text_delta', delta }))
+
+              if (orchCfg?.enabled && routing.strategy === 'ensemble') {
+                const { result, modelsUsed, aggregationStrategy } = await router.callEnsemble(routing, callModel)
+                response = result
+                onEvent({ type: 'orchestration_ensemble', modelsUsed: modelsUsed.map(m => m.modelId || m.id), aggregationStrategy })
+              } else if (orchCfg?.enabled && routing.strategy === 'fallback' && routing.fallbacks.length > 0) {
+                const { result, modelUsed, fallbackIndex, usedFallback } = await router.callWithFallback(
+                  routing,
+                  callModel,
+                  ({ fromModel, toModel, error, fallbackIndex: fi }) => {
+                    onEvent({ type: 'orchestration_fallback', role: routing.role, fromModelId: fromModel.modelId || fromModel.id, toModelId: toModel.modelId || toModel.id, error: error.message, fallbackIndex: fi })
+                    traceOrchestrationFallback({ role: routing.role, fromModelId: fromModel.modelId || fromModel.id || '', toModelId: toModel.modelId || toModel.id || '', error: error.message, fallbackIndex: fi })
+                    if (usedFallback) {
+                      activeModelConfig = modelUsed
+                    }
+                  }
+                )
+                response = result
+                if (usedFallback) {
+                  activeModelConfig = modelUsed
+                  onEvent({ type: 'orchestration_fallback_used', role: routing.role, modelId: modelUsed.modelId || modelUsed.id, fallbackIndex })
+                }
+              } else {
+                response = await callModel(activeModelConfig)
+              }
+
               if (!response?.toolCalls?.length) semanticCacheService.set('model_response', modelCacheKey, response, 45000)
               onEvent({ type: 'cache', layer: 'model_response', hit: false })
             }
@@ -184,6 +256,7 @@ export async function runAgentLoop({
             latencyMs: Date.now() - turnStarted,
             inputTokens: response.usage?.input || 0,
             outputTokens: response.usage?.output || 0,
+            meta: { role: routing.role, modelId: activeModelConfig.modelId || activeModelConfig.id, strategy: routing.strategy },
           })
           if (response.text) diary.onModelText(response.text)
 

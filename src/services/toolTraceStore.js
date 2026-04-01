@@ -105,3 +105,67 @@ export async function replayTrace(traceId, executeTool) {
     output,
   }
 }
+
+/**
+ * Record a single orchestration routing decision as a self-contained trace entry.
+ *
+ * @param {{
+ *   taskSnippet: string,
+ *   role: string,
+ *   confidence: number,
+ *   strategy: string,
+ *   modelId: string,
+ *   reasoning: string,
+ *   scores: Record<string,number>,
+ *   durationMs?: number,
+ * }} decision
+ * @returns {string} traceId
+ */
+export function traceOrchestrationDecision(decision) {
+  const traceId = makeId()
+  appendLine({
+    traceId,
+    type: 'orchestration_decision',
+    schemaVersion: schemaVersion(),
+    loopState: safeJson(activeLoopState),
+    taskSnippet: String(decision.taskSnippet || '').slice(0, 200),
+    role: decision.role,
+    confidence: decision.confidence,
+    strategy: decision.strategy,
+    modelId: decision.modelId,
+    reasoning: decision.reasoning,
+    scores: safeJson(decision.scores || {}),
+    durationMs: decision.durationMs ?? null,
+    timestamp: nowIso(),
+    status: 'ok',
+  })
+  return traceId
+}
+
+/**
+ * Record a fallback trigger — emitted when a primary model fails and the router
+ * falls back to the next candidate.
+ *
+ * @param {{
+ *   role: string,
+ *   fromModelId: string,
+ *   toModelId: string,
+ *   error: string,
+ *   fallbackIndex: number,
+ * }} event
+ */
+export function traceOrchestrationFallback(event) {
+  appendLine({
+    traceId: makeId(),
+    type: 'orchestration_fallback',
+    schemaVersion: schemaVersion(),
+    loopState: safeJson(activeLoopState),
+    role: event.role,
+    fromModelId: event.fromModelId,
+    toModelId: event.toModelId,
+    error: event.error,
+    fallbackIndex: event.fallbackIndex,
+    timestamp: nowIso(),
+    status: 'ok',
+  })
+}
