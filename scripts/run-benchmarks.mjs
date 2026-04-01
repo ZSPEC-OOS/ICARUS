@@ -45,7 +45,7 @@ function renderMarkdown(report, view) {
 }
 
 async function main() {
-  const outDir = argValue('--out-dir', '.logik/benchmarks')
+  const outDir = argValue('--out-dir', '.icarus/benchmarks')
   const suiteVersion = argValue('--suite-version', `nightly-${new Date().toISOString().slice(0, 10)}`)
   const baselinePath = argValue('--baseline', path.join(outDir, 'baseline.json'))
 

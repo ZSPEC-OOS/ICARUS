@@ -1,6 +1,6 @@
 import { useState, memo } from 'react'
 
-// ─── LogikToolsPane ───────────────────────────────────────────────────────────
+// ─── IcarusToolsPane ───────────────────────────────────────────────────────────
 // Quick-access tool buttons (npm test / lint / build / git) + custom command input.
 const TOOL_BUTTONS = [
   { label: 'Run Tests',    cmd: 'npm test',              tool: 'test'       },
@@ -11,7 +11,7 @@ const TOOL_BUTTONS = [
   { label: 'Git Log',      cmd: 'git log --oneline -10', tool: 'git-log'    },
 ]
 
-const LogikToolsPane = memo(function LogikToolsPane({
+const IcarusToolsPane = memo(function IcarusToolsPane({
   bridgeAvailable,
   callExecBridge,
   onSetActiveTab,
@@ -77,4 +77,4 @@ const LogikToolsPane = memo(function LogikToolsPane({
   )
 })
 
-export default LogikToolsPane
+export default IcarusToolsPane

@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Run ESLint on a JS/TS file and return errors with line numbers, or confirm no errors.',
   category: 'analysis',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

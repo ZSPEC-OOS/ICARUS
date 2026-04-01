@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600;700&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════════
-   LOGIK — Multi-theme system  ·  6 themes  ·  Fine-tune sliders
+   ICARUS — Multi-theme system  ·  6 themes  ·  Fine-tune sliders
    ═══════════════════════════════════════════════════════════════════ */
 
 html, body, #root {
@@ -196,7 +196,7 @@ html, body, #root {
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.40);
 }
 
-/* ── Theme: Spectrum (LOGIK logo-inspired neon blend) */
+/* ── Theme: Spectrum (ICARUS logo-inspired neon blend) */
 .lk-root.lk-theme-spectrum {
   --lk-bg:          #09081a;
   --lk-surface:     #10102a;
@@ -2718,8 +2718,8 @@ kbd {
   border-bottom-left-radius: 3px;
 }
 
-/* ── LOGIK.md editor ─────────────────────────────────────────────── */
-.lk-logikmd-editor {
+/* ── ICARUS.md editor ─────────────────────────────────────────────── */
+.lk-icarusmd-editor {
   width: 100%;
   box-sizing: border-box;
   background: var(--lk-bg);
@@ -2733,7 +2733,7 @@ kbd {
   margin: 8px 0 6px;
   line-height: 1.5;
 }
-.lk-logikmd-editor:focus { outline: none; border-color: var(--lk-accent); }
+.lk-icarusmd-editor:focus { outline: none; border-color: var(--lk-accent); }
 
 /* ── Settings section (AI API + Firebase) ────────────────────────── */
 .lk-settings-section {

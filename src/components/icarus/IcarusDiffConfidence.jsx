@@ -2,7 +2,7 @@ import { memo, useState } from 'react'
 import { computeDiffRationale, confidenceClass, formatConfidence } from '../../services/rationale/rationaleService.js'
 import { memoryGraphService } from '../../services/memoryGraphService.js'
 
-// ─── LogikDiffConfidence ──────────────────────────────────────────────────────
+// ─── IcarusDiffConfidence ──────────────────────────────────────────────────────
 // Enhanced diff viewer: wraps the raw unified diff with per-hunk confidence
 // scores and expandable "why this edit?" rationale panels.
 //
@@ -93,7 +93,7 @@ function PatchBlock({ edit, index, confidence }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-const LogikDiffConfidence = memo(function LogikDiffConfidence({
+const IcarusDiffConfidence = memo(function IcarusDiffConfidence({
   diffText,
   patchEdits = [],
   verification = null,
@@ -193,4 +193,4 @@ const LogikDiffConfidence = memo(function LogikDiffConfidence({
   )
 })
 
-export default LogikDiffConfidence
+export default IcarusDiffConfidence

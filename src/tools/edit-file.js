@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Surgically replace an exact string in a file. Preferred over write-file for small changes.',
   category: 'coding',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {
@@ -39,7 +39,7 @@ export async function test() {
   }
 
   // Trial 1: replacement actually appears in the written content
-  const src1 = 'const version = "1.0.0"\nconst name = "logik"\n'
+  const src1 = 'const version = "1.0.0"\nconst name = "icarus"\n'
   await execute({ path: 'package.js', old_str: '"1.0.0"', new_str: '"2.0.0"' }, makeConfig(src1))
   if (!lastWritten?.includes('"2.0.0"')) failures.push('Trial 1: new_str not in written content')
   if (lastWritten?.includes('"1.0.0"'))  failures.push('Trial 1: old_str still present after replacement')

@@ -6,7 +6,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Retrieve and rerank context chunks for grounding responses.',
   category: 'analysis',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

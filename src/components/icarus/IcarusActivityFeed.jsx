@@ -171,7 +171,7 @@ const ActivityEntry = memo(function ActivityEntry({ entry }) {
 })
 
 // ─── Main component ───────────────────────────────────────────────────────────
-const LogikActivityFeed = memo(function LogikActivityFeed({
+const IcarusActivityFeed = memo(function IcarusActivityFeed({
   activityLog,
   isAgentRunning,
   agentStreamText,
@@ -262,4 +262,4 @@ const LogikActivityFeed = memo(function LogikActivityFeed({
   )
 })
 
-export default LogikActivityFeed
+export default IcarusActivityFeed

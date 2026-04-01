@@ -8,9 +8,9 @@ import {
   validateToolModule,
 } from '../../services/toolLoader'
 
-// ─── LogikModularTools ────────────────────────────────────────────────────────
+// ─── IcarusModularTools ────────────────────────────────────────────────────────
 // Drag-and-drop tool installer + tool list with Test / Download / Uninstall.
-export default function LogikModularTools() {
+export default function IcarusModularTools() {
   const [tools,       setTools]       = useState([])
   const [isDragging,  setIsDragging]  = useState(false)
   const [installMsg,  setInstallMsg]  = useState(null)  // { type: 'success'|'error', text }

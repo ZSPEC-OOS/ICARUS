@@ -217,7 +217,7 @@ export async function rerunWorkflow(token, owner, repo, runId) {
   } catch { return null }
 }
 
-// Generate a branch name: logik/{timestamp}-{slug}-{shortId}
+// Generate a branch name: icarus/{timestamp}-{slug}-{shortId}
 export function generateBranchName(prompt) {
   const ts = Date.now()
   const shortId = Math.random().toString(36).slice(2, 7)
@@ -228,5 +228,5 @@ export function generateBranchName(prompt) {
     .split(/\s+/)
     .slice(0, 5)
     .join('-')
-  return `logik/${ts}-${slug}-${shortId}`
+  return `icarus/${ts}-${slug}-${shortId}`
 }

@@ -13,7 +13,7 @@ import {
   saveUserConversation,
 } from '../../services/firebaseService.js'
 
-const CONV_KEY = 'logik:conv'
+const CONV_KEY = 'icarus:conv'
 
 function loadConversation() {
   try { return JSON.parse(localStorage.getItem(CONV_KEY)) || [] } catch { return [] }

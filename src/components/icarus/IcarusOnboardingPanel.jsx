@@ -1,7 +1,7 @@
-// ─── LogikOnboardingPanel ─────────────────────────────────────────────────────
+// ─── IcarusOnboardingPanel ─────────────────────────────────────────────────────
 //
 // Step-by-step setup wizard shown to non-coders until all ONBOARDING_STEPS
-// are complete. Renders as a dismissible panel in the LOGIK sidebar.
+// are complete. Renders as a dismissible panel in the ICARUS sidebar.
 //
 // Props
 //   showOnboarding   boolean
@@ -19,7 +19,7 @@
 
 import { memo } from 'react'
 
-const LogikOnboardingPanel = memo(function LogikOnboardingPanel({
+const IcarusOnboardingPanel = memo(function IcarusOnboardingPanel({
   showOnboarding,
   currentStep,
   stepIndex,
@@ -141,4 +141,4 @@ const LogikOnboardingPanel = memo(function LogikOnboardingPanel({
   )
 })
 
-export default LogikOnboardingPanel
+export default IcarusOnboardingPanel

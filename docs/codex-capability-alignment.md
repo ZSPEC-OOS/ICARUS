@@ -1,11 +1,11 @@
-# Logik vs ChatGPT Codex Capability Alignment
+# Icarus vs ChatGPT Codex Capability Alignment
 
 ## Scope
-This assessment compares Logik's baseline capabilities against ChatGPT Codex-style coding-agent workflows, then documents concrete upgrades made in this change set.
+This assessment compares Icarus's baseline capabilities against ChatGPT Codex-style coding-agent workflows, then documents concrete upgrades made in this change set.
 
 ## Baseline capability comparison (before enhancements)
 
-### Areas where Logik was already strong
+### Areas where Icarus was already strong
 - **Modular tool architecture** via built-in registry + user-installable tools.
 - **Agentic loop with tool calls** (read/write/edit/search/grep/run/lint/PR) and loop detection.
 - **Repository indexing (ShadowContext)** with conventions detection and import graph extraction.

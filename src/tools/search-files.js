@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Search the indexed repository for files relevant to a query. Returns scored file paths.',
   category: 'analysis',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

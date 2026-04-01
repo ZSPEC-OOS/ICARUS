@@ -8,7 +8,7 @@ npm run dev
 ```
 
 Open http://localhost:5173 and log in with:
-- **Username:** logik
+- **Username:** icarus
 - **Password:** admin
 
 ## Configuration
@@ -103,7 +103,7 @@ Run the local benchmark harness:
 npm run benchmark:nightly
 ```
 
-Outputs are written to `.logik/benchmarks/`:
+Outputs are written to `.icarus/benchmarks/`:
 - `latest.json` machine-readable metrics and regression signals
 - `<suite>.json` historical report snapshot
 - `<suite>.md` comparative markdown summary

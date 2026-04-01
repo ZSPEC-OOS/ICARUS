@@ -33,7 +33,7 @@ export const AUTOFIX_MAX_ATTEMPTS     = 5         // auto-remediation AI fix pas
 export const PLAN_MAX_FILES           = 20        // max files in a planner execution plan
 export const CONTEXT_FILES_LIMIT      = 8         // ambient context files injected per generation
 export const FILE_CONTENT_CAP_CHARS   = 20_000    // max existing file chars injected into prompt
-export const LOGIK_MD_CAP             = 8_000     // max LOGIK.md chars injected into prompts
+export const ICARUS_MD_CAP             = 8_000     // max ICARUS.md chars injected into prompts
 
 // ── Sandbox timeouts ─────────────────────────────────────────────────────────
 export const SANDBOX_JS_TIMEOUT_MS    = 5_000     // JS iframe execution budget (ms)

@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Generate a token-optimization plan for long requests while preserving implementation quality.',
   category: 'analysis',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 function buildPlan(task, expectedOutputSize = 'medium', mode = 'adaptive') {

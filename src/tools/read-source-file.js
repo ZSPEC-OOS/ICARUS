@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Read a file from the SOURCE (secondary) repository in Fusion mode. Read-only.',
   category: 'coding',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Delete a file from the repository. Irreversible without a git revert.',
   category: 'coding',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

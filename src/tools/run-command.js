@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Execute a shell command via the local exec bridge (npm, git, eslint, etc.). Requires npm run dev.',
   category: 'utility',
-  author: 'LOGIK',
+  author: 'ICARUS',
 }
 
 export async function execute(input, config = {}) {

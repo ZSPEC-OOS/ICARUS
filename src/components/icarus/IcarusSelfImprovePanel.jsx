@@ -1,4 +1,4 @@
-// ─── LogikSelfImprovePanel ────────────────────────────────────────────────────
+// ─── IcarusSelfImprovePanel ────────────────────────────────────────────────────
 // Attach ONE local repository folder. The agent explores it each cycle, finds
 // an enhancement, applies it, then starts over — indefinitely.
 //
@@ -16,7 +16,7 @@ function ts() {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function LogikSelfImprovePanel({ modelConfig }) {
+export default function IcarusSelfImprovePanel({ modelConfig }) {
   // ── Folder ──────────────────────────────────────────────────────────────────
   const [handle,    setHandle]    = useState(null)
   const [repoName,  setRepoName]  = useState('')

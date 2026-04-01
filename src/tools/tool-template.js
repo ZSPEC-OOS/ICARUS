@@ -1,4 +1,4 @@
-// ─── LOGIK Modular Tool Template ─────────────────────────────────────────────
+// ─── ICARUS Modular Tool Template ─────────────────────────────────────────────
 // Copy this file and fill in the blanks to create a new tool.
 // All three exports (toolMeta, execute, test) are required.
 
