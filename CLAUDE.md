@@ -9,31 +9,16 @@
 
 ## Workflow by Context
 
-### Local folder attached
+**All contexts use the same plan-first rule:**
 
 1. Present a plan for the changes
 2. Wait for the user to say **"apply"** (or equivalent confirmation)
-3. Write the changes to disk using `Edit` / `Write`
-4. Done — no git, no commit, no push
-
-Never touch git in local folder context unless explicitly instructed.
-Plan mode is already the default for local folder — no difference.
-
----
-
-### GitHub repo only (no local folder)
-
-**Normal mode:**
-1. Make the edits
-2. Commit and push to the feature branch
-3. Done — user handles merge and branch deletion manually on GitHub
-
-**Plan mode:**
-1. Present a plan for the changes
-2. Wait for the user to confirm
-3. Make the edits, commit, and push to the feature branch
+3. Execute:
+   - **Local folder** → write to disk using `Edit` / `Write`, no git
+   - **GitHub repo** → commit and push to the feature branch
 4. Done — user handles merge and branch deletion manually on GitHub
 
+Never touch git in local folder context unless explicitly instructed.
 No PR creation. No auto-merge. No branch cleanup.
 
 ---

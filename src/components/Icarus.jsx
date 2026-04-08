@@ -212,8 +212,8 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   const [creativity,      setCreativity]      = useState(saved.creativity ?? 50)
   // enableThinking: Anthropic extended thinking (deeper reasoning, slower)
   const [enableThinking,  setEnableThinking]  = useState(saved.enableThinking ?? false)
-  // planMode: agent reads only — no file writes; useful for analysis and review
-  const [planMode,        setPlanMode]        = useState(false)
+  // planMode: always true — agent always plans first, implements only after user approval
+  const planMode = true
   // planApproval: pending plan awaiting user approve/reject/modify
   const [planApproval,    setPlanApproval]    = useState(null) // null | { task, summary }
   // localDirHandle: File System Access API handle for a locally attached repo folder
@@ -1697,15 +1697,6 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
               onClick={() => { handleReset(); setMobileDrawerOpen(false) }} title="New session">＋</button>
           </div>
           <div className="lk-sidebar-nav-sep" />
-          <button
-            className={`lk-sidebar-nav-btn${!planMode ? ' lk-sidebar-nav-btn--active' : ''}`}
-            onClick={() => { setPlanMode(false); setMobileDrawerOpen(false) }}
-          ><span className="lk-sidebar-nav-icon">&lt;/&gt;</span> Code</button>
-          <button
-            className={`lk-sidebar-nav-btn${planMode ? ' lk-sidebar-nav-btn--active' : ''}`}
-            onClick={() => { setPlanMode(true); setMobileDrawerOpen(false) }}
-          ><span className="lk-sidebar-nav-icon">📋</span> Plan</button>
-          <div className="lk-sidebar-nav-sep" />
           <div className="lk-sidebar-nav-section-hd">
             <span>Recent</span>
             {history.length > 0 && (
@@ -1763,24 +1754,6 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
                   transform: `translate(${titleOffsetX}px, ${titleOffsetY}px)`,
                 }}
               >ICARUS - AI Professional Coder</span>
-
-              <div
-                className="lk-view-toggle"
-                role="group"
-                aria-label="Execution mode"
-                style={{ transform: `translate(${toggleOffsetX}px, ${toggleOffsetY}px)` }}
-              >
-                <button
-                  className={`lk-view-toggle-btn${planMode ? ' lk-view-toggle-btn--active' : ''}`}
-                  onClick={() => setPlanMode(true)}
-                  title="Plan mode: creates a plan and asks for approval before implementing."
-                >Plan</button>
-                <button
-                  className={`lk-view-toggle-btn${!planMode ? ' lk-view-toggle-btn--active' : ''}`}
-                  onClick={() => setPlanMode(false)}
-                  title="Code mode: runs straight through implementation."
-                >Code</button>
-              </div>
 
               {turnCount > 0 && (
                 <div className="lk-turn-badge">
@@ -2170,8 +2143,8 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
             {/* Left: meta info */}
             <div className="lk-input-left">
-              {/* Mobile mode chip — shows current mode, hidden on desktop */}
-              <span className="lk-mode-chip">&lt;/&gt; {planMode ? 'Plan' : 'Code'}</span>
+              {/* Mobile mode chip */}
+              <span className="lk-mode-chip">&lt;/&gt; Plan</span>
               {costEstimate && (
                 <span className="lk-cost-row">
                   <span className="lk-cost-tokens">~{costEstimate.inputTokens.toLocaleString()}</span>

@@ -371,67 +371,6 @@ html, body, #root {
   gap: 6px;
 }
 
-/* ── Plan / Code view toggle pill ────────────────────────────────── */
-.lk-view-toggle {
-  display: flex;
-  align-items: center;
-  background: var(--lk-bg);
-  border: 1px solid var(--lk-border);
-  border-radius: 20px;
-  padding: 2px;
-  gap: 1px;
-  flex-shrink: 0;
-}
-
-.lk-view-toggle-btn {
-  background: none;
-  border: none;
-  border-radius: 16px;
-  padding: 3px 10px;
-  font-size: 11px;
-  font-family: inherit;
-  color: var(--lk-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
-  line-height: 1.6;
-}
-
-.lk-view-toggle-btn:hover {
-  color: var(--lk-fg);
-  background: color-mix(in srgb, var(--lk-accent) 10%, transparent);
-}
-
-.lk-view-toggle-btn--active {
-  background: var(--lk-accent);
-  color: #fff;
-  font-weight: 600;
-}
-
-.lk-view-toggle-btn--active:hover {
-  background: var(--lk-accent);
-  color: #fff;
-}
-
-.lk-view-toggle-btn--fusion {
-  color: var(--lk-text-muted);
-}
-
-.lk-view-toggle-btn--fusion:hover {
-  color: #7dd3fc;
-  background: color-mix(in srgb, #38bdf8 12%, transparent);
-}
-
-.lk-view-toggle-btn--fusion-active {
-  background: color-mix(in srgb, #38bdf8 20%, transparent);
-  color: #7dd3fc;
-  font-weight: 600;
-}
-
-.lk-view-toggle-btn--fusion-active:hover {
-  background: color-mix(in srgb, #38bdf8 30%, transparent);
-  color: #bae6fd;
-}
 
 .lk-source-chip-wrap--fusion-tab {
   position: absolute;
@@ -2348,21 +2287,6 @@ kbd {
   .lk-topbar-spacer { flex: 1; min-width: 4px; }
   .lk-model-select { max-width: 95px; font-size: 0.65rem; padding: 3px 4px; }
 
-  /* Row 2: view toggle takes full width below row 1 */
-  .lk-view-toggle {
-    order: 10;
-    flex-basis: 100%;
-    justify-content: stretch;
-    border-radius: 8px;
-  }
-  .lk-view-toggle-btn {
-    flex: 1;
-    text-align: center;
-    padding: 4px 6px;
-    font-size: 10px;
-    border-radius: 6px;
-  }
-
   /* Source chip: truncate long repo names */
   .lk-source-chip { max-width: 110px; overflow: hidden; text-overflow: ellipsis; font-size: 10px; padding: 3px 8px; }
 
@@ -2470,7 +2394,6 @@ kbd {
 
   /* ── Tap UX: remove blue flash, disable double-tap zoom ─────────── */
   .lk-sidebar-btn,
-  .lk-view-toggle-btn,
   .lk-tab,
   .lk-btn,
   .lk-hdr-btn,
@@ -2699,7 +2622,6 @@ kbd {
     text-overflow: ellipsis;
   }
   /* Hide desktop-only topbar elements (all moved into the drawer) */
-  .lk-view-toggle   { display: none !important; }
   .lk-brand-sub     { display: none !important; }
   .lk-turn-badge    { display: none !important; }
   .lk-shadow-badge  { display: none !important; }
