@@ -265,10 +265,26 @@ html, body, #root {
 
   --lk-grad-bg:     radial-gradient(ellipse 120% 60% at 50% 100%, #1e0c04 0%, #0e0804 60%);
   --lk-grad-panel:  #1c1008;
-  --lk-grad-glow:   radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 106, 0, 0.10) 0%, transparent 70%);
+  --lk-grad-glow:   radial-gradient(ellipse 110% 65% at 50% -5%,
+      rgba(255, 230, 80,  0.32) 0%,
+      rgba(255, 140, 0,   0.24) 18%,
+      rgba(220,  60, 0,   0.14) 40%,
+      rgba(160,  20, 0,   0.05) 60%,
+      transparent 75%
+    );
 
   --lk-shadow:      0 8px 32px rgba(0, 0, 0, 0.60);
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Phoenix: ICARUS brand text — fiery gradient ─────────────────── */
+.lk-root.lk-theme-phoenix .lk-brand-sub,
+.lk-root.lk-theme-phoenix .lk-topbar-mobile-title {
+  background: linear-gradient(90deg, #ff8c00 0%, #ffe000 48%, #ff4500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -616,7 +632,7 @@ html, body, #root {
   left: 0;
   right: 0;
   border-bottom: 1px solid var(--lk-border-soft);
-  background: linear-gradient(180deg, rgba(16, 19, 42, 0.98) 0%, rgba(12, 15, 30, 0.98) 100%);
+  background: var(--lk-surface);
   z-index: 15;
   box-shadow: 0 8px 30px rgba(0,0,0,0.4);
 }
@@ -2689,16 +2705,30 @@ kbd {
     min-width: 110px;
     height: 44px;
     border-radius: 10px;
-    padding: 0;
+    padding: 0 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
+    gap: 0;
     font-size: 0.88rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
   }
-  .lk-btn--send .lk-btn-icon { font-size: 14px; }
+  /* Icon hidden on mobile — text only, centered */
+  .lk-btn--send .lk-btn-icon { display: none; }
+
+  /* ── Phoenix: send button fire gradient ─────────────────────────── */
+  .lk-root.lk-theme-phoenix .lk-btn--send {
+    background: linear-gradient(135deg, #cc3a00 0%, #ff6a00 45%, #ffaa00 100%);
+    border-color: rgba(255, 140, 0, 0.55);
+    color: #1a0600;
+    box-shadow: 0 2px 18px rgba(255, 100, 0, 0.45);
+    text-shadow: none;
+  }
+  .lk-root.lk-theme-phoenix .lk-btn--send:hover:not(:disabled) {
+    background: linear-gradient(135deg, #e04500 0%, #ff8000 45%, #ffc000 100%);
+    box-shadow: 0 4px 24px rgba(255, 120, 0, 0.60);
+  }
 
   /* ── Push button: icon-only compact on mobile ────────────────────── */
   .lk-btn--push {
