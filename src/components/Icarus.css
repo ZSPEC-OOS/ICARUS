@@ -10,6 +10,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   font-family: 'Cormorant', serif;
+  overscroll-behavior: none;
 }
 
 /* ── Default theme: Graphite (Claude Code-ish dark, bright + easy on eyes) */
@@ -237,6 +238,7 @@ html, body, #root {
   display: flex;
   flex-direction: row;          /* sidebar | main */
   height: 100vh;
+  height: 100dvh;               /* iOS Safari: shrinks with address bar */
   overflow: hidden;
   background: var(--lk-grad-bg);
   color: var(--lk-text);
@@ -640,7 +642,7 @@ html, body, #root {
   box-shadow: 0 8px 30px rgba(0,0,0,0.4);
 }
 
-.lk-drawer--settings { padding: 14px 20px 20px; max-height: calc(100vh - 44px); overflow-y: auto; }
+.lk-drawer--settings { padding: 14px 20px 20px; max-height: calc(100dvh - 44px); overflow-y: auto; }
 .lk-drawer--history  { padding: 10px 20px 12px; max-height: 200px; overflow-y: auto; }
 
 /* Quick-setup URL field (spans full grid width) */
@@ -2422,6 +2424,37 @@ kbd {
 
   /* ── Onboarding panel ───────────────────────────────────────────── */
   .lk-onboarding { padding: 16px 12px; }
+
+  /* ── iOS zoom prevention: inputs/textareas must be ≥ 16 px ──────── */
+  /* Safari auto-zooms any focused field whose font-size is < 16px.   */
+  .lk-textarea        { font-size: 16px; }
+  .lk-input           { font-size: 16px; }
+  .lk-modal-textarea  { font-size: 16px; }
+
+  /* ── Tap UX: remove blue flash, disable double-tap zoom ─────────── */
+  .lk-sidebar-btn,
+  .lk-view-toggle-btn,
+  .lk-tab,
+  .lk-btn,
+  .lk-hdr-btn,
+  .lk-source-chip,
+  .lk-drawer-clear {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* ── Scrollable containers: prevent scroll chaining to the page ─── */
+  .lk-feed-output,
+  .lk-drawer--settings,
+  .lk-source-popover,
+  .lk-tabs {
+    overscroll-behavior: contain;
+  }
+
+  /* ── Safe-area top (notch / Dynamic Island when added to home screen) */
+  .lk-root {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 /* ── iPhone safe area support (notch / Dynamic Island / home bar) ─── */
