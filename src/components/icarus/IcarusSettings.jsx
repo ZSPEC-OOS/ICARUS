@@ -468,6 +468,7 @@ const IcarusSettings = memo(function IcarusSettings({
             { id: 'obsidian', name: 'Obsidian', bg: '#07091A', accent: '#7B82D8' },
             { id: 'forest',   name: 'Forest',   bg: '#0d1f17', accent: '#34d399' },
             { id: 'spectrum', name: 'Spectrum', bg: '#09081a', accent: '#ff4da3' },
+            { id: 'phoenix',  name: 'Phoenix',  bg: '#0e0804', accent: '#ff6a00' },
           ].map(t => (
             <button
               key={t.id}

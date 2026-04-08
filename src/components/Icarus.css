@@ -231,6 +231,46 @@ html, body, #root {
 }
 
 
+/* ── Theme: Phoenix (dark charred base, brilliant fire accent) */
+.lk-root.lk-theme-phoenix {
+  --lk-bg:          #0e0804;
+  --lk-surface:     #1c1008;
+  --lk-surface-2:   #26160a;
+  --lk-surface-3:   #321d0c;
+  --lk-surface-4:   #3e240f;
+
+  --lk-border:      #5a2e0a;
+  --lk-border-soft: #2a1508;
+  --lk-border-glow: rgba(255, 106, 0, 0.40);
+
+  --lk-text:        #fff3e0;
+  --lk-text-2:      #ffcc88;
+  --lk-text-muted:  #a05a28;
+
+  --lk-accent:      #ff6a00;
+  --lk-accent-h:    #ffaa00;
+  --lk-accent-dim:  rgba(255, 106, 0, 0.16);
+  --lk-accent-glow: rgba(255, 106, 0, 0.32);
+
+  --lk-violet:      #e62200;
+  --lk-violet-dim:  rgba(230, 34, 0, 0.12);
+  --lk-silver:      #ffd080;
+  --lk-silver-dim:  rgba(255, 208, 128, 0.08);
+
+  --lk-success:     #51cf66;
+  --lk-success-bg:  rgba(81, 207, 102, 0.08);
+  --lk-danger:      #e62200;
+  --lk-danger-bg:   rgba(230, 34, 0, 0.12);
+  --lk-warn:        #ffd43b;
+
+  --lk-grad-bg:     radial-gradient(ellipse 120% 60% at 50% 100%, #1e0c04 0%, #0e0804 60%);
+  --lk-grad-panel:  #1c1008;
+  --lk-grad-glow:   radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 106, 0, 0.10) 0%, transparent 70%);
+
+  --lk-shadow:      0 8px 32px rgba(0, 0, 0, 0.60);
+  --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
 /* ════════════════════════════════════════════════════════════════════
    ROOT LAYOUT — Claude Code style: sidebar + main column
    ════════════════════════════════════════════════════════════════════ */
@@ -2199,7 +2239,6 @@ kbd {
 .lk-sidebar-mobile-nav  { display: none; }
 .lk-hamburger           { display: none; }
 .lk-topbar-mobile-title { display: none; }
-.lk-mode-chip           { display: none; }
 
 /* Backdrop: always styled, only rendered in DOM when drawer is open */
 .lk-mobile-backdrop {
@@ -2627,45 +2666,45 @@ kbd {
   .lk-shadow-badge  { display: none !important; }
   .lk-topbar-spacer { display: none !important; }
 
-  /* ── Input bar: mode chip + circular send ────────────────────────── */
-  .lk-mode-chip {
-    display: inline-flex;
+  /* ── Input bar: hidden mode chip, hidden left section ───────────── */
+  .lk-mode-chip  { display: none; }
+  .lk-input-left { display: none; }   /* hide all meta badges on mobile */
+
+  /* ── Input actions: centered column ─────────────────────────────── */
+  .lk-input-actions {
+    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    gap: 4px;
-    font-size: 0.70rem;
-    font-family: ui-monospace, 'SF Mono', monospace;
-    color: var(--lk-text-muted);
-    background: var(--lk-surface-2);
-    border: 1px solid var(--lk-border);
-    border-radius: 6px;
-    padding: 4px 8px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    -webkit-tap-highlight-color: transparent;
+    gap: 6px;
   }
-  /* Hide non-essential input-left items on mobile */
-  .lk-repo-badge { display: none; }
-  .lk-local-badge { display: none; }
-  .lk-btn--attach { display: none; }
-  /* Send button: circular */
+  .lk-input-right {
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* ── Send button: centered rectangle, ~1/3 screen width ─────────── */
   .lk-btn--send {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    border-radius: 50%;
+    width: 33vw;
+    max-width: 144px;
+    min-width: 110px;
+    height: 44px;
+    border-radius: 10px;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0;        /* hides text label; icon has its own size below */
+    gap: 7px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
   }
-  .lk-btn--send .lk-btn-icon { font-size: 16px; }
-  /* Push button: icon-only pill */
+  .lk-btn--send .lk-btn-icon { font-size: 14px; }
+
+  /* ── Push button: icon-only compact on mobile ────────────────────── */
   .lk-btn--push {
     font-size: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    width: 36px; height: 36px;
+    border-radius: 8px;
     padding: 0;
     display: flex;
     align-items: center;
