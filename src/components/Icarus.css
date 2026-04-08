@@ -332,11 +332,10 @@ html, body, #root {
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.60);
 }
 
-/* ── BLKSWAN: full background — cosmic swan image with CSS fallback */
+/* ── BLKSWAN: full background — cosmic swan image */
 .lk-root.lk-theme-blkswan {
   background:
     url('/blkswan-bg.jpg') center / cover no-repeat,
-    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(18, 55, 160, 0.28) 0%, transparent 65%),
     #030b18;
 }
 
@@ -416,6 +415,8 @@ html, body, #root {
   width: auto;
   display: block;
   flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 4px;
 }
 .lk-blkswan-logo--drawer {
   height: 24px;

@@ -44,13 +44,13 @@ function Splash({ msg = 'Loading...' }) {
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       height: '100vh',
-      background: 'url(/blkswan-bg.jpg) center/cover no-repeat, radial-gradient(ellipse 100% 80% at 50% 100%, rgba(18,55,160,0.28) 0%, transparent 65%), #030b18',
+      background: 'url(/blkswan-bg.jpg) center/cover no-repeat, #030b18',
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
       fontSize: '0.9rem',
       flexDirection: 'column',
       gap: '1.25rem',
     }}>
-      <img src="/blkswan-logo.svg" alt="BLKSWAN" style={{ height: '32px', width: 'auto', opacity: 0.9 }} />
+      <img src="/blkswan-header.jpg" alt="BLKSWAN" style={{ height: '32px', width: 'auto', opacity: 0.9 }} />
       <span style={{ color: '#3d5a7a', fontSize: '0.82rem', letterSpacing: '0.04em' }}>{msg}</span>
     </div>
   )
@@ -179,7 +179,12 @@ export default function App() {
   }, [])
 
   if (!authChecked) return <Splash />
-  if (!authUser && !pinUnlocked) return <LoginScreen onUnlock={handlePinUnlock} />
+  // Show LoginScreen when not authenticated at all.
+  // onFirebaseLogin is a no-op — onAuthStateChange fires automatically after signIn
+  // and will load cloud settings (models, tokens) before showing Icarus.
+  if (!authUser && !pinUnlocked) return (
+    <LoginScreen onUnlock={handlePinUnlock} onFirebaseLogin={() => {}} />
+  )
   if (authUser && !settingsReady) return <Splash msg="Loading your settings..." />
 
   return (
