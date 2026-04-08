@@ -2143,8 +2143,6 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
             {/* Left: meta info */}
             <div className="lk-input-left">
-              {/* Mobile mode chip */}
-              <span className="lk-mode-chip">&lt;/&gt; Plan</span>
               {costEstimate && (
                 <span className="lk-cost-row">
                   <span className="lk-cost-tokens">~{costEstimate.inputTokens.toLocaleString()}</span>
