@@ -287,6 +287,140 @@ html, body, #root {
   color: transparent;
 }
 
+/* ── Theme: BLKSWAN (deep cosmic navy, electric blue) — primary brand */
+.lk-root.lk-theme-blkswan {
+  --lk-bg:          #030b18;
+  --lk-surface:     #070f1e;
+  --lk-surface-2:   #0c1628;
+  --lk-surface-3:   #111e36;
+  --lk-surface-4:   #162540;
+
+  --lk-border:      #1c2e4e;
+  --lk-border-soft: #0d1828;
+  --lk-border-glow: rgba(77, 156, 255, 0.35);
+
+  --lk-text:        #e8f4ff;
+  --lk-text-2:      #93c5fd;
+  --lk-text-muted:  #3d5a7a;
+
+  --lk-accent:      #3b8ef0;
+  --lk-accent-h:    #60a5fa;
+  --lk-accent-dim:  rgba(59, 142, 240, 0.14);
+  --lk-accent-glow: rgba(59, 142, 240, 0.28);
+
+  --lk-violet:      #818cf8;
+  --lk-violet-dim:  rgba(129, 140, 248, 0.10);
+  --lk-silver:      #cbd5e1;
+  --lk-silver-dim:  rgba(203, 213, 225, 0.07);
+
+  --lk-success:     #34d399;
+  --lk-success-bg:  rgba(52, 211, 153, 0.08);
+  --lk-danger:      #fb7185;
+  --lk-danger-bg:   rgba(251, 113, 133, 0.08);
+  --lk-warn:        #fbbf24;
+
+  --lk-grad-bg:     #030b18;
+  --lk-grad-panel:  #070f1e;
+  --lk-grad-glow:   radial-gradient(ellipse 80% 70% at 50% 95%,
+      rgba(20, 60, 180, 0.22) 0%,
+      rgba(15, 40, 130, 0.14) 30%,
+      rgba(8,  20, 70,  0.06) 60%,
+      transparent 80%
+    );
+
+  --lk-shadow:      0 8px 32px rgba(0, 0, 0, 0.75);
+  --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.60);
+}
+
+/* ── BLKSWAN: full background — cosmic swan image with CSS fallback */
+.lk-root.lk-theme-blkswan {
+  background:
+    url('/blkswan-bg.jpg') center / cover no-repeat,
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(18, 55, 160, 0.28) 0%, transparent 65%),
+    #030b18;
+}
+
+/* ── BLKSWAN: topbar stays dark-navy opaque over background */
+.lk-root.lk-theme-blkswan .lk-topbar {
+  background: rgba(4, 10, 24, 0.92);
+  border-bottom-color: rgba(77, 156, 255, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── BLKSWAN: sidebar matches topbar */
+.lk-root.lk-theme-blkswan .lk-sidebar {
+  background: rgba(4, 10, 24, 0.88);
+  border-right-color: rgba(77, 156, 255, 0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── BLKSWAN: input bar — frosted glass over background */
+.lk-root.lk-theme-blkswan .lk-input-bar {
+  background: rgba(4, 10, 24, 0.88);
+  border-top-color: rgba(77, 156, 255, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.50);
+}
+
+/* ── BLKSWAN: feed output — semi-transparent so swan shows through */
+.lk-root.lk-theme-blkswan .lk-feed-output {
+  background: rgba(3, 11, 24, 0.50);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── BLKSWAN: textarea — dark glass style */
+.lk-root.lk-theme-blkswan .lk-textarea {
+  background: rgba(7, 15, 30, 0.80);
+  border-color: rgba(77, 156, 255, 0.25);
+}
+.lk-root.lk-theme-blkswan .lk-textarea:focus {
+  border-color: #3b8ef0;
+  box-shadow: 0 0 0 2px rgba(59, 142, 240, 0.20), 0 0 18px rgba(59, 142, 240, 0.18);
+}
+
+/* ── BLKSWAN: send button — electric blue gradient */
+.lk-root.lk-theme-blkswan .lk-btn--send {
+  background: linear-gradient(135deg, #1a4ea8 0%, #2a72d8 50%, #4d9cff 100%);
+  border-color: rgba(77, 156, 255, 0.55);
+  color: #fff;
+  box-shadow: 0 2px 20px rgba(59, 130, 246, 0.45);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.lk-root.lk-theme-blkswan .lk-btn--send:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1f5fc0 0%, #3280ec 50%, #60aeff 100%);
+  box-shadow: 0 4px 28px rgba(59, 130, 246, 0.60);
+}
+.lk-root.lk-theme-blkswan .lk-btn--send:disabled {
+  background: linear-gradient(135deg, #0d2550 0%, #142e60 50%, #1a3c7a 100%);
+  box-shadow: none;
+  opacity: 0.55;
+}
+
+/* ── BLKSWAN: mobile title shows the logo image instead of text */
+.lk-root.lk-theme-blkswan .lk-topbar-mobile-title {
+  font-size: 0; /* hide text — logo img used */
+}
+
+/* ── BLKSWAN: sidebar brand name */
+.lk-root.lk-theme-blkswan .lk-sidebar-nav-brand-name {
+  font-size: 0; /* hidden; logo img used in JSX */
+}
+
+/* ── BLKSWAN: logo image in topbar and drawer */
+.lk-blkswan-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+.lk-blkswan-logo--drawer {
+  height: 24px;
+}
+
 /* ════════════════════════════════════════════════════════════════════
    ROOT LAYOUT — Claude Code style: sidebar + main column
    ════════════════════════════════════════════════════════════════════ */

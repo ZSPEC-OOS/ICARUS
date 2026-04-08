@@ -462,6 +462,7 @@ const IcarusSettings = memo(function IcarusSettings({
         <div className="lk-theme-label">Theme</div>
         <div className="lk-theme-swatches">
           {[
+            { id: 'blkswan',  name: 'BLKSWAN', bg: '#030b18', accent: '#3b8ef0' },
             { id: 'graphite', name: 'Graphite', bg: '#1a1b1e', accent: '#74c0fc' },
             { id: 'claude',   name: 'Claude',   bg: '#1a1a1a', accent: '#da7756' },
             { id: 'midnight', name: 'Midnight', bg: '#0b0f1a', accent: '#38bdf8' },

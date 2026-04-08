@@ -43,10 +43,15 @@ function Splash({ msg = 'Loading...' }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: '#12100d', color: '#b08f7a',
-      fontFamily: "'EB Garamond', Georgia, serif", fontSize: '1rem', gap: '0.5rem',
+      height: '100vh',
+      background: 'url(/blkswan-bg.jpg) center/cover no-repeat, radial-gradient(ellipse 100% 80% at 50% 100%, rgba(18,55,160,0.28) 0%, transparent 65%), #030b18',
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+      fontSize: '0.9rem',
+      flexDirection: 'column',
+      gap: '1.25rem',
     }}>
-      <span style={{ color: '#da7756' }}>*</span>{msg}
+      <img src="/blkswan-logo.svg" alt="BLKSWAN" style={{ height: '32px', width: 'auto', opacity: 0.9 }} />
+      <span style={{ color: '#3d5a7a', fontSize: '0.82rem', letterSpacing: '0.04em' }}>{msg}</span>
     </div>
   )
 }
