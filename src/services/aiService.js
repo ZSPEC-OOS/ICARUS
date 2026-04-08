@@ -1,5 +1,6 @@
 const MODELS_KEY    = 'wrkflow:models'       // localStorage  — config only, NO api keys
-const KEYS_SS_KEY   = 'wrkflow:keys'         // sessionStorage — api keys (clears on tab close)
+const KEYS_SS_KEY   = 'wrkflow:keys'         // sessionStorage — api keys (primary, clears on tab close)
+const KEYS_LS_KEY   = 'wrkflow:keysbak'      // localStorage  — api keys encrypted backup (iOS resilience)
 const SESSION_KEY_K = 'wrkflow:sk'           // sessionStorage — per-session random cipher key
 
 // Lazily generate or recall a cryptographically-random per-session key.
@@ -97,13 +98,22 @@ export function loadModels() {
 
     const configs = migrated || DEFAULT_MODELS
 
-    // Load API keys from sessionStorage (tab-scoped)
+    // Load API keys — sessionStorage (primary) with localStorage backup fallback for iOS
     let keys = {}
     try {
       const keysRaw = sessionStorage.getItem(KEYS_SS_KEY)
       if (keysRaw) {
         const decrypted = JSON.parse(decrypt(keysRaw))
         keys = decrypted || {}
+      } else {
+        // sessionStorage was cleared (iOS tab kill) — recover from localStorage backup
+        const bakRaw = localStorage.getItem(KEYS_LS_KEY)
+        if (bakRaw) {
+          const bakDecrypted = JSON.parse(decrypt(bakRaw))
+          keys = bakDecrypted || {}
+          // Re-seed sessionStorage from backup so future reads are fast
+          sessionStorage.setItem(KEYS_SS_KEY, encrypt(JSON.stringify(keys)))
+        }
       }
     } catch {}
 
@@ -119,10 +129,12 @@ export function saveModels(models) {
   const configs = models.map(({ apiKey, ...rest }) => rest)
   localStorage.setItem(MODELS_KEY, JSON.stringify(configs))
 
-  // Persist API keys to sessionStorage only (cleared automatically on tab close)
+  // Persist API keys — sessionStorage (primary) + localStorage backup (iOS resilience)
   const keys = {}
   models.forEach(m => { if (m.apiKey) keys[m.id] = m.apiKey })
-  sessionStorage.setItem(KEYS_SS_KEY, encrypt(JSON.stringify(keys)))
+  const encrypted = encrypt(JSON.stringify(keys))
+  sessionStorage.setItem(KEYS_SS_KEY, encrypted)
+  try { localStorage.setItem(KEYS_LS_KEY, encrypted) } catch {}
 }
 
 // ── Web-search API key (Tavily) ───────────────────────────────────────────────
