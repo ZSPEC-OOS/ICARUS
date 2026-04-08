@@ -176,7 +176,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   const [dryRun,         setDryRun]         = useState(false)
 
   // ── Theme + fine-tune ──────────────────────────────────────────────────
-  const [theme, setTheme] = useState(saved.theme || 'claude')
+  const [theme, setTheme] = useState(saved.theme || 'blkswan')
   const DEFAULT_FT = { brightness: 100, contrast: 100, saturation: 100, highlight: 50, shadow: 50 }
   const [fineTune, setFineTune] = useState({
     brightness: saved.ftBrightness ?? 100,
@@ -1657,7 +1657,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
       onKeyDown={handleKeyDown}
     >
       {/* ── Invisible sandbox iframe ──────────────────────────────────────── */}
-      <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="ICARUS sandbox" aria-hidden="true" />
+      <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="BLKSWAN sandbox" aria-hidden="true" />
 
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — icon column (like Claude Code's narrow left rail)
@@ -1692,7 +1692,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         {/* ── Mobile-only drawer nav (hidden on desktop via CSS) ──────────── */}
         <div className="lk-sidebar-mobile-nav">
           <div className="lk-sidebar-nav-brand">
-            <span className="lk-sidebar-nav-brand-name">ICARUS</span>
+            <img src="/blkswan-logo.svg" alt="BLKSWAN" className="lk-blkswan-logo lk-blkswan-logo--drawer" />
             <button className="lk-sidebar-btn lk-sidebar-btn--new"
               onClick={() => { handleReset(); setMobileDrawerOpen(false) }} title="New session">＋</button>
           </div>
@@ -1743,17 +1743,21 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         {/* ── Thin top bar ──────────────────────────────────────────────────── */}
         <div className="lk-topbar" style={{ height: `${headerLayout.headerHeight}px` }}>
           {/* Mobile: hamburger + centered title (hidden on desktop via CSS) */}
-          <button className="lk-hamburger" onClick={() => setMobileDrawerOpen(v => !v)} aria-label="Open navigation">☰</button>
-          <span className="lk-topbar-mobile-title">ICARUS</span>
+          <button className="lk-hamburger" onClick={() => setMobileDrawerOpen(v => !v)} aria-label="Open navigation">≡</button>
+          <span className="lk-topbar-mobile-title">
+            <img src="/blkswan-logo.svg" alt="BLKSWAN" className="lk-blkswan-logo" />
+          </span>
           <>
 
-              <span
-                className="lk-brand-sub"
+              <img
+                src="/blkswan-logo.svg"
+                alt="BLKSWAN"
+                className="lk-blkswan-logo lk-brand-sub"
                 style={{
-                  fontSize: `${titleSize}px`,
                   transform: `translate(${titleOffsetX}px, ${titleOffsetY}px)`,
+                  height: `${Math.max(22, titleSize * 2.2)}px`,
                 }}
-              >ICARUS - AI Professional Coder</span>
+              />
 
               {turnCount > 0 && (
                 <div className="lk-turn-badge">
@@ -1883,7 +1887,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
               {isAmplifying && <div className="lk-feed-pill"><span className="lk-spinner" /> Amplifying intent…</div>}
               {amplifierDecisions.length > 0 && (
                 <div className="lk-amplifier-panel">
-                  <div className="lk-amplifier-hd">◆ ICARUS decided:</div>
+                  <div className="lk-amplifier-hd">◆ BLKSWAN decided:</div>
                   {amplifierDecisions.map((d, i) => <div key={i} className="lk-amplifier-item">· {d}</div>)}
                 </div>
               )}
@@ -1945,7 +1949,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
               ) : (
                 conversation.slice(-8).map((msg, idx) => (
                   <div key={`${msg.role}-${idx}`} className="lk-inline-chat-item">
-                    <span className="lk-inline-chat-role">{msg.role === 'user' ? 'You' : 'ICARUS'}</span>
+                    <span className="lk-inline-chat-role">{msg.role === 'user' ? 'You' : 'BLKSWAN'}</span>
                     <span className="lk-inline-chat-text">{msg.content}</span>
                   </div>
                 ))
@@ -2131,7 +2135,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           {/* Prompt textarea */}
           <textarea
             className="lk-textarea"
-            placeholder=""
+            placeholder="Message BLKSWAN..."
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
