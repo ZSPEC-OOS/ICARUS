@@ -286,6 +286,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   const [historyOpen,  setHistoryOpen]  = useState(false)
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false)
   const [sourceOpen,   setSourceOpen]   = useState(false)
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [history,      setHistory]      = useState(loadHistory)
   // ── Phase 4: ShadowContext ─────────────────────────────────────────────
   const [shadowStatus,  setShadowStatus]  = useState(null)   // null | string
@@ -1661,7 +1662,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — icon column (like Claude Code's narrow left rail)
           ══════════════════════════════════════════════════════════════════════ */}
-      <nav className="lk-sidebar">
+      <nav className={`lk-sidebar${mobileDrawerOpen ? ' lk-sidebar--open' : ''}`}>
         <button className="lk-sidebar-btn lk-sidebar-btn--back" onClick={onClose} title="Back">←</button>
         <div className="lk-sidebar-sep" />
         <button className={`lk-sidebar-btn${historyOpen ? ' lk-sidebar-btn--on' : ''}`}
@@ -1687,7 +1688,61 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           <div className={`lk-sidebar-shadow${shadowContext.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`}
             title={shadowStatus} />
         )}
+
+        {/* ── Mobile-only drawer nav (hidden on desktop via CSS) ──────────── */}
+        <div className="lk-sidebar-mobile-nav">
+          <div className="lk-sidebar-nav-brand">
+            <span className="lk-sidebar-nav-brand-name">ICARUS</span>
+            <button className="lk-sidebar-btn lk-sidebar-btn--new"
+              onClick={() => { handleReset(); setMobileDrawerOpen(false) }} title="New session">＋</button>
+          </div>
+          <div className="lk-sidebar-nav-sep" />
+          <button
+            className={`lk-sidebar-nav-btn${!planMode ? ' lk-sidebar-nav-btn--active' : ''}`}
+            onClick={() => { setPlanMode(false); setMobileDrawerOpen(false) }}
+          ><span className="lk-sidebar-nav-icon">&lt;/&gt;</span> Code</button>
+          <button
+            className={`lk-sidebar-nav-btn${planMode ? ' lk-sidebar-nav-btn--active' : ''}`}
+            onClick={() => { setPlanMode(true); setMobileDrawerOpen(false) }}
+          ><span className="lk-sidebar-nav-icon">📋</span> Plan</button>
+          <div className="lk-sidebar-nav-sep" />
+          <div className="lk-sidebar-nav-section-hd">
+            <span>Recent</span>
+            {history.length > 0 && (
+              <button className="lk-sidebar-nav-section-clear"
+                onClick={() => { setHistory([]); saveHistory([]) }}>Clear</button>
+            )}
+          </div>
+          {history.length === 0
+            ? <span className="lk-sidebar-nav-empty">No history yet.</span>
+            : <div className="lk-sidebar-nav-history">
+                {history.slice(0, 10).map(e => (
+                  <button key={e.id} className="lk-sidebar-nav-history-item"
+                    onClick={() => { setPrompt(e.prompt); setMobileDrawerOpen(false) }}>
+                    <span className="lk-sidebar-nav-history-text">{e.prompt}</span>
+                    <span className="lk-sidebar-nav-history-date">{new Date(e.timestamp).toLocaleDateString()}</span>
+                  </button>
+                ))}
+              </div>
+          }
+          <div className="lk-sidebar-nav-sep" />
+          <button
+            className={`lk-sidebar-nav-btn${settingsOpen ? ' lk-sidebar-nav-btn--active' : ''}`}
+            onClick={() => { setSettingsOpen(v => !v); setHistoryOpen(false); setIcarusMdDraft(shadowContext.icarusMd || ''); setMobileDrawerOpen(false) }}
+          ><span className="lk-sidebar-nav-icon">⚙</span> Settings</button>
+          {shadowStatus && (
+            <div className="lk-sidebar-nav-status">
+              <div className={`lk-sidebar-shadow${shadowContext.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`} />
+              <span>{shadowStatus}</span>
+            </div>
+          )}
+        </div>
       </nav>
+
+      {/* Mobile drawer backdrop — closes drawer on tap */}
+      {mobileDrawerOpen && (
+        <div className="lk-mobile-backdrop" onClick={() => setMobileDrawerOpen(false)} />
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN COLUMN
@@ -1696,6 +1751,9 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
         {/* ── Thin top bar ──────────────────────────────────────────────────── */}
         <div className="lk-topbar" style={{ height: `${headerLayout.headerHeight}px` }}>
+          {/* Mobile: hamburger + centered title (hidden on desktop via CSS) */}
+          <button className="lk-hamburger" onClick={() => setMobileDrawerOpen(v => !v)} aria-label="Open navigation">☰</button>
+          <span className="lk-topbar-mobile-title">ICARUS</span>
           <>
 
               <span
@@ -2112,6 +2170,8 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
             {/* Left: meta info */}
             <div className="lk-input-left">
+              {/* Mobile mode chip — shows current mode, hidden on desktop */}
+              <span className="lk-mode-chip">&lt;/&gt; {planMode ? 'Plan' : 'Code'}</span>
               {costEstimate && (
                 <span className="lk-cost-row">
                   <span className="lk-cost-tokens">~{costEstimate.inputTokens.toLocaleString()}</span>

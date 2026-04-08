@@ -2252,6 +2252,43 @@ kbd {
   border-color: #f87171;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE-ONLY ELEMENTS — hidden on desktop, shown on iPhone (≤430px)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* These elements only exist in the DOM but must be invisible on desktop */
+.lk-sidebar-mobile-nav  { display: none; }
+.lk-hamburger           { display: none; }
+.lk-topbar-mobile-title { display: none; }
+.lk-mode-chip           { display: none; }
+
+/* Backdrop: always styled, only rendered in DOM when drawer is open */
+.lk-mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 199;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* New mobile drawer button (+ in drawer header) */
+.lk-sidebar-btn--new {
+  width: 32px;
+  height: 32px;
+  background: var(--lk-accent);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 720px) {
   /* Sidebar collapses to 40px on small screens */
@@ -2455,6 +2492,266 @@ kbd {
   .lk-root {
     padding-top: env(safe-area-inset-top);
   }
+
+  /* ════════════════════════════════════════════════════════════════════
+     CLAUDE CODE MOBILE MIRROR — slide-in drawer + hamburger + clean bar
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* ── Sidebar → full-width slide-in nav drawer ───────────────────── */
+  .lk-sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 280px;
+    max-width: 85vw;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+    padding: max(16px, env(safe-area-inset-top)) 0
+             max(20px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+  .lk-sidebar--open {
+    transform: translateX(0);
+    box-shadow: 8px 0 40px rgba(0, 0, 0, 0.7);
+  }
+  /* Hide desktop icon buttons — replaced by text nav items below */
+  .lk-sidebar > .lk-sidebar-btn,
+  .lk-sidebar > .lk-sidebar-sep,
+  .lk-sidebar > .lk-sidebar-spacer,
+  .lk-sidebar > .lk-sidebar-shadow--pulse,
+  .lk-sidebar > .lk-sidebar-shadow--ready,
+  .lk-sidebar > [class^="lk-sidebar-shadow"] {
+    display: none;
+  }
+
+  /* ── Mobile drawer nav content ──────────────────────────────────── */
+  .lk-sidebar-mobile-nav {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .lk-sidebar-nav-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+  }
+  .lk-sidebar-nav-brand-name {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--lk-text);
+  }
+  .lk-sidebar-nav-sep {
+    height: 1px;
+    background: var(--lk-border);
+    margin: 4px 12px;
+  }
+  .lk-sidebar-nav-section-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px 4px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--lk-text-muted);
+  }
+  .lk-sidebar-nav-section-clear {
+    background: none;
+    border: none;
+    font-size: 0.65rem;
+    color: var(--lk-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    padding: 2px 4px;
+    border-radius: 3px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .lk-sidebar-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: calc(100% - 16px);
+    margin: 1px 8px;
+    padding: 11px 12px;
+    background: none;
+    border: none;
+    font-size: 0.92rem;
+    font-family: inherit;
+    color: var(--lk-text-muted);
+    cursor: pointer;
+    text-align: left;
+    border-radius: 8px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background 0.14s, color 0.14s;
+  }
+  .lk-sidebar-nav-btn:active { background: var(--lk-surface-2); }
+  .lk-sidebar-nav-btn--active {
+    background: var(--lk-accent-dim);
+    color: var(--lk-accent);
+    font-weight: 600;
+  }
+  .lk-sidebar-nav-icon {
+    font-size: 0.85rem;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  /* History list inside drawer */
+  .lk-sidebar-nav-history {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    max-height: 38vh;
+    overscroll-behavior: contain;
+  }
+  .lk-sidebar-nav-history-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: calc(100% - 16px);
+    margin: 0 8px;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 6px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background 0.14s;
+  }
+  .lk-sidebar-nav-history-item:active { background: var(--lk-surface-2); }
+  .lk-sidebar-nav-history-text {
+    font-size: 0.78rem;
+    color: var(--lk-text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lk-sidebar-nav-history-date {
+    font-size: 0.65rem;
+    color: var(--lk-text-muted);
+  }
+  .lk-sidebar-nav-empty {
+    padding: 8px 20px;
+    font-size: 0.76rem;
+    color: var(--lk-text-muted);
+  }
+  .lk-sidebar-nav-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    margin-top: auto;
+    font-size: 0.72rem;
+    color: var(--lk-text-muted);
+  }
+
+  /* ── Hamburger button ───────────────────────────────────────────── */
+  .lk-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--lk-text);
+    cursor: pointer;
+    border-radius: 8px;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* ── Topbar: single row, no wrap ────────────────────────────────── */
+  .lk-topbar {
+    height: auto !important;
+    min-height: 44px;
+    flex-wrap: nowrap !important;
+    padding: 0 4px 0 0;
+    gap: 4px;
+    align-items: center;
+  }
+  /* Mobile title (centered) */
+  .lk-topbar-mobile-title {
+    display: block;
+    flex: 1;
+    text-align: center;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--lk-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Hide desktop-only topbar elements (all moved into the drawer) */
+  .lk-view-toggle   { display: none !important; }
+  .lk-brand-sub     { display: none !important; }
+  .lk-turn-badge    { display: none !important; }
+  .lk-shadow-badge  { display: none !important; }
+  .lk-topbar-spacer { display: none !important; }
+
+  /* ── Input bar: mode chip + circular send ────────────────────────── */
+  .lk-mode-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.70rem;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    color: var(--lk-text-muted);
+    background: var(--lk-surface-2);
+    border: 1px solid var(--lk-border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Hide non-essential input-left items on mobile */
+  .lk-repo-badge { display: none; }
+  .lk-local-badge { display: none; }
+  .lk-btn--attach { display: none; }
+  /* Send button: circular */
+  .lk-btn--send {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0;        /* hides text label; icon has its own size below */
+  }
+  .lk-btn--send .lk-btn-icon { font-size: 16px; }
+  /* Push button: icon-only pill */
+  .lk-btn--push {
+    font-size: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lk-btn--push .lk-btn-icon { font-size: 14px; }
+  /* Abort: compact */
+  .lk-btn--abort { font-size: 0.68rem; padding: 4px 8px; }
 }
 
 /* ── iPhone safe area support (notch / Dynamic Island / home bar) ─── */
