@@ -329,10 +329,20 @@ class ShadowContextStore {
         const ci = this._contentIndex[path]
         if (ci?.full) return { path, content: ci.full }
 
-        // Fallback: fetch from GitHub
+        // Fallback: fetch from GitHub.
+        // Guard the content index size so on-demand fetches can't grow it
+        // past the initial cap (prevents unbounded memory growth in long sessions).
         const file = await getFileContent(token, owner, repo, path, branch)
         if (!file?.content) return null
         const content = decodeBase64(file.content)
+        if (Object.keys(this._contentIndex).length < MAX_CONTENT_FILES) {
+          this._contentIndex[path] = {
+            full:    content.slice(0, SHADOW_CONTENT_CAP),
+            preview: content.slice(0, SHADOW_PREVIEW_CAP),
+            symbols: this._extractSymbols(content),
+            imports: this._extractImports(content),
+          }
+        }
         return { path, content: content.slice(0, SHADOW_CONTENT_CAP) }
       })
     )
