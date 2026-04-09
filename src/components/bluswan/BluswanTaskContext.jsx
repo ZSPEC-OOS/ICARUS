@@ -43,9 +43,9 @@ const ROLE_SHORT = {
 }
 
 /**
- * IcarusTaskContext — full-width header block rendered above the activity feed
+ * BluswanTaskContext — full-width header block rendered above the activity feed
  * while the agent is running. Shows intent, goal, routing role, and a phase
- * progress strip so the user always knows what ICARUS is doing and how far
+ * progress strip so the user always knows what BLUSWAN is doing and how far
  * along the pipeline it is.
  *
  * Props:
@@ -54,7 +54,7 @@ const ROLE_SHORT = {
  *   agentPhase   string        — current pipeline phase
  *   orchDecision object|null   — { role, confidence, modelId } from orchestration
  */
-const IcarusTaskContext = memo(function IcarusTaskContext({
+const BluswanTaskContext = memo(function BluswanTaskContext({
   intent,
   task,
   agentPhase,
@@ -124,4 +124,4 @@ const IcarusTaskContext = memo(function IcarusTaskContext({
   )
 })
 
-export default IcarusTaskContext
+export default BluswanTaskContext

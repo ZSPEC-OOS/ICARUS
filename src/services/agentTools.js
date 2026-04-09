@@ -2,7 +2,7 @@
 // Defined in Anthropic format (input_schema).
 // callWithTools() in aiService.js converts to OpenAI format automatically.
 
-import { ICARUS_MD_CAP } from '../config/constants.js'
+import { BLUSWAN_MD_CAP } from '../config/constants.js'
 import { getInputSchema, schemaVersion } from '../tools/contracts.js'
 
 export const AGENT_TOOLS = [
@@ -202,7 +202,7 @@ export const AGENT_TOOLS = [
   },
   {
     name: 'update_memory',
-    description: 'Append a persistent note to ICARUS.md in the repository root. Use this to record important decisions, conventions, or facts that should survive across agent sessions.',
+    description: 'Append a persistent note to BLUSWAN.md in the repository root. Use this to record important decisions, conventions, or facts that should survive across agent sessions.',
     input_schema: {
       type: 'object',
       properties: {
@@ -332,16 +332,16 @@ for (const tool of AGENT_TOOLS) {
 // System prompt injected at the start of every agent session.
 // planMode=true  → read-only analysis; no file writes.
 // webSearch=true → web_search tool is active (Tavily key configured).
-export function buildAgentSystemPrompt(conventions, icarusMd, repoOwner, repoName, bridgeAvailable, sourceRepoConfig = null, planMode = false, webSearch = false, repoMap = null) {
+export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoName, bridgeAvailable, sourceRepoConfig = null, planMode = false, webSearch = false, repoMap = null) {
   const hasSrc = !!(sourceRepoConfig?.owner && sourceRepoConfig?.repo)
   const srcLabel = hasSrc ? `${sourceRepoConfig.owner}/${sourceRepoConfig.repo}` : null
 
   const lines = [
     planMode
-      ? `You are ICARUS Agent operating in READ-ONLY PLAN MODE on the GitHub repository ${repoOwner}/${repoName}.`
+      ? `You are BLUSWAN Agent operating in READ-ONLY PLAN MODE on the GitHub repository ${repoOwner}/${repoName}.`
       : hasSrc
-        ? `You are ICARUS Agent, an autonomous AI coding assistant operating in FUSION MODE.`
-        : `You are ICARUS Agent, an autonomous AI coding assistant operating on the GitHub repository ${repoOwner}/${repoName}.`,
+        ? `You are BLUSWAN Agent, an autonomous AI coding assistant operating in FUSION MODE.`
+        : `You are BLUSWAN Agent, an autonomous AI coding assistant operating on the GitHub repository ${repoOwner}/${repoName}.`,
     ``,
     planMode
       ? `READ-ONLY MODE: You may only read files, list directories, and search the codebase. Do NOT write, edit, or delete any files. Your job is to analyse the code and produce a detailed plan or explanation.`
@@ -359,7 +359,7 @@ export function buildAgentSystemPrompt(conventions, icarusMd, repoOwner, repoNam
     `Use read_many_files to read several files in one call.`,
     `Use lint_file after editing JS/TS files to catch errors before moving on.`,
     `Use token_io_optimizer for long/complex requests to reduce unnecessary token spend while preserving implementation quality.`,
-    `Use update_memory to append important facts to ICARUS.md so they persist across sessions.`,
+    `Use update_memory to append important facts to BLUSWAN.md so they persist across sessions.`,
     `Use the todo tool to track tasks when working on complex multi-step operations.`,
     `Work autonomously — do not ask the user for clarification. Make smart decisions and get the task done.`,
     ``,
@@ -406,8 +406,8 @@ export function buildAgentSystemPrompt(conventions, icarusMd, repoOwner, repoNam
     lines.push(`Use grep or read_file to explore any file in detail.`)
   }
 
-  if (icarusMd) {
-    lines.push(``, `PROJECT INSTRUCTIONS (from ICARUS.md — follow exactly):`, icarusMd.slice(0, ICARUS_MD_CAP))
+  if (bluswanMd) {
+    lines.push(``, `PROJECT INSTRUCTIONS (from BLUSWAN.md — follow exactly):`, bluswanMd.slice(0, BLUSWAN_MD_CAP))
   }
 
   return lines.filter(l => l !== undefined).join('\n')

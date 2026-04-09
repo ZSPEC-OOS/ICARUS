@@ -22,10 +22,10 @@ jobs:
         run: npm ci
 
       - name: Run nightly benchmark suite
-        run: node scripts/run-benchmarks.mjs --out-dir .icarus/benchmarks --suite-version nightly-${{ github.run_number }}
+        run: node scripts/run-benchmarks.mjs --out-dir .bluswan/benchmarks --suite-version nightly-${{ github.run_number }}
 
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nightly-benchmark-${{ github.run_number }}
-          path: .icarus/benchmarks/
+          path: .bluswan/benchmarks/

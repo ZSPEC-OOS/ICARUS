@@ -1,6 +1,6 @@
 // ─── useAgentSession ──────────────────────────────────────────────────────────
 // Encapsulates all state and logic for running the agentic tool-use loop.
-// Extracted from Icarus.jsx to isolate agent concerns from generate/UI concerns.
+// Extracted from Bluswan.jsx to isolate agent concerns from generate/UI concerns.
 //
 // Intelligence layers wired in:
 //   Layer 1 — detectIntent: classifies each task before the loop starts
@@ -20,7 +20,7 @@ import {
   inferPhaseFromTool,
   toolToLogMessage,
 } from '../../services/interactivePipeline.js'
-import { applyLaneEvent } from '../../components/icarus/IcarusTaskLanes.jsx'
+import { applyLaneEvent } from '../../components/bluswan/BluswanTaskLanes.jsx'
 
 // Read-only tools — used when planMode is active (no writes, no shell exec)
 const PLAN_MODE_TOOLS = new Set([
@@ -125,7 +125,7 @@ export function useAgentSession({
 
     const systemPrompt = buildAgentSystemPrompt(
       shadowContext.getConventions(),
-      shadowContext.getIcarusMd(),
+      shadowContext.getBluswanMd(),
       githubConfig.owner || 'unknown',
       githubConfig.repo  || 'unknown',
       bridgeAvailable,

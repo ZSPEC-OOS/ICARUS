@@ -8,9 +8,9 @@ import {
   validateToolModule,
 } from '../../services/toolLoader'
 
-// ─── IcarusModularTools ────────────────────────────────────────────────────────
+// ─── BluswanModularTools ────────────────────────────────────────────────────────
 // Drag-and-drop tool installer + tool list with Test / Download / Uninstall.
-export default function IcarusModularTools() {
+export default function BluswanModularTools() {
   const [tools,       setTools]       = useState([])
   const [isDragging,  setIsDragging]  = useState(false)
   const [installMsg,  setInstallMsg]  = useState(null)  // { type: 'success'|'error', text }

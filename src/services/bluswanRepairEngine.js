@@ -1,7 +1,7 @@
-// ─── ICARUS Repair Engine ──────────────────────────────────────────────────────
+// ─── BLUSWAN Repair Engine ──────────────────────────────────────────────────────
 //
-// Adaptive error classification and repair pathway system for ICARUS.
-// Ensures that ICARUS is never in a complete halt position — every error has a
+// Adaptive error classification and repair pathway system for BLUSWAN.
+// Ensures that BLUSWAN is never in a complete halt position — every error has a
 // tiered repair strategy that degrades gracefully from fix → warn → fallback.
 //
 // Design principles
@@ -12,7 +12,7 @@
 //   5. Always reset state flags so the UI never freezes.
 //
 // Usage
-//   import { repairEngine } from './icarusRepairEngine'
+//   import { repairEngine } from './bluswanRepairEngine'
 //
 //   // Classify an error (call from any catch block)
 //   const info = repairEngine.classify(error)
@@ -684,7 +684,7 @@ const HTTP_STATUS_MAP = {
 
 // ── Repair Engine ─────────────────────────────────────────────────────────────
 
-class IcarusRepairEngine {
+class BluswanRepairEngine {
   constructor() {
     // Per-code attempt counter — tracks how many times a code has been repaired
     this._attempts  = {}
@@ -707,8 +707,8 @@ class IcarusRepairEngine {
         code = errorOrCode
       } else if (errorOrCode && typeof errorOrCode === 'object') {
         // 1. Explicit code set by throw site
-        if (errorOrCode.icarusCode) {
-          code = errorOrCode.icarusCode
+        if (errorOrCode.bluswanCode) {
+          code = errorOrCode.bluswanCode
         }
         // 2. HTTP status on a fetch response
         else if (errorOrCode.status && HTTP_STATUS_MAP[errorOrCode.status]) {
@@ -960,8 +960,8 @@ class IcarusRepairEngine {
 }
 
 // ── Module-level singleton ────────────────────────────────────────────────────
-// Import `repairEngine` for use in Icarus.jsx and services.
-export const repairEngine = new IcarusRepairEngine()
+// Import `repairEngine` for use in Bluswan.jsx and services.
+export const repairEngine = new BluswanRepairEngine()
 
 // ── Named exports for constants ───────────────────────────────────────────────
 export { SEVERITY, ACTION, MAX_REPAIR_ATTEMPTS, MAX_REPAIR_LOG_SIZE }

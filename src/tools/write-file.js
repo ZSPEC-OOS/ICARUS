@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Create a new file or completely overwrite an existing file in the repository.',
   category: 'coding',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 export async function execute(input, config = {}) {

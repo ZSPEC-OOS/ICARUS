@@ -31,7 +31,7 @@ export default function LoginScreen({ onUnlock }) {
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       minHeight: '100vh',
-      background: 'url(/blkswan-bg.jpg) center/cover no-repeat fixed, #030b18',
+      background: 'url(/bluswan-bg.jpg) center/cover no-repeat fixed, #030b18',
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
     }}>
       <div style={{

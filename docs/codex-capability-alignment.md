@@ -1,11 +1,11 @@
-# Icarus vs ChatGPT Codex Capability Alignment
+# Bluswan vs ChatGPT Codex Capability Alignment
 
 ## Scope
-This assessment compares Icarus's baseline capabilities against ChatGPT Codex-style coding-agent workflows, then documents concrete upgrades made in this change set.
+This assessment compares Bluswan's baseline capabilities against ChatGPT Codex-style coding-agent workflows, then documents concrete upgrades made in this change set.
 
 ## Baseline capability comparison (before enhancements)
 
-### Areas where Icarus was already strong
+### Areas where Bluswan was already strong
 - **Modular tool architecture** via built-in registry + user-installable tools.
 - **Agentic loop with tool calls** (read/write/edit/search/grep/run/lint/PR) and loop detection.
 - **Repository indexing (ShadowContext)** with conventions detection and import graph extraction.

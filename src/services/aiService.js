@@ -80,7 +80,7 @@ function _xorDecrypt(text) {
   if (!text) return ''
   try {
     const rawB64 = sessionStorage.getItem(SESSION_KEY_K)
-    const key = rawB64 ? atob(rawB64) : 'icarus-fallback-key-xor'
+    const key = rawB64 ? atob(rawB64) : 'bluswan-fallback-key-xor'
     return atob(text).split('').map((c, i) =>
       String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))
     ).join('')
@@ -89,7 +89,7 @@ function _xorDecrypt(text) {
 
 function _xorEncrypt(text) {
   if (!text) return ''
-  const rawB64 = sessionStorage.getItem(SESSION_KEY_K) || btoa('icarus-fallback-key-xor')
+  const rawB64 = sessionStorage.getItem(SESSION_KEY_K) || btoa('bluswan-fallback-key-xor')
   const key = atob(rawB64)
   return btoa(text.split('').map((c, i) =>
     String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))
@@ -160,7 +160,7 @@ export async function saveModels(models) {
 }
 
 // ── Web-search API key (Tavily) ───────────────────────────────────────────────
-const SEARCH_KEY_SS = 'icarus:searchkey'
+const SEARCH_KEY_SS = 'bluswan:searchkey'
 
 export async function loadSearchKey() {
   try {
@@ -417,7 +417,7 @@ async function readSSEStream(res, onChunk, extractDelta, signal) {
           onChunk?.(fullText)
         }
       } catch (e) {
-        console.warn('[ICARUS] readSSEStream: skipped malformed event —', e.message, '| data:', data?.slice(0, 80))
+        console.warn('[BLUSWAN] readSSEStream: skipped malformed event —', e.message, '| data:', data?.slice(0, 80))
       }
     }
   }

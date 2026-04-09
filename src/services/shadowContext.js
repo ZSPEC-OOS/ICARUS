@@ -1,5 +1,5 @@
 // ─── ShadowContext — Phase 4 ─────────────────────────────────────────────────
-// Background indexes the connected GitHub repo so ICARUS knows which files exist,
+// Background indexes the connected GitHub repo so BLUSWAN knows which files exist,
 // what conventions the project uses, and can suggest file paths without asking.
 // Now also indexes file contents (symbols, imports, previews) for content-aware
 // relevance scoring and cached context delivery.
@@ -48,7 +48,7 @@ class ShadowContextStore {
     this._conventions  = null
     this._repoKey      = null
     this._config       = null
-    this.icarusMd       = null
+    this.bluswanMd       = null
     this.isIndexing    = false
     this.isReady       = false
     this._onUpdate     = null
@@ -87,7 +87,7 @@ class ShadowContextStore {
     this._importGraph  = {}
     this._importedBy   = {}
     this._conventions  = null
-    this.icarusMd       = null
+    this.bluswanMd       = null
     this._repoKey      = key
     this._config       = { token, owner, repo, branch }
     this.isReady       = false
@@ -122,7 +122,7 @@ class ShadowContextStore {
   }
 
   getConventions() { return this._conventions }
-  getIcarusMd()     { return this.icarusMd }
+  getBluswanMd()     { return this.bluswanMd }
 
   // Regex search across indexed file content.
   // Returns [{path, line, text}] — max 200 results.
@@ -151,7 +151,7 @@ class ShadowContextStore {
   // Aider-style repo map: a compact symbol index ranked by import-graph centrality.
   // Returns a string like:
   //   src/services/agentLoop.js: runAgentLoop, pruneMessages
-  //   src/components/Icarus.jsx: Icarus
+  //   src/components/Bluswan.jsx: Bluswan
   // Ranked by in-degree (most-imported files first), token-budgeted by maxChars.
   buildRepoMap(maxChars = 3000) {
     const index = this._contentIndex
@@ -594,13 +594,13 @@ class ShadowContextStore {
       } catch {}
     }
 
-    // Fetch ICARUS.md for standing project instructions
+    // Fetch BLUSWAN.md for standing project instructions
     if (this._config) {
       try {
         const { token, owner, repo, branch } = this._config
-        const icarusFile = await getFileContent(token, owner, repo, 'ICARUS.md', branch)
-        if (icarusFile?.content) {
-          this.icarusMd = decodeBase64(icarusFile.content)
+        const bluswanFile = await getFileContent(token, owner, repo, 'BLUSWAN.md', branch)
+        if (bluswanFile?.content) {
+          this.bluswanMd = decodeBase64(bluswanFile.content)
         }
       } catch {}
     }

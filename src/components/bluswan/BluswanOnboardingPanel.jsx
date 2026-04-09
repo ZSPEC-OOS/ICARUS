@@ -1,7 +1,7 @@
-// ─── IcarusOnboardingPanel ─────────────────────────────────────────────────────
+// ─── BluswanOnboardingPanel ─────────────────────────────────────────────────────
 //
 // Step-by-step setup wizard shown to non-coders until all ONBOARDING_STEPS
-// are complete. Renders as a dismissible panel in the ICARUS sidebar.
+// are complete. Renders as a dismissible panel in the BLUSWAN sidebar.
 //
 // Props
 //   showOnboarding   boolean
@@ -19,7 +19,7 @@
 
 import { memo } from 'react'
 
-const IcarusOnboardingPanel = memo(function IcarusOnboardingPanel({
+const BluswanOnboardingPanel = memo(function BluswanOnboardingPanel({
   showOnboarding,
   currentStep,
   stepIndex,
@@ -141,4 +141,4 @@ const IcarusOnboardingPanel = memo(function IcarusOnboardingPanel({
   )
 })
 
-export default IcarusOnboardingPanel
+export default BluswanOnboardingPanel

@@ -3,9 +3,9 @@ export const toolMeta = {
   id: 'update-memory',
   name: 'Update Memory',
   version: '1.0.0',
-  description: 'Append a persistent note to ICARUS.md in the repository root for cross-session memory.',
+  description: 'Append a persistent note to BLUSWAN.md in the repository root for cross-session memory.',
   category: 'utility',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 export async function execute(input, config = {}) {
@@ -17,7 +17,7 @@ export async function execute(input, config = {}) {
 
   let existing = ''
   try {
-    existing = await getFileContent({ owner: repoOwner, repo: repoName, path: 'ICARUS.md', branch: baseBranch, token: githubToken })
+    existing = await getFileContent({ owner: repoOwner, repo: repoName, path: 'BLUSWAN.md', branch: baseBranch, token: githubToken })
   } catch { /* file may not exist yet */ }
 
   const timestamp = new Date().toISOString().split('T')[0]
@@ -25,7 +25,7 @@ export async function execute(input, config = {}) {
     ? `${existing.trimEnd()}\n\n<!-- ${timestamp} -->\n${note}`
     : `<!-- ${timestamp} -->\n${note}`
 
-  await createOrUpdateFile({ owner: repoOwner, repo: repoName, path: 'ICARUS.md', content: updated, message: 'Update ICARUS.md', branch: baseBranch, token: githubToken })
+  await createOrUpdateFile({ owner: repoOwner, repo: repoName, path: 'BLUSWAN.md', content: updated, message: 'Update BLUSWAN.md', branch: baseBranch, token: githubToken })
   return { appended: true, note }
 }
 
@@ -73,14 +73,14 @@ export async function test() {
   if (!lastWritten?.includes('Note B')) failures.push('Trial 5: Note B missing')
   if (!lastWritten?.includes('# Base')) failures.push('Trial 5: original base content lost')
 
-  // Trial 6: always writes to ICARUS.md specifically
+  // Trial 6: always writes to BLUSWAN.md specifically
   let writtenPath = null
   await execute({ note: 'x' }, {
     getFileContent: async () => '',
     createOrUpdateFile: async ({ path }) => { writtenPath = path },
     repoOwner: 'test', repoName: 'repo', baseBranch: 'main', githubToken: '',
   })
-  if (writtenPath !== 'ICARUS.md') failures.push(`Trial 6: should write to ICARUS.md, got "${writtenPath}"`)
+  if (writtenPath !== 'BLUSWAN.md') failures.push(`Trial 6: should write to BLUSWAN.md, got "${writtenPath}"`)
 
   // Trial 7: missing note throws
   try {

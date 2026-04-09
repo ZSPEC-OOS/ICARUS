@@ -1,4 +1,4 @@
-// ─── IcarusFusionPanel ────────────────────────────────────────────────────────
+// ─── BluswanFusionPanel ────────────────────────────────────────────────────────
 // Full-page Fusion view: attach a source repo, then absorb its best material.
 
 import { memo } from 'react'
@@ -112,7 +112,7 @@ Close with a structured summary:
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const IcarusFusionPanel = memo(function IcarusFusionPanel({
+const BluswanFusionPanel = memo(function BluswanFusionPanel({
   sourceRepo,      // { owner, repo, branch }
   targetRepo,      // { owner, repo, branch }
   onRunRitual,     // (prompt: string) => void
@@ -271,4 +271,4 @@ const IcarusFusionPanel = memo(function IcarusFusionPanel({
   )
 })
 
-export default IcarusFusionPanel
+export default BluswanFusionPanel

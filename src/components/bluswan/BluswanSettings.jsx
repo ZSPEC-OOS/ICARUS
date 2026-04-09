@@ -11,10 +11,10 @@ import {
 } from '../../services/firebaseService.js'
 import { loadEnhancerConfig, saveEnhancerConfig } from '../../services/enhancers/config.js'
 
-// ─── IcarusSettings ────────────────────────────────────────────────────────────
+// ─── BluswanSettings ────────────────────────────────────────────────────────────
 // Settings drawer: GitHub credentials, theme picker, fine-tune sliders,
-// permission mode, and ICARUS.md editor.
-const IcarusSettings = memo(function IcarusSettings({
+// permission mode, and BLUSWAN.md editor.
+const BluswanSettings = memo(function BluswanSettings({
   // GitHub config — primary (target) repo
   githubToken, setGithubToken,
   repoOwner,   setRepoOwner,
@@ -46,8 +46,8 @@ const IcarusSettings = memo(function IcarusSettings({
   // Permission mode
   permissionMode, setPermissionMode,
 
-  // ICARUS.md
-  icarusMdDraft, setIcarusMdDraft, onSaveIcarusMd, isSavingIcarusMd,
+  // BLUSWAN.md
+  bluswanMdDraft, setBluswanMdDraft, onSaveBluswanMd, isSavingBluswanMd,
 
   // AI models (API keys)
   models, setModels,
@@ -58,7 +58,7 @@ const IcarusSettings = memo(function IcarusSettings({
   // Auth
   onLogout, userEmail,
 }) {
-  const GHTOKEN_SS_KEY = 'icarus:ghtoken'
+  const GHTOKEN_SS_KEY = 'bluswan:ghtoken'
 
   // ── Firebase state ──────────────────────────────────────────────────────────
   const [fbDraft, setFbDraft]   = useState(() => {
@@ -347,7 +347,7 @@ const IcarusSettings = memo(function IcarusSettings({
 
             <label className="lk-label">Firebase Config (JSON)</label>
             <textarea
-              className="lk-icarusmd-editor lk-firebase-textarea"
+              className="lk-bluswanmd-editor lk-firebase-textarea"
               placeholder={`Paste your Firebase config here, e.g.:\n{\n  "apiKey": "AIzaSy...",\n  "authDomain": "your-project.firebaseapp.com",\n  "projectId": "your-project",\n  "storageBucket": "your-project.appspot.com",\n  "messagingSenderId": "123456789",\n  "appId": "1:123456789:web:abcdef"\n}`}
               value={fbDraft}
               onChange={e => { setFbDraft(e.target.value); setFbError(null) }}
@@ -438,7 +438,7 @@ const IcarusSettings = memo(function IcarusSettings({
 
       <div className="lk-drawer-toggles">
         <label className="lk-toggle"><input type="checkbox" checked={generateTests} onChange={e => setGenerateTests(e.target.checked)} /><span>Generate test file alongside code</span></label>
-        <label className="lk-toggle"><input type="checkbox" checked={doCreateBranch} onChange={e => setDoCreateBranch(e.target.checked)} /><span>Auto-create branch (<code>icarus/…</code>)</span></label>
+        <label className="lk-toggle"><input type="checkbox" checked={doCreateBranch} onChange={e => setDoCreateBranch(e.target.checked)} /><span>Auto-create branch (<code>bluswan/…</code>)</span></label>
         <label className="lk-toggle"><input type="checkbox" checked={doCreatePR} onChange={e => setDoCreatePR(e.target.checked)} /><span>Auto-create pull request</span></label>
         <label className="lk-toggle lk-toggle--warn"><input type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} /><span>Dry run — preview only, no commits</span></label>
         <label className="lk-toggle"><input type="checkbox" checked={enableThinking} onChange={e => setEnableThinking(e.target.checked)} /><span>Extended thinking <span className="lk-hint-inline">(Claude only — deeper reasoning, slower)</span></span></label>
@@ -470,7 +470,7 @@ const IcarusSettings = memo(function IcarusSettings({
         <div className="lk-theme-label">Theme</div>
         <div className="lk-theme-swatches">
           {[
-            { id: 'blkswan',  name: 'BLKSWAN', bg: '#030b18', accent: '#3b8ef0' },
+            { id: 'bluswan',  name: 'BLUSWAN', bg: '#030b18', accent: '#3b8ef0' },
             { id: 'graphite', name: 'Graphite', bg: '#1a1b1e', accent: '#74c0fc' },
             { id: 'claude',   name: 'Claude',   bg: '#1a1a1a', accent: '#da7756' },
             { id: 'midnight', name: 'Midnight', bg: '#0b0f1a', accent: '#38bdf8' },
@@ -577,7 +577,7 @@ const IcarusSettings = memo(function IcarusSettings({
                   title={m.title}
                   onClick={() => {
                     setPermissionMode(m.id)
-                    try { localStorage.setItem('icarus:permMode', m.id) } catch {}
+                    try { localStorage.setItem('bluswan:permMode', m.id) } catch {}
                   }}
                 >{m.label}</button>
               ))}
@@ -597,27 +597,27 @@ const IcarusSettings = memo(function IcarusSettings({
         </div>
       </div>
 
-      {/* ICARUS.md editor */}
+      {/* BLUSWAN.md editor */}
       <div className="lk-security-section">
-        <div className="lk-security-label">Project Instructions (ICARUS.md)</div>
+        <div className="lk-security-label">Project Instructions (BLUSWAN.md)</div>
         <div className="lk-security-body">
           <span className="lk-security-note">
-            Standing instructions injected into every generation prompt. Saved as ICARUS.md in your repo root.
+            Standing instructions injected into every generation prompt. Saved as BLUSWAN.md in your repo root.
           </span>
           <textarea
-            className="lk-icarusmd-editor"
-            placeholder={'# ICARUS.md\nDescribe conventions, patterns, and rules for this project.\nExample: "Always use Tailwind for styling. Prefer hooks over class components."'}
-            value={icarusMdDraft}
-            onChange={e => setIcarusMdDraft(e.target.value)}
+            className="lk-bluswanmd-editor"
+            placeholder={'# BLUSWAN.md\nDescribe conventions, patterns, and rules for this project.\nExample: "Always use Tailwind for styling. Prefer hooks over class components."'}
+            value={bluswanMdDraft}
+            onChange={e => setBluswanMdDraft(e.target.value)}
             rows={8}
           />
           <button
             className="lk-btn lk-btn--primary"
-            onClick={onSaveIcarusMd}
-            disabled={isSavingIcarusMd || !hasGithub}
-            title={hasGithub ? 'Save ICARUS.md to repository' : 'GitHub connection required'}
+            onClick={onSaveBluswanMd}
+            disabled={isSavingBluswanMd || !hasGithub}
+            title={hasGithub ? 'Save BLUSWAN.md to repository' : 'GitHub connection required'}
           >
-            {isSavingIcarusMd ? 'Saving…' : '↑ Save to repo'}
+            {isSavingBluswanMd ? 'Saving…' : '↑ Save to repo'}
           </button>
         </div>
       </div>
@@ -625,4 +625,4 @@ const IcarusSettings = memo(function IcarusSettings({
   )
 })
 
-export default IcarusSettings
+export default BluswanSettings

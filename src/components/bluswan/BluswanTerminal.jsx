@@ -1,8 +1,8 @@
 import { memo } from 'react'
 
-// ─── IcarusTerminal ────────────────────────────────────────────────────────────
+// ─── BluswanTerminal ────────────────────────────────────────────────────────────
 // Interactive terminal: JS/Python sandbox execution + real shell via exec bridge.
-const IcarusTerminal = memo(function IcarusTerminal({
+const BluswanTerminal = memo(function BluswanTerminal({
   terminalLog,
   terminalInput,
   onInputChange,
@@ -66,4 +66,4 @@ const IcarusTerminal = memo(function IcarusTerminal({
   )
 })
 
-export default IcarusTerminal
+export default BluswanTerminal

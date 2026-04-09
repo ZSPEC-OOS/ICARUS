@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Track tasks during complex multi-step operations. Actions: add | in_progress | done.',
   category: 'utility',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 // In-memory task list (shared per session)

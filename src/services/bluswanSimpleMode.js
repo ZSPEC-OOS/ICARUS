@@ -1,7 +1,7 @@
-// ─── ICARUS Simple Mode ────────────────────────────────────────────────────────
+// ─── BLUSWAN Simple Mode ────────────────────────────────────────────────────────
 //
 // A plain-English translation layer for users with no coding experience.
-// Nothing in ICARUS is removed — this module overlays human-friendly language
+// Nothing in BLUSWAN is removed — this module overlays human-friendly language
 // on top of every technical string so non-coders can follow what's happening.
 //
 // Design rules
@@ -13,7 +13,7 @@
 //
 // Usage
 //   import { t, translateActivity, translateError,
-//            SIMPLE_LABELS, SIMPLE_EXAMPLES, SIMPLE_TIPS } from './icarusSimpleMode'
+//            SIMPLE_LABELS, SIMPLE_EXAMPLES, SIMPLE_TIPS } from './bluswanSimpleMode'
 //
 //   // Translate a raw activity string
 //   const msg = translateActivity('◈ Building file plan…')
@@ -24,7 +24,7 @@
 //   // → { headline: 'Access denied', body: 'Your AI key is wrong or expired…', action: 'Open Settings → AI Key' }
 //
 //   // Check if simple mode is enabled (respects localStorage flag)
-//   import { isSimpleMode } from './icarusSimpleMode'
+//   import { isSimpleMode } from './bluswanSimpleMode'
 //   if (isSimpleMode()) { /* show plain-English UI */ }
 //
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@
 // Stored in localStorage so it persists across reloads.
 // DEFAULT IS ON — plain English is the out-of-the-box experience.
 // Only users who explicitly switch to Expert Mode will see technical language.
-const SIMPLE_MODE_KEY = 'icarus:simpleMode'
+const SIMPLE_MODE_KEY = 'bluswan:simpleMode'
 
 export function isSimpleMode() {
   try {
@@ -161,14 +161,14 @@ const ACTIVITY_MAP = [
   { match: 'sessionStorage',              plain: 'temporary browser storage' },
   { match: 'localStorage',               plain: 'saved browser storage' },
   { match: 'XOR-encrypted',              plain: 'encrypted' },
-  { match: 'ICARUS.md',                   plain: 'Project Instructions file' },
+  { match: 'BLUSWAN.md',                   plain: 'Project Instructions file' },
   { match: 'repo root',                  plain: "your project's main folder" },
 ]
 
 /**
  * Translate a raw activity/log message to plain English.
  * If simple mode is off, returns the original string unchanged.
- * @param {string} raw — the technical string from ICARUS internals
+ * @param {string} raw — the technical string from BLUSWAN internals
  * @returns {string}
  */
 export function translateActivity(raw) {
@@ -190,7 +190,7 @@ export function translateActivity(raw) {
 export const ERROR_TRANSLATIONS = {
   'no-api-key': {
     headline: 'No AI key set up yet',
-    body: 'You need an AI access key to use ICARUS. It lets ICARUS connect to the AI that writes your code.',
+    body: 'You need an AI access key to use BLUSWAN. It lets BLUSWAN connect to the AI that writes your code.',
     action: 'Open Settings → AI Models → paste your key',
     howToGet: 'Get a free key at anthropic.com (for Claude) or openai.com (for GPT-4o).',
   },
@@ -208,8 +208,8 @@ export const ERROR_TRANSLATIONS = {
   },
   'api-429': {
     headline: 'Too many requests — taking a short break',
-    body: 'You\'ve used the AI a lot in a short time. ICARUS is automatically waiting and will try again.',
-    action: 'Wait a moment — ICARUS will retry on its own',
+    body: 'You\'ve used the AI a lot in a short time. BLUSWAN is automatically waiting and will try again.',
+    action: 'Wait a moment — BLUSWAN will retry on its own',
     howToGet: null,
   },
   'api-500-stream': {
@@ -220,7 +220,7 @@ export const ERROR_TRANSLATIONS = {
   },
   'network-disconnect': {
     headline: 'Internet connection lost',
-    body: 'ICARUS lost its internet connection while writing your code. Your partial code has been saved.',
+    body: 'BLUSWAN lost its internet connection while writing your code. Your partial code has been saved.',
     action: 'Check your internet connection, then click Retry',
     howToGet: null,
   },
@@ -232,19 +232,19 @@ export const ERROR_TRANSLATIONS = {
   },
   'planner-json-error': {
     headline: 'Trouble understanding the plan',
-    body: 'ICARUS had difficulty deciding which files to create. It will try with a simpler approach.',
-    action: 'Nothing to do — ICARUS is retrying automatically',
+    body: 'BLUSWAN had difficulty deciding which files to create. It will try with a simpler approach.',
+    action: 'Nothing to do — BLUSWAN is retrying automatically',
     howToGet: null,
   },
   'planner-empty': {
     headline: 'No files to create',
-    body: 'ICARUS could not figure out what to build from your description.',
+    body: 'BLUSWAN could not figure out what to build from your description.',
     action: 'Try describing what you want in more detail — e.g. "Create a login page with email and password"',
     howToGet: null,
   },
   'per-file-error': {
     headline: 'One file had a problem',
-    body: 'ICARUS could create most files, but one had an error.',
+    body: 'BLUSWAN could create most files, but one had an error.',
     action: 'Click the ↺ retry button on the failed file tab to try again',
     howToGet: null,
   },
@@ -274,8 +274,8 @@ export const ERROR_TRANSLATIONS = {
   },
   'push-conflict': {
     headline: 'Someone else changed the code at the same time',
-    body: 'The file was updated on GitHub since ICARUS last read it.',
-    action: 'ICARUS will refresh and retry automatically — nothing to do',
+    body: 'The file was updated on GitHub since BLUSWAN last read it.',
+    action: 'BLUSWAN will refresh and retry automatically — nothing to do',
     howToGet: null,
   },
   'abort-mid': {
@@ -286,37 +286,37 @@ export const ERROR_TRANSLATIONS = {
   },
   'watchdog': {
     headline: 'Something got stuck — reset complete',
-    body: 'ICARUS noticed it was taking too long and reset itself. Everything is ready to try again.',
+    body: 'BLUSWAN noticed it was taking too long and reset itself. Everything is ready to try again.',
     action: 'Click Generate to try again. If it keeps happening, try a simpler request.',
     howToGet: null,
   },
   'ambient-context-fail': {
     headline: 'Could not read your project first',
-    body: 'ICARUS usually reads your existing code before writing new code. It could not do that this time, so the code may not match your project perfectly.',
+    body: 'BLUSWAN usually reads your existing code before writing new code. It could not do that this time, so the code may not match your project perfectly.',
     action: 'Check your GitHub connection in Settings, then click "Refresh project" and try again',
     howToGet: null,
   },
   'remediation-max-attempts': {
     headline: 'Some small issues remain in the code',
-    body: 'ICARUS tried its best to fix all code issues automatically, but a few could not be resolved.',
-    action: 'The code still works in most cases. You can ask ICARUS to "Fix the remaining errors" in the refine bar.',
+    body: 'BLUSWAN tried its best to fix all code issues automatically, but a few could not be resolved.',
+    action: 'The code still works in most cases. You can ask BLUSWAN to "Fix the remaining errors" in the refine bar.',
     howToGet: null,
   },
   'storage-quota': {
     headline: 'Browser storage is full',
-    body: 'Your browser\'s storage is full so ICARUS could not save the project map. It will work without it.',
-    action: 'Clear your browser cache or close other tabs. ICARUS will continue without the saved map.',
+    body: 'Your browser\'s storage is full so BLUSWAN could not save the project map. It will work without it.',
+    action: 'Clear your browser cache or close other tabs. BLUSWAN will continue without the saved map.',
     howToGet: null,
   },
   'agent-max-turns': {
-    headline: 'ICARUS finished its maximum work session',
-    body: 'ICARUS can only take a limited number of steps in one session to stay safe.',
+    headline: 'BLUSWAN finished its maximum work session',
+    body: 'BLUSWAN can only take a limited number of steps in one session to stay safe.',
     action: 'Review what was done. If more work is needed, start a new request describing the next step.',
     howToGet: null,
   },
   'editblock-no-match': {
     headline: 'Could not find the exact spot to update',
-    body: 'ICARUS tried to change a specific part of your code but could not locate it exactly.',
+    body: 'BLUSWAN tried to change a specific part of your code but could not locate it exactly.',
     action: 'The change was added at the end of the file instead. Review and move it if needed.',
     howToGet: null,
   },
@@ -331,7 +331,7 @@ export const ERROR_TRANSLATIONS = {
 export function translateError(code) {
   return ERROR_TRANSLATIONS[code] || {
     headline: 'Something unexpected happened',
-    body: 'ICARUS encountered an unusual problem but is still running.',
+    body: 'BLUSWAN encountered an unusual problem but is still running.',
     action: 'Try again. If it keeps happening, try a simpler request.',
     howToGet: null,
   }
@@ -339,40 +339,40 @@ export function translateError(code) {
 
 // ── Plain-English UI label overrides ─────────────────────────────────────────
 // Import SIMPLE_LABELS and use with t() in JSX:
-//   import { SIMPLE_LABELS } from './icarusSimpleMode'
+//   import { SIMPLE_LABELS } from './bluswanSimpleMode'
 //   <label>{t('GitHub Token (PAT)', SIMPLE_LABELS.githubToken)}</label>
 
 export const SIMPLE_LABELS = {
   // Settings
   githubToken:       'GitHub Access Key',
-  githubTokenHint:   'Lets ICARUS save code to your GitHub project. Get one at github.com/settings/tokens (check the "repo" box).',
+  githubTokenHint:   'Lets BLUSWAN save code to your GitHub project. Get one at github.com/settings/tokens (check the "repo" box).',
   githubTokenScope:  'Needs permission to access your projects',
   baseBranch:        'Main branch name',
   baseBranchHint:    'Usually "main" or "master" — the primary version of your code.',
   reindex:           'Refresh project',
-  reindexHint:       'Re-reads your project files so ICARUS stays up to date.',
+  reindexHint:       'Re-reads your project files so BLUSWAN stays up to date.',
   autoBranch:        'Create a separate copy of your code for these changes',
   autopr:            'Submit changes for review (GitHub Pull Request)',
   dryRun:            'Preview mode — see what will change before saving',
   pushAuto:          'Save to GitHub automatically',
   pushAsk:           'Ask me before each save to GitHub',
   pushManual:        'Show me exactly what will change before saving',
-  icarusMd:           'Project Instructions',
-  icarusMdHint:       'Write rules here that ICARUS should always follow, like "always use dark mode colours" or "keep all pages under 200 lines".',
-  icarusMdSaved:      'Saved to your project\'s main folder',
+  bluswanMd:           'Project Instructions',
+  bluswanMdHint:       'Write rules here that BLUSWAN should always follow, like "always use dark mode colours" or "keep all pages under 200 lines".',
+  bluswanMdSaved:      'Saved to your project\'s main folder',
   generateTests:     'Also create automated tests',
-  generateTestsHint: 'ICARUS will write a test file alongside your code to check it works correctly.',
-  permissionMode:    'How should ICARUS save changes?',
+  generateTestsHint: 'BLUSWAN will write a test file alongside your code to check it works correctly.',
+  permissionMode:    'How should BLUSWAN save changes?',
   sessionOnly:       'Key is stored for this browser tab only — closes when you close the tab',
   encrypted:         'Encrypted — never stored in files or sent to our servers',
 
   // Activity feed
-  activityTitle:     'What ICARUS is doing',
+  activityTitle:     'What BLUSWAN is doing',
   activityEmpty:     'Nothing running yet — describe what you want in the box below.',
 
   // Code pane
   codePaneReady:     'Ready to create code',
-  codePaneHint:      'Describe what you want in plain English. ICARUS will write the code automatically.',
+  codePaneHint:      'Describe what you want in plain English. BLUSWAN will write the code automatically.',
   refinePlaceholder: 'Describe what to change — e.g. "make the button blue" or "add a loading spinner"',
   refineButton:      'Update',
   ctrlEnter:         'Press Enter to send (Shift+Enter for newline)',
@@ -417,7 +417,7 @@ export const SIMPLE_LABELS = {
 
   // Permission dialog
   permDialogTitle:   'Ready to save your code to GitHub',
-  permDialogBody:    'ICARUS will create a new version branch and save the generated files.',
+  permDialogBody:    'BLUSWAN will create a new version branch and save the generated files.',
   permDialogConfirm: 'Yes, save to GitHub',
   permDialogCancel:  'Not yet',
 
@@ -476,18 +476,18 @@ export const SIMPLE_EXAMPLES = [
 export const PHASE_EXPLANATIONS = {
   amplifying: {
     name:  'Understanding your request',
-    what:  'ICARUS is reading your description and filling in technical details so the AI can do it correctly.',
+    what:  'BLUSWAN is reading your description and filling in technical details so the AI can do it correctly.',
     why:   'Plain-English descriptions need to be translated into precise instructions for the AI.',
   },
   planning: {
     name:  'Planning the work',
-    what:  'ICARUS is deciding which files to create or update based on your request.',
+    what:  'BLUSWAN is deciding which files to create or update based on your request.',
     why:   'Even a simple feature might need changes to several files at once.',
   },
   indexing: {
     name:  'Reading your project',
-    what:  'ICARUS is scanning your project\'s files to understand how it\'s structured.',
-    why:   'This helps ICARUS write code that fits your existing style and avoids conflicts.',
+    what:  'BLUSWAN is scanning your project\'s files to understand how it\'s structured.',
+    why:   'This helps BLUSWAN write code that fits your existing style and avoids conflicts.',
   },
   generating: {
     name:  'Writing the code',
@@ -496,17 +496,17 @@ export const PHASE_EXPLANATIONS = {
   },
   remediating: {
     name:  'Checking and fixing the code',
-    what:  'ICARUS is automatically reviewing the code it wrote and fixing any mistakes it finds.',
+    what:  'BLUSWAN is automatically reviewing the code it wrote and fixing any mistakes it finds.',
     why:   'AI-generated code sometimes has small errors. This step catches them before you see the code.',
   },
   testing: {
     name:  'Running a quick check',
-    what:  'ICARUS is running the code in a safe test environment to make sure it works.',
+    what:  'BLUSWAN is running the code in a safe test environment to make sure it works.',
     why:   'Better to catch problems here than after saving to your project.',
   },
   pushing: {
     name:  'Saving to GitHub',
-    what:  'ICARUS is saving the finished code to your GitHub project as a new version.',
+    what:  'BLUSWAN is saving the finished code to your GitHub project as a new version.',
     why:   'Saving to GitHub keeps a history and lets you review changes before using them.',
   },
   ci: {
@@ -525,14 +525,14 @@ export const SIMPLE_TIPS = [
     id: 'tip-github-key',
     trigger: 'no-github',
     headline: 'Connect to GitHub to save your code',
-    body: 'Without a GitHub connection, ICARUS can still write code — but it won\'t be saved anywhere. To save, you need a GitHub account and an access key.',
+    body: 'Without a GitHub connection, BLUSWAN can still write code — but it won\'t be saved anywhere. To save, you need a GitHub account and an access key.',
     link: { label: 'How to get a GitHub key', url: 'https://github.com/settings/tokens' },
   },
   {
     id: 'tip-api-key',
     trigger: 'no-api-key',
     headline: 'Add an AI key to start generating',
-    body: 'ICARUS uses an AI model to write code. You need a key from the AI provider (like Anthropic or OpenAI) to unlock this.',
+    body: 'BLUSWAN uses an AI model to write code. You need a key from the AI provider (like Anthropic or OpenAI) to unlock this.',
     link: { label: 'Get a Claude key (recommended)', url: 'https://console.anthropic.com/' },
   },
 
@@ -547,7 +547,7 @@ export const SIMPLE_TIPS = [
     id: 'tip-refine',
     trigger: 'first-generate',
     headline: 'Not quite right? Use the Update bar',
-    body: 'After ICARUS creates code, you can ask it to adjust anything. Try "make the button bigger" or "change the colour to red". Each update builds on the previous one.',
+    body: 'After BLUSWAN creates code, you can ask it to adjust anything. Try "make the button bigger" or "change the colour to red". Each update builds on the previous one.',
   },
   {
     id: 'tip-retry',
@@ -561,7 +561,7 @@ export const SIMPLE_TIPS = [
     id: 'tip-what-is-branch',
     trigger: 'branch-created',
     headline: 'A "branch" is a separate copy of your code',
-    body: 'Think of it like a draft. Your main code is untouched until you (or your team) decide to merge the draft in. ICARUS creates a new branch for every set of changes.',
+    body: 'Think of it like a draft. Your main code is untouched until you (or your team) decide to merge the draft in. BLUSWAN creates a new branch for every set of changes.',
   },
   {
     id: 'tip-what-is-pr',
@@ -573,13 +573,13 @@ export const SIMPLE_TIPS = [
     id: 'tip-what-is-ci',
     trigger: 'ci-running',
     headline: 'Automated checks are running',
-    body: 'Your project may have automated tests that verify everything still works. ICARUS is waiting for them to finish. Green = all good. Red = something needs attention.',
+    body: 'Your project may have automated tests that verify everything still works. BLUSWAN is waiting for them to finish. Green = all good. Red = something needs attention.',
   },
   {
     id: 'tip-diff',
     trigger: 'diff-shown',
     headline: 'Green lines were added. Red lines were removed.',
-    body: 'The "Changes" tab shows exactly what ICARUS did to each file. Green = new code added. Red = old code removed. Grey = unchanged.',
+    body: 'The "Changes" tab shows exactly what BLUSWAN did to each file. Green = new code added. Red = old code removed. Grey = unchanged.',
   },
 
   // Error tips
@@ -587,19 +587,19 @@ export const SIMPLE_TIPS = [
     id: 'tip-timeout',
     trigger: 'watchdog',
     headline: 'The request timed out — this sometimes happens',
-    body: 'ICARUS automatically reset. Try again with a slightly smaller or simpler request.',
+    body: 'BLUSWAN automatically reset. Try again with a slightly smaller or simpler request.',
   },
 ]
 
 // ── Onboarding checklist ───────────────────────────────────────────────────────
-// A step-by-step list of what a non-coder needs to do before using ICARUS.
+// A step-by-step list of what a non-coder needs to do before using BLUSWAN.
 // Each step has a check function so the UI can mark it complete automatically.
 
 export const ONBOARDING_STEPS = [
   {
     id:       'step-model',
     title:    'Choose an AI model',
-    detail:   'ICARUS needs access to an AI to write code. Claude Sonnet (by Anthropic) is recommended — it\'s fast and accurate.',
+    detail:   'BLUSWAN needs access to an AI to write code. Claude Sonnet (by Anthropic) is recommended — it\'s fast and accurate.',
     action:   'Open Settings → AI Models → add a key',
     link:     { label: 'Get a free Claude key', url: 'https://console.anthropic.com/' },
     check:    (settings) => !!settings?.models?.some(m => m.apiKey),
@@ -607,7 +607,7 @@ export const ONBOARDING_STEPS = [
   {
     id:       'step-github-account',
     title:    'Have a GitHub account',
-    detail:   'GitHub is a free service that stores your code safely online. You\'ll need an account to save ICARUS\'s output.',
+    detail:   'GitHub is a free service that stores your code safely online. You\'ll need an account to save BLUSWAN\'s output.',
     action:   'Sign up for free at github.com',
     link:     { label: 'Create a GitHub account', url: 'https://github.com/signup' },
     check:    () => true,  // Cannot auto-check — user must confirm
@@ -616,7 +616,7 @@ export const ONBOARDING_STEPS = [
   {
     id:       'step-github-token',
     title:    'Add a GitHub access key',
-    detail:   'A GitHub access key (called a PAT) lets ICARUS save code to your account. It\'s like a password just for ICARUS.',
+    detail:   'A GitHub access key (called a PAT) lets BLUSWAN save code to your account. It\'s like a password just for BLUSWAN.',
     action:   'Open Settings → GitHub Key → paste the key',
     link:     { label: 'Generate a GitHub key (check the "repo" box)', url: 'https://github.com/settings/tokens/new?scopes=repo' },
     check:    (settings) => !!settings?.githubToken,
@@ -624,7 +624,7 @@ export const ONBOARDING_STEPS = [
   {
     id:       'step-repo',
     title:    'Set your project (GitHub repository)',
-    detail:   'Tell ICARUS which GitHub project to work on. Paste the GitHub URL of your project.',
+    detail:   'Tell BLUSWAN which GitHub project to work on. Paste the GitHub URL of your project.',
     action:   'Open Settings → paste your GitHub project URL (e.g. github.com/yourname/yourproject)',
     link:     null,
     check:    (settings) => !!(settings?.repoOwner && settings?.repoName),
@@ -641,7 +641,7 @@ export const ONBOARDING_STEPS = [
 
 /**
  * Get a list of incomplete onboarding steps given current settings.
- * @param {object} settings — current ICARUS settings object
+ * @param {object} settings — current BLUSWAN settings object
  * @returns {Array} incomplete steps
  */
 export function getIncompleteSteps(settings = {}) {
@@ -659,13 +659,13 @@ export function isOnboardingComplete(settings = {}) {
     .every(s => s.check(settings))
 }
 
-// ── Plain-English ICARUS.md template ──────────────────────────────────────────
-// Default content shown in the ICARUS.md editor for non-coders.
+// ── Plain-English BLUSWAN.md template ──────────────────────────────────────────
+// Default content shown in the BLUSWAN.md editor for non-coders.
 // Written in bullet points that non-coders naturally write.
 
-export const SIMPLE_ICARUS_MD_TEMPLATE = `# My Project Rules
+export const SIMPLE_BLUSWAN_MD_TEMPLATE = `# My Project Rules
 
-<!-- ICARUS reads this file before every code generation. Write rules in plain English. -->
+<!-- BLUSWAN reads this file before every code generation. Write rules in plain English. -->
 
 ## Style
 - Use simple, readable names for everything — no abbreviations
@@ -702,6 +702,6 @@ export default {
   ONBOARDING_STEPS,
   getIncompleteSteps,
   isOnboardingComplete,
-  SIMPLE_ICARUS_MD_TEMPLATE,
+  SIMPLE_BLUSWAN_MD_TEMPLATE,
   ERROR_TRANSLATIONS,
 }

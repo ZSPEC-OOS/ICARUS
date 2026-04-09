@@ -11,7 +11,7 @@ import * as builtins from '../tools/index.js'
 import { withToolContractValidation } from '../tools/index.js'
 import { normalizeToolName, schemaVersion } from '../tools/contracts.js'
 
-const USER_TOOLS_KEY = 'icarus:user-tools'   // localStorage key for installed tools
+const USER_TOOLS_KEY = 'bluswan:user-tools'   // localStorage key for installed tools
 
 // ── Validation ────────────────────────────────────────────────────────────────
 export function validateToolModule(mod) {

@@ -42,24 +42,24 @@ import { pickDirectory }     from '../services/localFileService.js'
 import {
   CONTEXT_FILES_LIMIT,
   FILE_CONTENT_CAP_CHARS,
-  ICARUS_MD_CAP,
+  BLUSWAN_MD_CAP,
   STYLE_EXAMPLES_LIMIT,
 } from '../config/constants'
-import IcarusActivityFeed     from './icarus/IcarusActivityFeed'
-import IcarusCodePane         from './icarus/IcarusCodePane'
-import IcarusDiffViewer       from './icarus/IcarusDiffViewer'
-import IcarusDiffConfidence   from './icarus/IcarusDiffConfidence'
-import IcarusTerminal         from './icarus/IcarusTerminal'
-import IcarusToolsPane        from './icarus/IcarusToolsPane'
-import IcarusSettings         from './icarus/IcarusSettings'
-import IcarusModularTools     from './icarus/IcarusModularTools'
-import './Icarus.css'
+import BluswanActivityFeed     from './bluswan/BluswanActivityFeed'
+import BluswanCodePane         from './bluswan/BluswanCodePane'
+import BluswanDiffViewer       from './bluswan/BluswanDiffViewer'
+import BluswanDiffConfidence   from './bluswan/BluswanDiffConfidence'
+import BluswanTerminal         from './bluswan/BluswanTerminal'
+import BluswanToolsPane        from './bluswan/BluswanToolsPane'
+import BluswanSettings         from './bluswan/BluswanSettings'
+import BluswanModularTools     from './bluswan/BluswanModularTools'
+import './Bluswan.css'
 
 // ─── Persistence ────────────────────────────────────────────────────────────
-const SETTINGS_KEY    = 'icarus:settings'
-const HISTORY_KEY     = 'icarus:history'
-const GHTOKEN_SS_KEY  = 'icarus:ghtoken'
-const GHTOKEN2_SS_KEY = 'icarus:ghtoken2'
+const SETTINGS_KEY    = 'bluswan:settings'
+const HISTORY_KEY     = 'bluswan:history'
+const GHTOKEN_SS_KEY  = 'bluswan:ghtoken'
+const GHTOKEN2_SS_KEY = 'bluswan:ghtoken2'
 
 function loadSettings() {
   try {
@@ -89,7 +89,7 @@ function saveHistory(h) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify
 // ─── Utilities imported from ../utils/codeUtils and ../utils/diff ────────────
 
 // ─── Pure system-prompt builder (no hooks — safe to call inside async loops) ──
-function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName, forTests = false, icarusMd = null, contextFiles = [], styleExamples = []) {
+function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName, forTests = false, bluswanMd = null, contextFiles = [], styleExamples = []) {
   const repoCtx  = repoOwner && repoName ? `\nRepository: ${repoOwner}/${repoName}.` : ''
   const editMode = existingContent !== null ? 'patch' : 'replace'
   // Suppress framework conventions for standalone file types (html, sh, yaml, etc.)
@@ -109,8 +109,8 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
       ? `  Import aliases: ${Object.entries(conv.pathAliases).map(([k, v]) => `${k}/ → ${v}/`).join(', ')}` : '',
   ].filter(Boolean).join('\n') : ''
 
-  // ICARUS.md standing instructions
-  const icarusMdCtx = icarusMd ? `\nPROJECT INSTRUCTIONS (from ICARUS.md — follow exactly):\n${icarusMd.slice(0, ICARUS_MD_CAP)}` : ''
+  // BLUSWAN.md standing instructions
+  const bluswanMdCtx = bluswanMd ? `\nPROJECT INSTRUCTIONS (from BLUSWAN.md — follow exactly):\n${bluswanMd.slice(0, BLUSWAN_MD_CAP)}` : ''
 
   // Style patterns: short excerpts from existing similar files — model should match this style
   const styleCtx = styleExamples.length > 0
@@ -126,18 +126,18 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
 
   if (forTests) {
     const tf = conv?.testFramework !== 'unknown' ? conv.testFramework : 'Jest/Vitest for JS/TS, pytest for Python'
-    return [`You are ICARUS, an expert test-writing assistant.${repoCtx}`,
+    return [`You are BLUSWAN, an expert test-writing assistant.${repoCtx}`,
       `Generate a complete, production-ready test file for the provided ${lang} code.`,
-      `Use ${tf}.`, convCtx, icarusMdCtx,
+      `Use ${tf}.`, convCtx, bluswanMdCtx,
       `Output ONLY the test code — no markdown fences, no explanations.`,
     ].filter(Boolean).join('\n')
   }
 
   const lines = [
-    `You are ICARUS, an expert coding assistant. Generate clean, production-ready ${lang} code.${repoCtx}`,
+    `You are BLUSWAN, an expert coding assistant. Generate clean, production-ready ${lang} code.${repoCtx}`,
     `Follow existing codebase conventions. Add comments only where logic is non-obvious.`,
     convCtx,
-    icarusMdCtx,
+    bluswanMdCtx,
     styleCtx,
     contextCtx,
   ].filter(Boolean)
@@ -162,7 +162,7 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-export default function Icarus({ onClose, models, setModels, selectedModelId, onModelChange, onSettingsChanged, onLogout, userEmail }) {
+export default function Bluswan({ onClose, models, setModels, selectedModelId, onModelChange, onSettingsChanged, onLogout, userEmail }) {
   const saved = loadSettings()
 
   // ── Config ─────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   const [dryRun,         setDryRun]         = useState(false)
 
   // ── Theme + fine-tune ──────────────────────────────────────────────────
-  const [theme, setTheme] = useState(saved.theme || 'blkswan')
+  const [theme, setTheme] = useState(saved.theme || 'bluswan')
   const DEFAULT_FT = { brightness: 100, contrast: 100, saturation: 100, highlight: 50, shadow: 50 }
   const [fineTune, setFineTune] = useState({
     brightness: saved.ftBrightness ?? 100,
@@ -270,13 +270,13 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   // 'ask'    — confirm dialog before any GitHub write
   // 'manual' — user must click a second time (dry-run first, then confirm)
   const [permissionMode, setPermissionMode] = useState(
-    () => localStorage.getItem('icarus:permMode') || 'ask'
+    () => localStorage.getItem('bluswan:permMode') || 'ask'
   )
 
   // ── Agent mode ─────────────────────────────────────────────────────────────
   const [isRunningPostPushTests, setIsRunningPostPushTests] = useState(false)
-  const [icarusMdDraft,    setIcarusMdDraft]    = useState('')
-  const [isSavingIcarusMd, setIsSavingIcarusMd] = useState(false)
+  const [bluswanMdDraft,    setBluswanMdDraft]    = useState('')
+  const [isSavingBluswanMd, setIsSavingBluswanMd] = useState(false)
 
   // ── File attachments & branch tracking ────────────────────────────────
   const [attachedFiles, setAttachedFiles] = useState([])
@@ -571,7 +571,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         // Pipe code directly to eslint via stdin — catches real parse + lint errors
         const ext = lang === 'typescript' ? 'ts' : 'js'
         const lint = await callExecBridge(
-          `npx eslint --stdin --stdin-filename=icarus-check.${ext} --format=compact --rule '{"no-undef":"error","no-unused-vars":"warn"}'`,
+          `npx eslint --stdin --stdin-filename=bluswan-check.${ext} --format=compact --rule '{"no-undef":"error","no-unused-vars":"warn"}'`,
           undefined, 15000, current
         )
         const lintOut = [lint.stdout, lint.stderr].filter(Boolean).join('\n').trim()
@@ -698,7 +698,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         const lang   = detectLanguage(entry.path, entry.code || '')
         const mode   = entry.existingContent !== null ? 'patch' : 'replace'
         const refStyleExamples = shadowContext.getStyleExamples(effectiveMsg, STYLE_EXAMPLES_LIMIT)
-        const sys    = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, shadowContext.getIcarusMd(), [], refStyleExamples)
+        const sys    = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, shadowContext.getBluswanMd(), [], refStyleExamples)
         const refMsg = `Current code:\n${entry.code || ''}\n\nChange request: ${effectiveMsg}`
         const ctx    = [
           { role: 'user', content: sys },
@@ -823,8 +823,8 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           }
         }
 
-        // Gather ambient context + ICARUS.md + style examples once before generation loop
-        const icarusMd = shadowContext.getIcarusMd()
+        // Gather ambient context + BLUSWAN.md + style examples once before generation loop
+        const bluswanMd = shadowContext.getBluswanMd()
         let ambientFiles = []
         try {
           ambientFiles = await shadowContext.getContextContent(effectiveMsg, CONTEXT_FILES_LIMIT)
@@ -851,7 +851,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           const contextFiles = ambientFiles.filter(f => f.path !== entry.path)
           // Exclude current file from style examples too
           const fileStyleExamples = styleExamples.filter(s => s.path !== entry.path)
-          const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, icarusMd, contextFiles, fileStyleExamples)
+          const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, bluswanMd, contextFiles, fileStyleExamples)
           const fileTask = `${effectiveMsg}\n\nFor this file: ${entry.path} — ${entry.purpose}`
 
           updatePlanEntry(i, { status: 'generating' })
@@ -1044,7 +1044,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
     try {
       const lang     = detectLanguage(entry.path, '')
-      const icarusMd  = shadowContext.getIcarusMd()
+      const bluswanMd  = shadowContext.getBluswanMd()
       // Fetch ambient context so the retry has the same repo awareness as first-shot generation
       let retryContextFiles = []
       try {
@@ -1053,7 +1053,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         )
         retryContextFiles = retryContextFiles.filter(f => f.path !== entry.path)
       } catch {}
-      const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, icarusMd, retryContextFiles)
+      const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, bluswanMd, retryContextFiles)
       const fileTask = `${prompt || 'Regenerate this file.'}\n\nFor this file: ${entry.path} — ${entry.purpose}`
       const mode     = entry.existingContent !== null ? 'patch' : 'replace'
 
@@ -1086,27 +1086,27 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
     }
   }, [isGenerating, models, activeModelId, repoOwner, repoName, prompt, autoRemediate, updatePlanEntry, logActivity]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── ICARUS.md save ───────────────────────────────────────────────────────
-  const handleSaveIcarusMd = useCallback(async () => {
-    if (!hasGithub) { setError('GitHub required to save ICARUS.md.'); return }
-    setIsSavingIcarusMd(true)
+  // ── BLUSWAN.md save ───────────────────────────────────────────────────────
+  const handleSaveBluswanMd = useCallback(async () => {
+    if (!hasGithub) { setError('GitHub required to save BLUSWAN.md.'); return }
+    setIsSavingBluswanMd(true)
     try {
-      const existing = await getFileContent(githubToken, repoOwner, repoName, 'ICARUS.md', baseBranch)
+      const existing = await getFileContent(githubToken, repoOwner, repoName, 'BLUSWAN.md', baseBranch)
       const sha = existing?.sha || null
       await createOrUpdateFile(
         githubToken, repoOwner, repoName,
-        'ICARUS.md', icarusMdDraft,
-        'docs: update ICARUS.md project instructions',
+        'BLUSWAN.md', bluswanMdDraft,
+        'docs: update BLUSWAN.md project instructions',
         baseBranch, sha,
       )
-      shadowContext.icarusMd = icarusMdDraft
-      logActivity('done', '✓ ICARUS.md saved to repo')
+      shadowContext.bluswanMd = bluswanMdDraft
+      logActivity('done', '✓ BLUSWAN.md saved to repo')
     } catch (e) {
-      setError(`Failed to save ICARUS.md: ${e.message}`)
+      setError(`Failed to save BLUSWAN.md: ${e.message}`)
     } finally {
-      setIsSavingIcarusMd(false)
+      setIsSavingBluswanMd(false)
     }
-  }, [hasGithub, githubToken, repoOwner, repoName, baseBranch, icarusMdDraft, logActivity])
+  }, [hasGithub, githubToken, repoOwner, repoName, baseBranch, bluswanMdDraft, logActivity])
 
   // ── Post-push test runner ───────────────────────────────────────────────
   // Runs npm test / pytest in streaming mode after a successful push.
@@ -1435,9 +1435,9 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   // ─────────────────────────────────────────────────────────────────────────
   const confirmAction = useCallback((description) => {
     if (permissionMode === 'auto') return true
-    if (permissionMode === 'ask') return window.confirm(`ICARUS permission request\n\n${description}\n\nProceed?`)
+    if (permissionMode === 'ask') return window.confirm(`BLUSWAN permission request\n\n${description}\n\nProceed?`)
     // 'manual': same as 'ask' but with extra context
-    return window.confirm(`ICARUS — manual mode\n\n${description}\n\nThis action writes to GitHub. Confirm to continue.`)
+    return window.confirm(`BLUSWAN — manual mode\n\n${description}\n\nThis action writes to GitHub. Confirm to continue.`)
   }, [permissionMode])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1449,7 +1449,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
     if (!githubToken)             { setError('GitHub token required — open Settings.'); setSettingsOpen(true); return }
     if (!repoOwner || !repoName)  { setError('Repo owner and name required — open Settings.'); setSettingsOpen(true); return }
 
-    const promptSummary = (history[0]?.prompt || prompt || 'ICARUS generated code').slice(0, 80)
+    const promptSummary = (history[0]?.prompt || prompt || 'BLUSWAN generated code').slice(0, 80)
 
     // Permission gate
     if (!dryRun && !confirmAction(
@@ -1521,7 +1521,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         const existing    = await getFileContent(githubToken, repoOwner, repoName, entry.path, targetBranch)
         const existingSha = existing?.sha || entry._sha || null
         const action      = existingSha ? 'update' : 'add'
-        const commitMsg   = `feat(icarus): ${action} ${entry.path}\n\nGenerated by ICARUS: "${promptSummary}"`
+        const commitMsg   = `feat(bluswan): ${action} ${entry.path}\n\nGenerated by BLUSWAN: "${promptSummary}"`
         if (!dryRun) await pushWithRetry(entry.path, entry.code, commitMsg, targetBranch, existingSha)
         log(`${dryRun ? '○' : '✓'} ${dryRun ? '[dry run] ' : ''}${action === 'update' ? 'Updated' : 'Created'} ${entry.path}`)
         updateActivity(fileId, { status: 'done', msg: `⬆ ${action === 'update' ? 'Updated' : 'Created'} ${entry.path}${dryRun ? ' (dry run)' : ''}` })
@@ -1532,7 +1532,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           setPushStep(`Pushing tests "${tp}"…`)
           const testPushId = logActivity('push', `⬆ ${tp}`)
           const existingTest = await getFileContent(githubToken, repoOwner, repoName, tp, targetBranch)
-          if (!dryRun) await pushWithRetry(tp, entry.testCode, `test(icarus): add tests for ${entry.path}`, targetBranch, existingTest?.sha || null)
+          if (!dryRun) await pushWithRetry(tp, entry.testCode, `test(bluswan): add tests for ${entry.path}`, targetBranch, existingTest?.sha || null)
           log(`${dryRun ? '○' : '✓'} ${dryRun ? '[dry run] ' : ''}Tests: ${tp}`)
           updateActivity(testPushId, { status: 'done', msg: `⬆ Tests: ${tp}${dryRun ? ' (dry run)' : ''}` })
         }
@@ -1544,7 +1544,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         const prId = logActivity('push', '⬆ Creating pull request…')
         const fileList = filesToPush.map(e => `- \`${e.path}\`${e.purpose ? ` — ${e.purpose}` : ''}`).join('\n')
         const prBody = [
-          `## ICARUS AI Generated Code`,
+          `## BLUSWAN AI Generated Code`,
           ``,
           `**Prompt:** ${promptSummary}`,
           `**Model:** ${modelName}`,
@@ -1553,11 +1553,11 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           turnCount > 1 ? `**Refinement turns:** ${turnCount}` : '',
           ``,
           `---`,
-          `*Generated by ICARUS — WolfKrow AI Coding Assistant*`,
+          `*Generated by BLUSWAN — WolfKrow AI Coding Assistant*`,
         ].filter(Boolean).join('\n')
 
         let pr = null
-        if (!dryRun) pr = await createPullRequest(githubToken, repoOwner, repoName, `ICARUS: ${promptSummary}`, targetBranch, baseBranch, prBody)
+        if (!dryRun) pr = await createPullRequest(githubToken, repoOwner, repoName, `BLUSWAN: ${promptSummary}`, targetBranch, baseBranch, prBody)
         prUrl = pr?.html_url || `https://github.com/${repoOwner}/${repoName}/compare/${targetBranch}`
         setPrResult({ url: prUrl, number: pr?.number })
         log(`${dryRun ? '○' : '✓'} PR ${dryRun ? 'preview' : 'created'}: ${prUrl}`)
@@ -1631,7 +1631,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         model,
         clean,
         [
-          { role: 'system', content: 'You are ICARUS in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
+          { role: 'system', content: 'You are BLUSWAN in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
           ...conversation.slice(-10),
         ],
       )
@@ -1706,12 +1706,12 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
   return (
     <div
-      className={`lk-root${theme !== 'graphite' ? ` lk-theme-${theme}` : ''}${theme === 'blkswan' && conversation.length > 0 ? ' lk-root--chatting' : ''}`}
+      className={`lk-root${theme !== 'graphite' ? ` lk-theme-${theme}` : ''}${theme === 'bluswan' && conversation.length > 0 ? ' lk-root--chatting' : ''}`}
       style={{ filter: ftFilter }}
       onKeyDown={handleKeyDown}
     >
-      {/* ── Aurora WebGL background — BLKSWAN theme only, hidden after first message ── */}
-      {theme === 'blkswan' && conversation.length === 0 && (
+      {/* ── Aurora WebGL background — BLUSWAN theme only, hidden after first message ── */}
+      {theme === 'bluswan' && conversation.length === 0 && (
         <Aurora
           colorStops={['#071630', '#3b8ef0', '#112252']}
           amplitude={1.0}
@@ -1721,7 +1721,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
       )}
 
       {/* ── Invisible sandbox iframe ──────────────────────────────────────── */}
-      <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="BLKSWAN sandbox" aria-hidden="true" />
+      <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="BLUSWAN sandbox" aria-hidden="true" />
 
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — icon column (like Claude Code's narrow left rail)
@@ -1735,7 +1735,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           onClick={() => {
             setSettingsOpen(v => !v)
             setHistoryOpen(false)
-            setIcarusMdDraft(shadowContext.icarusMd || '')
+            setBluswanMdDraft(shadowContext.bluswanMd || '')
           }} title="Settings">⚙</button>
         <button
           className="lk-sidebar-btn"
@@ -1751,7 +1751,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         {/* ── Mobile-only drawer nav (hidden on desktop via CSS) ──────────── */}
         <div className="lk-sidebar-mobile-nav">
           <div className="lk-sidebar-nav-brand">
-            <img src="/bluswan-header-logo.jpg" alt="BLUSWAN" className="lk-blkswan-logo lk-blkswan-logo--drawer" />
+            <img src="/bluswan-header-logo.jpg" alt="BLUSWAN" className="lk-bluswan-logo lk-bluswan-logo--drawer" />
             <button className="lk-sidebar-btn lk-sidebar-btn--new"
               onClick={() => { handleReset(); setMobileDrawerOpen(false) }} title="New session">＋</button>
           </div>
@@ -1778,7 +1778,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           <div className="lk-sidebar-nav-sep" />
           <button
             className={`lk-sidebar-nav-btn${settingsOpen ? ' lk-sidebar-nav-btn--active' : ''}`}
-            onClick={() => { setSettingsOpen(v => !v); setHistoryOpen(false); setIcarusMdDraft(shadowContext.icarusMd || ''); setMobileDrawerOpen(false) }}
+            onClick={() => { setSettingsOpen(v => !v); setHistoryOpen(false); setBluswanMdDraft(shadowContext.bluswanMd || ''); setMobileDrawerOpen(false) }}
           ><span className="lk-sidebar-nav-icon">⚙</span> Settings</button>
           {shadowStatus && (
             <div className="lk-sidebar-nav-status">
@@ -1804,14 +1804,14 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           {/* Mobile: hamburger + centered title (hidden on desktop via CSS) */}
           <button className="lk-hamburger" onClick={() => setMobileDrawerOpen(v => !v)} aria-label="Open navigation">≡</button>
           <span className="lk-topbar-mobile-title">
-            <img src="/bluswan-header-logo.jpg" alt="BLUSWAN" className="lk-blkswan-logo" />
+            <img src="/bluswan-header-logo.jpg" alt="BLUSWAN" className="lk-bluswan-logo" />
           </span>
           <>
 
               <img
                 src="/bluswan-header-logo.jpg"
                 alt="BLUSWAN"
-                className="lk-blkswan-topbar-logo"
+                className="lk-bluswan-topbar-logo"
               />
 
               {/* ── Repo picker ───────────────────────────────────────────── */}
@@ -1899,7 +1899,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
         {/* ── Drawers (overlay inside lk-main) ─────────────────────────────── */}
         {settingsOpen && (
-          <IcarusSettings
+          <BluswanSettings
             githubToken={githubToken}     setGithubToken={setGithubToken}
             repoOwner={repoOwner}         setRepoOwner={setRepoOwner}
             repoName={repoName}           setRepoName={setRepoName}
@@ -1919,9 +1919,9 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
             headerLayout={headerLayout}     setHeaderLayout={setHeaderLayout}
             DEFAULT_HEADER_LAYOUT={DEFAULT_HEADER_LAYOUT}
             permissionMode={permissionMode} setPermissionMode={setPermissionMode}
-            icarusMdDraft={icarusMdDraft}     setIcarusMdDraft={setIcarusMdDraft}
-            onSaveIcarusMd={handleSaveIcarusMd}
-            isSavingIcarusMd={isSavingIcarusMd}
+            bluswanMdDraft={bluswanMdDraft}     setBluswanMdDraft={setBluswanMdDraft}
+            onSaveBluswanMd={handleSaveBluswanMd}
+            isSavingBluswanMd={isSavingBluswanMd}
             models={models}                setModels={setModels}
             onLogout={onLogout}            userEmail={userEmail}
           />
@@ -1957,7 +1957,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
                 <h2>Modules</h2>
                 <button className="lk-btn lk-btn--small" onClick={() => setActiveTab('code')}>Back to Chat</button>
               </div>
-              <IcarusModularTools />
+              <BluswanModularTools />
             </div>
           </div>
         ) : (
@@ -1968,7 +1968,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         <div className="lk-feed">
 
           {/* ── Single evolving task stream ───────────────────────────────── */}
-          <IcarusActivityFeed
+          <BluswanActivityFeed
             activityLog={activityLog}
             isAgentRunning={agentSession.isAgentRunning}
             agentStreamText={agentSession.agentStreamText}

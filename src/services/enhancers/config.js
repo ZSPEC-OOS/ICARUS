@@ -7,7 +7,7 @@
 // Role primary/fallback values are model IDs or names from the loaded model
 // list (aiService loadModels).  Leave primary=null to fall back to default.
 
-const ENHANCER_CFG_KEY = 'icarus:enhancers-config'
+const ENHANCER_CFG_KEY = 'bluswan:enhancers-config'
 
 /** @typedef {'disabled'|'rule_based'|'llm'|'hybrid'} CritiqueMode */
 

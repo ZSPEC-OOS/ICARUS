@@ -8,7 +8,7 @@
 
 import { initializeApp, getApps } from 'firebase/app'
 
-const FB_CONFIG_KEY = 'icarus:firebase'
+const FB_CONFIG_KEY = 'bluswan:firebase'
 
 // ── Hardcoded project config ──────────────────────────────────────────────────
 const DEFAULT_FIREBASE_CONFIG = {
@@ -162,7 +162,7 @@ export function onAuthStateChange(callback) {
       if (cancelled) return
       realUnsub = onAuthStateChanged(auth, callback)
     } catch (err) {
-      console.warn('[Icarus] onAuthStateChange setup failed:', err.message)
+      console.warn('[Bluswan] onAuthStateChange setup failed:', err.message)
       // Fire callback with null so the app doesn't stay on the loading screen
       if (!cancelled) callback(null)
     }
@@ -257,7 +257,7 @@ export async function saveUserSettings(uid, settings) {
 
     await setDoc(doc(db, 'users', uid, 'data', 'settings'), payload)
   } catch (err) {
-    console.warn('[Icarus] saveUserSettings failed:', err.message)
+    console.warn('[Bluswan] saveUserSettings failed:', err.message)
   }
 }
 
@@ -300,7 +300,7 @@ export async function saveUserConversation(uid, messages = []) {
       { merge: true },
     )
   } catch (err) {
-    console.warn('[Icarus] saveUserConversation failed:', err.message)
+    console.warn('[Bluswan] saveUserConversation failed:', err.message)
   }
 }
 
@@ -314,7 +314,7 @@ export async function loadUserConversation(uid) {
     const data = snap.data()
     return Array.isArray(data?.messages) ? data.messages : []
   } catch (err) {
-    console.warn('[Icarus] loadUserConversation failed:', err.message)
+    console.warn('[Bluswan] loadUserConversation failed:', err.message)
     return []
   }
 }

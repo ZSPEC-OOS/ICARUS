@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Produce an architecture-level summary using ShadowContext metadata (conventions, hotspots, and symbol map).',
   category: 'analysis',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 function topImportHubs(importGraph = {}, limit = 12) {

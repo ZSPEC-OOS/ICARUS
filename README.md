@@ -1,4 +1,4 @@
-# ICARUS — AI professional coder
+# BLUSWAN — AI professional coder
 
 ## Setup
 
@@ -8,7 +8,7 @@ npm run dev
 ```
 
 Open http://localhost:5173 and log in with:
-- **Username:** icarus
+- **Username:** bluswan
 - **Password:** admin
 
 ## Configuration
@@ -103,7 +103,7 @@ Run the local benchmark harness:
 npm run benchmark:nightly
 ```
 
-Outputs are written to `.icarus/benchmarks/`:
+Outputs are written to `.bluswan/benchmarks/`:
 - `latest.json` machine-readable metrics and regression signals
 - `<suite>.json` historical report snapshot
 - `<suite>.md` comparative markdown summary

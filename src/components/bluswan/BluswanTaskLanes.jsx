@@ -27,7 +27,7 @@ function ConfidencePill({ confidence }) {
 }
 
 /**
- * IcarusTaskLanes — horizontal strip of live/completed orchestration task cards.
+ * BluswanTaskLanes — horizontal strip of live/completed orchestration task cards.
  *
  * Props:
  *   lanes  — array of lane objects accumulated from orchestration events:
@@ -44,7 +44,7 @@ function ConfidencePill({ confidence }) {
  *       ensembleModels?: string[],
  *     }
  */
-const IcarusTaskLanes = memo(function IcarusTaskLanes({ lanes = [] }) {
+const BluswanTaskLanes = memo(function BluswanTaskLanes({ lanes = [] }) {
   if (!lanes.length) return null
 
   return (
@@ -104,9 +104,9 @@ const IcarusTaskLanes = memo(function IcarusTaskLanes({ lanes = [] }) {
   )
 })
 
-export default IcarusTaskLanes
+export default BluswanTaskLanes
 
-// ── Lane accumulation helper (used in useAgentSession / Icarus) ─────────────────
+// ── Lane accumulation helper (used in useAgentSession / Bluswan) ─────────────────
 
 let _laneSeq = 0
 /**

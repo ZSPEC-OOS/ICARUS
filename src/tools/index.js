@@ -1,5 +1,5 @@
 // ─── tools/index.js — Built-in tool registry ──────────────────────────────────
-// All tools shipped with ICARUS. Each export must conform to the toolMeta /
+// All tools shipped with BLUSWAN. Each export must conform to the toolMeta /
 // execute / test contract defined in tool-template.js.
 import * as contracts from './contracts.js'
 

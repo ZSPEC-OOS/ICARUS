@@ -29,7 +29,7 @@ import {
   traceOrchestrationDecision,
 } from './toolTraceStore.js'
 
-const TRACE_KEY = 'icarus:tool-traces:jsonl'
+const TRACE_KEY = 'bluswan:tool-traces:jsonl'
 
 // ── beginToolTrace / endToolTrace / getTraceById lifecycle ────────────────────
 
