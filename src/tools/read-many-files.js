@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Read multiple files in a single call — more efficient than separate read-file calls.',
   category: 'coding',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 export async function execute(input, config = {}) {

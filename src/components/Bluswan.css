@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600;700&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════════
-   ICARUS — Multi-theme system  ·  6 themes  ·  Fine-tune sliders
+   BLUSWAN — Multi-theme system  ·  6 themes  ·  Fine-tune sliders
    ═══════════════════════════════════════════════════════════════════ */
 
 html, body, #root {
@@ -197,7 +197,7 @@ html, body, #root {
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.40);
 }
 
-/* ── Theme: Spectrum (ICARUS logo-inspired neon blend) */
+/* ── Theme: Spectrum (BLUSWAN logo-inspired neon blend) */
 .lk-root.lk-theme-spectrum {
   --lk-bg:          #09081a;
   --lk-surface:     #10102a;
@@ -277,7 +277,7 @@ html, body, #root {
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.45);
 }
 
-/* ── Phoenix: ICARUS brand text — fiery gradient ─────────────────── */
+/* ── Phoenix: BLUSWAN brand text — fiery gradient ─────────────────── */
 .lk-root.lk-theme-phoenix .lk-brand-sub,
 .lk-root.lk-theme-phoenix .lk-topbar-mobile-title {
   background: linear-gradient(90deg, #ff8c00 0%, #ffe000 48%, #ff4500 100%);
@@ -287,8 +287,8 @@ html, body, #root {
   color: transparent;
 }
 
-/* ── Theme: BLKSWAN (deep cosmic navy, electric blue) — primary brand */
-.lk-root.lk-theme-blkswan {
+/* ── Theme: BLUSWAN (deep cosmic navy, electric blue) — primary brand */
+.lk-root.lk-theme-bluswan {
   --lk-bg:          #030b18;
   --lk-surface:     #070f1e;
   --lk-surface-2:   #0c1628;
@@ -332,34 +332,34 @@ html, body, #root {
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.60);
 }
 
-/* ── BLKSWAN: solid dark base — Aurora WebGL handles the visual background */
-.lk-root.lk-theme-blkswan {
+/* ── BLUSWAN: solid dark base — Aurora WebGL handles the visual background */
+.lk-root.lk-theme-bluswan {
   background: #030b18;
 }
 
-/* ── BLKSWAN: after first message — switch to surface colour so text is legible */
-.lk-root.lk-theme-blkswan.lk-root--chatting {
+/* ── BLUSWAN: after first message — switch to surface colour so text is legible */
+.lk-root.lk-theme-bluswan.lk-root--chatting {
   background: #070f1e;
 }
 
-/* ── BLKSWAN: topbar stays dark-navy opaque over background */
-.lk-root.lk-theme-blkswan .lk-topbar {
+/* ── BLUSWAN: topbar stays dark-navy opaque over background */
+.lk-root.lk-theme-bluswan .lk-topbar {
   background: rgba(4, 10, 24, 0.92);
   border-bottom-color: rgba(77, 156, 255, 0.18);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* ── BLKSWAN: sidebar matches topbar */
-.lk-root.lk-theme-blkswan .lk-sidebar {
+/* ── BLUSWAN: sidebar matches topbar */
+.lk-root.lk-theme-bluswan .lk-sidebar {
   background: rgba(4, 10, 24, 0.88);
   border-right-color: rgba(77, 156, 255, 0.14);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* ── BLKSWAN: input bar — frosted glass over background */
-.lk-root.lk-theme-blkswan .lk-input-bar {
+/* ── BLUSWAN: input bar — frosted glass over background */
+.lk-root.lk-theme-bluswan .lk-input-bar {
   background: transparent;
   border-top: none;
   box-shadow: none;
@@ -367,65 +367,65 @@ html, body, #root {
   -webkit-backdrop-filter: none;
 }
 
-/* ── BLKSWAN: feed output — semi-transparent so swan shows through */
-.lk-root.lk-theme-blkswan .lk-feed-output {
+/* ── BLUSWAN: feed output — semi-transparent so swan shows through */
+.lk-root.lk-theme-bluswan .lk-feed-output {
   background: rgba(3, 11, 24, 0.50);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
 
-/* ── BLKSWAN: textarea — dark glass style */
-.lk-root.lk-theme-blkswan .lk-textarea {
+/* ── BLUSWAN: textarea — dark glass style */
+.lk-root.lk-theme-bluswan .lk-textarea {
   background: rgba(7, 15, 30, 0.80);
   border-color: rgba(77, 156, 255, 0.25);
 }
-.lk-root.lk-theme-blkswan .lk-textarea:focus {
+.lk-root.lk-theme-bluswan .lk-textarea:focus {
   border-color: #3b8ef0;
   box-shadow: 0 0 0 2px rgba(59, 142, 240, 0.20), 0 0 18px rgba(59, 142, 240, 0.18);
 }
 
-/* ── BLKSWAN: send button — electric blue gradient */
-.lk-root.lk-theme-blkswan .lk-btn--send {
+/* ── BLUSWAN: send button — electric blue gradient */
+.lk-root.lk-theme-bluswan .lk-btn--send {
   background: linear-gradient(135deg, #1a4ea8 0%, #2a72d8 50%, #4d9cff 100%);
   border-color: rgba(77, 156, 255, 0.55);
   color: #fff;
   box-shadow: 0 2px 20px rgba(59, 130, 246, 0.45);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
-.lk-root.lk-theme-blkswan .lk-btn--send:hover:not(:disabled) {
+.lk-root.lk-theme-bluswan .lk-btn--send:hover:not(:disabled) {
   background: linear-gradient(135deg, #1f5fc0 0%, #3280ec 50%, #60aeff 100%);
   box-shadow: 0 4px 28px rgba(59, 130, 246, 0.60);
 }
-.lk-root.lk-theme-blkswan .lk-btn--send:disabled {
+.lk-root.lk-theme-bluswan .lk-btn--send:disabled {
   background: linear-gradient(135deg, #0d2550 0%, #142e60 50%, #1a3c7a 100%);
   box-shadow: none;
   opacity: 0.55;
 }
 
-/* ── BLKSWAN: mobile title shows the logo image instead of text */
-.lk-root.lk-theme-blkswan .lk-topbar-mobile-title {
+/* ── BLUSWAN: mobile title shows the logo image instead of text */
+.lk-root.lk-theme-bluswan .lk-topbar-mobile-title {
   font-size: 0; /* hide text — logo img used */
 }
 
-/* ── BLKSWAN: sidebar brand name */
-.lk-root.lk-theme-blkswan .lk-sidebar-nav-brand-name {
+/* ── BLUSWAN: sidebar brand name */
+.lk-root.lk-theme-bluswan .lk-sidebar-nav-brand-name {
   font-size: 0; /* hidden; logo img used in JSX */
 }
 
-/* ── BLKSWAN: logo images — banner JPG, no border-radius */
-.lk-blkswan-logo {
+/* ── BLUSWAN: logo images — banner JPG, no border-radius */
+.lk-bluswan-logo {
   height: 26px;
   width: auto;
   display: block;
   flex-shrink: 0;
   object-fit: contain;
 }
-.lk-blkswan-logo--drawer {
+.lk-bluswan-logo--drawer {
   height: 22px;
 }
 
 /* Desktop topbar logo — fixed size, hidden on mobile */
-.lk-blkswan-topbar-logo {
+.lk-bluswan-topbar-logo {
   height: 26px;
   width: auto;
   display: block;
@@ -661,40 +661,40 @@ html, body, #root {
   flex-shrink: 0;
 }
 
-/* BLKSWAN theme overrides */
-.lk-root.lk-theme-blkswan .lk-repo-picker-btn {
+/* BLUSWAN theme overrides */
+.lk-root.lk-theme-bluswan .lk-repo-picker-btn {
   background: rgba(7, 15, 30, 0.70);
   border-color: rgba(77, 156, 255, 0.22);
   color: #93c5fd;
 }
 
-.lk-root.lk-theme-blkswan .lk-repo-picker-btn:hover {
+.lk-root.lk-theme-bluswan .lk-repo-picker-btn:hover {
   border-color: #3b8ef0;
   background: rgba(59, 142, 240, 0.12);
   color: #60a5fa;
 }
 
-.lk-root.lk-theme-blkswan .lk-repo-picker-dropdown {
+.lk-root.lk-theme-bluswan .lk-repo-picker-dropdown {
   background: rgba(5, 12, 28, 0.96);
   border-color: rgba(77, 156, 255, 0.22);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
-.lk-root.lk-theme-blkswan .lk-repo-picker-search {
+.lk-root.lk-theme-bluswan .lk-repo-picker-search {
   background: rgba(7, 15, 30, 0.80);
   border-color: rgba(77, 156, 255, 0.22);
   color: #e8f4ff;
 }
 
-.lk-root.lk-theme-blkswan .lk-repo-picker-search-wrap {
+.lk-root.lk-theme-bluswan .lk-repo-picker-search-wrap {
   border-bottom-color: rgba(77, 156, 255, 0.10);
 }
 
-.lk-root.lk-theme-blkswan .lk-repo-picker-item { color: #93c5fd; }
-.lk-root.lk-theme-blkswan .lk-repo-picker-item:hover { background: rgba(59, 142, 240, 0.12); color: #e8f4ff; }
-.lk-root.lk-theme-blkswan .lk-repo-picker-item--active { background: rgba(59, 142, 240, 0.14); color: #3b8ef0; }
-.lk-root.lk-theme-blkswan .lk-repo-picker-item-branch { color: #3d5a7a; }
+.lk-root.lk-theme-bluswan .lk-repo-picker-item { color: #93c5fd; }
+.lk-root.lk-theme-bluswan .lk-repo-picker-item:hover { background: rgba(59, 142, 240, 0.12); color: #e8f4ff; }
+.lk-root.lk-theme-bluswan .lk-repo-picker-item--active { background: rgba(59, 142, 240, 0.14); color: #3b8ef0; }
+.lk-root.lk-theme-bluswan .lk-repo-picker-item-branch { color: #3d5a7a; }
 
 .lk-header-brand { /* keep compat alias */
   display: flex;
@@ -1072,43 +1072,43 @@ html, body, #root {
   cursor: not-allowed;
 }
 
-/* ── BLKSWAN theme overrides for new input card ──────────────────── */
-.lk-root.lk-theme-blkswan .lk-input-card {
+/* ── BLUSWAN theme overrides for new input card ──────────────────── */
+.lk-root.lk-theme-bluswan .lk-input-card {
   background: rgba(7, 15, 30, 0.82);
   border-color: rgba(77, 156, 255, 0.22);
 }
 
-.lk-root.lk-theme-blkswan .lk-input-branch-row {
+.lk-root.lk-theme-bluswan .lk-input-branch-row {
   border-bottom-color: rgba(77, 156, 255, 0.09);
 }
 
-.lk-root.lk-theme-blkswan .lk-input-toolbar {
+.lk-root.lk-theme-bluswan .lk-input-toolbar {
   border-top-color: rgba(77, 156, 255, 0.09);
 }
 
-.lk-root.lk-theme-blkswan .lk-toolbar-btn {
+.lk-root.lk-theme-bluswan .lk-toolbar-btn {
   border-color: rgba(77, 156, 255, 0.20);
   color: #3d5a7a;
 }
 
-.lk-root.lk-theme-blkswan .lk-toolbar-btn:hover:not(:disabled) {
+.lk-root.lk-theme-bluswan .lk-toolbar-btn:hover:not(:disabled) {
   border-color: #3b8ef0;
   color: #3b8ef0;
   background: rgba(59, 142, 240, 0.12);
 }
 
-.lk-root.lk-theme-blkswan .lk-toolbar-model-select {
+.lk-root.lk-theme-bluswan .lk-toolbar-model-select {
   border-color: rgba(77, 156, 255, 0.20);
   color: #93c5fd;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5' viewBox='0 0 9 5'%3E%3Cpath fill='%233b8ef0' d='M0 0l4.5 5L9 0z'/%3E%3C/svg%3E");
 }
 
-.lk-root.lk-theme-blkswan .lk-toolbar-model-select option {
+.lk-root.lk-theme-bluswan .lk-toolbar-model-select option {
   background: #070f1e;
   color: #e8f4ff;
 }
 
-.lk-root.lk-theme-blkswan .lk-input-card .lk-textarea {
+.lk-root.lk-theme-bluswan .lk-input-card .lk-textarea {
   background: transparent;
 }
 
@@ -3239,7 +3239,7 @@ kbd {
   }
   /* Hide desktop-only topbar elements (all moved into the drawer) */
   .lk-brand-sub          { display: none !important; }
-  .lk-blkswan-topbar-logo { display: none !important; }
+  .lk-bluswan-topbar-logo { display: none !important; }
   .lk-turn-badge         { display: none !important; }
   .lk-shadow-badge       { display: none !important; }
   .lk-topbar-spacer      { display: none !important; }
@@ -3601,8 +3601,8 @@ kbd {
   border-bottom-left-radius: 3px;
 }
 
-/* ── ICARUS.md editor ─────────────────────────────────────────────── */
-.lk-icarusmd-editor {
+/* ── BLUSWAN.md editor ─────────────────────────────────────────────── */
+.lk-bluswanmd-editor {
   width: 100%;
   box-sizing: border-box;
   background: var(--lk-bg);
@@ -3616,7 +3616,7 @@ kbd {
   margin: 8px 0 6px;
   line-height: 1.5;
 }
-.lk-icarusmd-editor:focus { outline: none; border-color: var(--lk-accent); }
+.lk-bluswanmd-editor:focus { outline: none; border-color: var(--lk-accent); }
 
 /* ── Settings section (AI API + Firebase) ────────────────────────── */
 .lk-settings-section {

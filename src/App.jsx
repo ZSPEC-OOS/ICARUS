@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import LoginScreen from './components/LoginScreen'
-import Icarus from './components/Icarus'
+import Bluswan from './components/Bluswan'
 import { loadModels, saveModels, saveSearchKey } from './services/aiService'
 import {
   onAuthStateChange,
@@ -11,8 +11,8 @@ import {
 } from './services/firebaseService'
 
 // Populate localStorage + sessionStorage from cloud settings
-// Called after login so that Icarus's loadSettings() reads the cloud values on
-// first render. Each value uses the same storage path that Icarus writes to,
+// Called after login so that Bluswan's loadSettings() reads the cloud values on
+// first render. Each value uses the same storage path that Bluswan writes to,
 // so the component initialises transparently with persisted data.
 async function injectCloudSettings(settings) {
   if (!settings) return
@@ -20,15 +20,15 @@ async function injectCloudSettings(settings) {
     const { githubToken, repo2Token, webSearchApiKey, models,
             permissionMode, _v, _ts, ...rest } = settings
 
-    // Non-secret settings -> localStorage (same key Icarus uses)
-    localStorage.setItem('icarus:settings', JSON.stringify(rest))
+    // Non-secret settings -> localStorage (same key Bluswan uses)
+    localStorage.setItem('bluswan:settings', JSON.stringify(rest))
 
     // permissionMode has its own key in localStorage
-    if (permissionMode) localStorage.setItem('icarus:permMode', permissionMode)
+    if (permissionMode) localStorage.setItem('bluswan:permMode', permissionMode)
 
-    // GitHub tokens -> sessionStorage as plaintext (matching Icarus's read path)
-    if (githubToken !== undefined) sessionStorage.setItem('icarus:ghtoken', githubToken || '')
-    if (repo2Token !== undefined) sessionStorage.setItem('icarus:ghtoken2', repo2Token || '')
+    // GitHub tokens -> sessionStorage as plaintext (matching Bluswan's read path)
+    if (githubToken !== undefined) sessionStorage.setItem('bluswan:ghtoken', githubToken || '')
+    if (repo2Token !== undefined) sessionStorage.setItem('bluswan:ghtoken2', repo2Token || '')
 
     // Search key must be stored via saveSearchKey() because loadSearchKey() decrypts it
     if (webSearchApiKey !== undefined) await saveSearchKey(webSearchApiKey || '')
@@ -36,7 +36,7 @@ async function injectCloudSettings(settings) {
     // Models (with API keys) -> aiService storage (handles its own encryption)
     if (Array.isArray(models) && models.length > 0) await saveModels(models)
   } catch (err) {
-    console.warn('[Icarus] injectCloudSettings failed:', err.message)
+    console.warn('[Bluswan] injectCloudSettings failed:', err.message)
   }
 }
 
@@ -45,7 +45,7 @@ function Splash({ msg = 'Loading...' }) {
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       height: '100vh',
-      background: 'url(/blkswan-bg.jpg) center/cover no-repeat, #030b18',
+      background: 'url(/bluswan-bg.jpg) center/cover no-repeat, #030b18',
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
       fontSize: '0.9rem',
       flexDirection: 'column',
@@ -63,7 +63,7 @@ export default function App() {
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
   //   authUser=null      -> Not logged in (show LoginScreen)
   //   settingsReady=false -> Logged in but loading Firestore (show splash)
-  //   settingsReady=true  -> Ready (show Icarus)
+  //   settingsReady=true  -> Ready (show Bluswan)
   const [authChecked, setAuthChecked] = useState(false)
   const [authUser, setAuthUser] = useState(null)
   const [settingsReady, setSettingsReady] = useState(false)
@@ -89,20 +89,20 @@ export default function App() {
   // Firebase auth listener - single source of truth
   // We do NOT set authUser from the LoginScreen onLogin callback.
   // This listener fires when Firebase confirms login, giving us time to load
-  // Firestore settings BEFORE rendering Icarus (so it initialises with correct values).
+  // Firestore settings BEFORE rendering Bluswan (so it initialises with correct values).
   useEffect(() => {
     const unsub = onAuthStateChange(async (user) => {
       if (user) {
         authUserRef.current = user
         setCloudError('')
 
-        // Load cloud settings and hydrate localStorage before mounting Icarus
+        // Load cloud settings and hydrate localStorage before mounting Bluswan
         let cloud = null
         try {
           cloud = await loadUserSettings(user.uid)
         } catch (err) {
           // Real error (permissions, network) - log it and proceed with local defaults
-          console.warn('[Icarus] Could not load cloud settings:', err.message)
+          console.warn('[Bluswan] Could not load cloud settings:', err.message)
           setCloudError('Could not load cloud settings - using local data. Check Firestore rules.')
         }
 
@@ -132,13 +132,13 @@ export default function App() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       saveUserSettings(uid, pendingSettingsRef.current).catch(err =>
-        console.warn('[Icarus] Cloud save failed:', err.message)
+        console.warn('[Bluswan] Cloud save failed:', err.message)
       )
     }, 1500)
   }, [])
 
-  // Settings changes from Icarus (github tokens, theme, repo config, etc.)
-  // Icarus calls this whenever any persisted setting changes.
+  // Settings changes from Bluswan (github tokens, theme, repo config, etc.)
+  // Bluswan calls this whenever any persisted setting changes.
   // We merge with the latest models so the cloud doc is always complete.
   const handleSettingsChanged = useCallback((settings) => {
     const uid = authUserRef.current?.uid
@@ -146,7 +146,7 @@ export default function App() {
     loadModels().then(m => scheduleCloudSave(uid, { ...settings, models: m })).catch(() => {})
   }, [scheduleCloudSave])
 
-  // Model changes from IcarusSettings (API key entered/changed)
+  // Model changes from BluswanSettings (API key entered/changed)
   const handleSetModels = useCallback((updated) => {
     setModels(updated)
     const uid = authUserRef.current?.uid
@@ -168,9 +168,9 @@ export default function App() {
     await signOutUser().catch(() => {})
     // Clear sensitive local session data
     try {
-      sessionStorage.removeItem('icarus:ghtoken')
-      sessionStorage.removeItem('icarus:ghtoken2')
-      sessionStorage.removeItem('icarus:searchkey')
+      sessionStorage.removeItem('bluswan:ghtoken')
+      sessionStorage.removeItem('bluswan:ghtoken2')
+      sessionStorage.removeItem('bluswan:searchkey')
       sessionStorage.removeItem('wrkflow:keys')
       sessionStorage.removeItem('wrkflow:sk')
     } catch {}
@@ -187,7 +187,7 @@ export default function App() {
       await signInAnonymously()
       // onAuthStateChange will fire, load Firestore settings, then set authUser + settingsReady.
     } catch (err) {
-      console.warn('[Icarus] Anonymous auth failed — using local-only mode:', err.message)
+      console.warn('[Bluswan] Anonymous auth failed — using local-only mode:', err.message)
       // Allow app to render without cloud settings
       setSettingsReady(true)
     }
@@ -209,7 +209,7 @@ export default function App() {
           Warning: {cloudError}
         </div>
       )}
-      <Icarus
+      <Bluswan
         models={models}
         setModels={handleSetModels}
         selectedModelId={selectedModelId}

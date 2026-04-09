@@ -1,7 +1,7 @@
 import { schemaVersion } from '../tools/contracts.js'
 import { MAX_TRACE_LINES, TRACE_MAX_AGE_DAYS } from '../config/constants.js'
 
-const TRACE_STORAGE_KEY = 'icarus:tool-traces:jsonl'
+const TRACE_STORAGE_KEY = 'bluswan:tool-traces:jsonl'
 let activeLoopState = null
 
 function nowIso() {

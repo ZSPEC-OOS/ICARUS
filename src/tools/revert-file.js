@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Restore a file to its state before the last N commits that touched it.',
   category: 'coding',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 export async function execute(input, config = {}) {

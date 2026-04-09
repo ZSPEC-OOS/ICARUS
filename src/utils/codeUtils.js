@@ -1,5 +1,5 @@
 // ─── Code utilities ───────────────────────────────────────────────────────────
-// Pure functions extracted from Icarus.jsx — no React, no side-effects.
+// Pure functions extracted from Bluswan.jsx — no React, no side-effects.
 // Safe to import from any component or service.
 
 import { SANDBOX_JS_TIMEOUT_MS, SANDBOX_PY_TIMEOUT_MS, PYODIDE_VERSION } from '../config/constants.js'

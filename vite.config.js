@@ -14,7 +14,7 @@ async function ensureSpawn() {
   return spawn
 }
 
-// Dev-only exec bridge â lets the ICARUS terminal and Tools tab run real shell
+// Dev-only exec bridge â lets the BLUSWAN terminal and Tools tab run real shell
 // commands on your machine during `vite dev`. Never included in production builds.
 function tokenize(cmdStr) {
   const tokens = []
@@ -38,7 +38,7 @@ function tokenize(cmdStr) {
 
 function execBridgePlugin() {
   return {
-    name: 'icarus-exec-bridge',
+    name: 'bluswan-exec-bridge',
     apply: 'serve',
     configureServer(server) {
       if (!spawn) return

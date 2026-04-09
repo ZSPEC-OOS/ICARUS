@@ -1,4 +1,4 @@
-// ─── IcarusSelfImprovePanel ────────────────────────────────────────────────────
+// ─── BluswanSelfImprovePanel ────────────────────────────────────────────────────
 // Attach ONE local repository folder. The agent explores it each cycle, finds
 // an enhancement, applies it, then starts over — indefinitely.
 //
@@ -16,7 +16,7 @@ function ts() {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function IcarusSelfImprovePanel({ modelConfig }) {
+export default function BluswanSelfImprovePanel({ modelConfig }) {
   // ── Folder ──────────────────────────────────────────────────────────────────
   const [handle,    setHandle]    = useState(null)
   const [repoName,  setRepoName]  = useState('')

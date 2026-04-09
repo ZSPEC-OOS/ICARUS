@@ -171,7 +171,7 @@ const ActivityEntry = memo(function ActivityEntry({ entry }) {
 })
 
 // ─── Main component ───────────────────────────────────────────────────────────
-const IcarusActivityFeed = memo(function IcarusActivityFeed({
+const BluswanActivityFeed = memo(function BluswanActivityFeed({
   activityLog,
   isAgentRunning,
   agentStreamText,
@@ -324,4 +324,4 @@ const IcarusActivityFeed = memo(function IcarusActivityFeed({
   )
 })
 
-export default IcarusActivityFeed
+export default BluswanActivityFeed

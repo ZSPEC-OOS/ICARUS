@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'List files and subdirectories in a SOURCE (secondary) repository directory. Read-only.',
   category: 'coding',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 export async function execute(input, config = {}) {

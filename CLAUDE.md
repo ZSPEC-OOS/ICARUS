@@ -1,4 +1,4 @@
-# ICARUS — Claude Code Project Instructions
+# BLUSWAN — Claude Code Project Instructions
 
 ## Repository
 - **GitHub**: `zspec-oos/logik`
@@ -47,12 +47,12 @@ No PR creation. No auto-merge. No branch cleanup.
 
 ## Project Context
 
-ICARUS is an AI-powered developer assistant built as a React SPA with a Node.js service layer. Key areas:
+BLUSWAN is an AI-powered developer assistant built as a React SPA with a Node.js service layer. Key areas:
 
 - `src/services/` — agent loop, orchestration, memory graph, trace store, enhancers
-- `src/components/icarus/` — UI components (activity feed, diff viewer, task lanes, code pane)
+- `src/components/bluswan/` — UI components (activity feed, diff viewer, task lanes, code pane)
 - `src/core/hooks/` — React hooks for agent session state
-- `src/cli/` — headless CLI (`icarus-cli.mjs`)
+- `src/cli/` — headless CLI (`bluswan-cli.mjs`)
 - `tests/` — benchmark and unit tests
 
 See `README.md` for setup. See `docs/` for architecture details.

@@ -5,7 +5,7 @@ export const toolMeta = {
   version: '1.0.0',
   description: 'Probe a URL with timeout handling and return status, latency, and basic diagnostics.',
   category: 'utility',
-  author: 'ICARUS',
+  author: 'BLUSWAN',
 }
 
 export async function execute(input = {}, config = {}) {

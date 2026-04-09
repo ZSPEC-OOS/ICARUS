@@ -171,7 +171,7 @@ export function toolToLogMessage(name, input = {}) {
     case 'retrieve_context':    return `Retrieving grounded context for "${(input.query || '').slice(0, 40)}"…`
     case 'web_fetch':           return `Fetching ${(input.url || '').slice(0, 50)}…`
     case 'create_pull_request': return `Creating PR: "${(input.title || '').slice(0, 50)}"…`
-    case 'update_memory':       return 'Saving note to ICARUS.md…'
+    case 'update_memory':       return 'Saving note to BLUSWAN.md…'
     case 'todo': {
       const act = input.action || ''
       const t   = (input.task || '').slice(0, 60)

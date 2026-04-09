@@ -78,7 +78,7 @@ function ValidationPanel({ results }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-const IcarusCodePane = memo(function IcarusCodePane({
+const BluswanCodePane = memo(function BluswanCodePane({
   generatedCode,
   isGenerating,
   language,
@@ -145,4 +145,4 @@ const IcarusCodePane = memo(function IcarusCodePane({
   )
 })
 
-export default IcarusCodePane
+export default BluswanCodePane

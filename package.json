@@ -1,5 +1,5 @@
 {
-  "name": "icarus",
+  "name": "bluswan",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "node --test src/services/**/*.test.mjs",
     "benchmark:nightly": "node scripts/run-benchmarks.mjs",
-    "cli": "node src/cli/icarus-cli.mjs"
+    "cli": "node src/cli/bluswan-cli.mjs"
   },
   "dependencies": {
     "diff": "^8.0.3",

@@ -1,11 +1,11 @@
-// ─── useIcarusOnboarding — non-coder setup wizard hook ─────────────────────────
+// ─── useBluswanOnboarding — non-coder setup wizard hook ─────────────────────────
 //
 // Drives the step-by-step onboarding experience for users with no coding
 // background. Persists progress in localStorage so they can close and return.
 //
-// Usage in Icarus.jsx (or a wrapper component):
+// Usage in Bluswan.jsx (or a wrapper component):
 //
-//   import { useIcarusOnboarding } from '../core/hooks/useIcarusOnboarding'
+//   import { useBluswanOnboarding } from '../core/hooks/useBluswanOnboarding'
 //
 //   const {
 //     showOnboarding,      // boolean — whether to render the onboarding panel
@@ -21,7 +21,7 @@
 //     addTip,              // (triggerId) => void — surface a tip for a trigger
 //     dismissTip,          // (tipId) => void
 //     activeTips,          // currently visible tips
-//   } = useIcarusOnboarding(settings)
+//   } = useBluswanOnboarding(settings)
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -32,10 +32,10 @@ import {
   getIncompleteSteps,
   isOnboardingComplete,
   isSimpleMode,
-} from '../../services/icarusSimpleMode.js'
+} from '../../services/bluswanSimpleMode.js'
 
-const ONBOARDING_KEY  = 'icarus:onboarding'       // localStorage — persisted state
-const MANUAL_DONE_KEY = 'icarus:onboarding:manual' // which manual steps user confirmed
+const ONBOARDING_KEY  = 'bluswan:onboarding'       // localStorage — persisted state
+const MANUAL_DONE_KEY = 'bluswan:onboarding:manual' // which manual steps user confirmed
 
 // ── State helpers ─────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ function saveManualDone(ids) {
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useIcarusOnboarding(settings = {}) {
+export function useBluswanOnboarding(settings = {}) {
 
   // Onboarding panel visibility
   const [dismissed, setDismissed] = useState(() => {
@@ -181,4 +181,4 @@ export function useIcarusOnboarding(settings = {}) {
   }
 }
 
-export default useIcarusOnboarding
+export default useBluswanOnboarding

@@ -1,9 +1,9 @@
 import { memo } from 'react'
 
-// ─── IcarusDiffViewer ──────────────────────────────────────────────────────────
+// ─── BluswanDiffViewer ──────────────────────────────────────────────────────────
 // Renders the Diff tab: unified diff with syntax colouring, plus patch summary
 // when the agent used surgical EDIT_START/EDIT_END blocks.
-const IcarusDiffViewer = memo(function IcarusDiffViewer({ diffText, patchEdits }) {
+const BluswanDiffViewer = memo(function BluswanDiffViewer({ diffText, patchEdits }) {
   if (!diffText) {
     return (
       <div className="lk-output" style={{ display: 'block' }}>
@@ -50,4 +50,4 @@ const IcarusDiffViewer = memo(function IcarusDiffViewer({ diffText, patchEdits }
   )
 })
 
-export default IcarusDiffViewer
+export default BluswanDiffViewer
