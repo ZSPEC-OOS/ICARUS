@@ -306,19 +306,19 @@ function devProxyUrl(baseUrl) {
   return baseUrl
 }
 
-import { THINKING_BUDGET_TOKENS } from '../config/constants.js'
+import { THINKING_BUDGET_TOKENS, STREAM_CHUNK_TIMEOUT_MS } from '../config/constants.js'
 
 // Per-chunk read timeout — prevents a stalled stream from hanging the agent loop
 // indefinitely.  If no data arrives within this window the stream is aborted.
-const STREAM_CHUNK_TIMEOUT_MS = 30_000
-
 function readChunkWithTimeout(reader) {
-  return Promise.race([
-    reader.read(),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Stream stalled — no data received for 30 s')), STREAM_CHUNK_TIMEOUT_MS)
-    ),
-  ])
+  let timeoutId
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error(`Stream stalled — no data received for ${STREAM_CHUNK_TIMEOUT_MS / 1000} s`)),
+      STREAM_CHUNK_TIMEOUT_MS
+    )
+  })
+  return Promise.race([reader.read(), timeoutPromise]).finally(() => clearTimeout(timeoutId))
 }
 
 // Detect provider name from baseUrl for the proxy request

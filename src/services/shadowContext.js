@@ -110,7 +110,9 @@ class ShadowContextStore {
           conventions:  this._conventions,
           contentIndex: this._contentIndex,
         }))
-      } catch {}
+      } catch (e) {
+        console.warn('[ShadowContext] failed to cache index to sessionStorage (quota exceeded?):', e.message)
+      }
     } catch (e) {
       console.warn('[ShadowContext] indexing error:', e.message)
     } finally {
@@ -425,7 +427,9 @@ class ShadowContextStore {
             symbols: this._extractSymbols(content),
             imports: this._extractImports(content),
           }
-        } catch {}
+        } catch (e) {
+          console.warn('[ShadowContext] failed to fetch content for', f.path, '—', e.message)
+        }
       }))
     }
   }

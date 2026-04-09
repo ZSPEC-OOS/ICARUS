@@ -1,5 +1,5 @@
 import { callWithToolsStreaming } from './aiService.js'
-import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS } from '../config/constants.js'
+import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS, AGENT_LOOP_WINDOW } from '../config/constants.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
 import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
 import { memoryGraphService } from './memoryGraphService.js'
@@ -41,7 +41,7 @@ function makeSessionDiary() {
 const EDIT_FAILURE_REMINDER =
   '[REMINDER] edit_file requires exact whitespace in old_str. Use grep to find the exact text, or read_file with start_line/end_line. The diagnostic above shows the nearest matching lines.'
 
-const LOOP_WINDOW = 3
+const LOOP_WINDOW = AGENT_LOOP_WINDOW
 const CACHEABLE_TOOLS = new Set(['analyze_codebase', 'read_file', 'read_many_files', 'list_directory', 'search_files', 'grep'])
 const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'delete_file', 'revert_file'])
 

@@ -1,7 +1,7 @@
 import { schemaVersion } from '../tools/contracts.js'
+import { MAX_TRACE_LINES } from '../config/constants.js'
 
 const TRACE_STORAGE_KEY = 'icarus:tool-traces:jsonl'
-const MAX_TRACE_LINES = 2000
 let activeLoopState = null
 
 function nowIso() {
@@ -20,7 +20,8 @@ function readLines() {
   try {
     const raw = localStorage.getItem(TRACE_STORAGE_KEY) || ''
     return raw.split('\n').filter(Boolean)
-  } catch {
+  } catch (e) {
+    console.warn('[ToolTraceStore] failed to read traces from localStorage:', e.message)
     return []
   }
 }
@@ -29,8 +30,8 @@ function writeLines(lines) {
   try {
     const trimmed = lines.slice(-MAX_TRACE_LINES)
     localStorage.setItem(TRACE_STORAGE_KEY, trimmed.join('\n'))
-  } catch {
-    // noop
+  } catch (e) {
+    console.warn('[ToolTraceStore] failed to persist traces (localStorage quota exceeded?):', e.message)
   }
 }
 

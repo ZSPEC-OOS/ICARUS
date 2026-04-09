@@ -5,6 +5,7 @@
 // ── Agent loop ────────────────────────────────────────────────────────────────
 export const AGENT_MAX_TURNS          = 100       // safety ceiling; prevents runaway loops
 export const AGENT_KEEP_TURNS         = 10        // message turns to retain (older pruned)
+export const AGENT_LOOP_WINDOW        = 3         // recent turns checked for repeat-tool-call loops
 
 // ── Diff viewer ───────────────────────────────────────────────────────────────
 export const DIFF_MAX_LINES           = 600       // max lines per side for LCS diff
@@ -27,6 +28,14 @@ export const SHADOW_PREVIEW_CAP       = 1_200     // chars for quick relevance p
 // ── Persistence ───────────────────────────────────────────────────────────────
 export const CONV_MAX_MESSAGES        = 20        // conversation messages to persist
 export const HISTORY_MAX_ITEMS        = 60        // prompt history entries to keep
+export const MAX_TRACE_LINES          = 2000      // max JSONL lines kept in tool trace localStorage store
+
+// ── Memory graph ──────────────────────────────────────────────────────────────
+export const MEMORY_VECTOR_DIM        = 128       // hash-embedding vector dimensions
+export const MEMORY_MAX_INGEST_CHARS  = 4000      // max chars ingested per file node
+
+// ── Streaming ─────────────────────────────────────────────────────────────────
+export const STREAM_CHUNK_TIMEOUT_MS  = 30_000    // abort stream if no chunk arrives within this window (ms)
 
 // ── Generation / remediation ─────────────────────────────────────────────────
 export const AUTOFIX_MAX_ATTEMPTS     = 5         // auto-remediation AI fix passes
