@@ -105,8 +105,8 @@ export default function LoginScreen({ onUnlock }) {
         {/* ── Full-width logo banner ── */}
         <div style={{ background: '#020810', borderBottom: '1px solid rgba(77,156,255,0.15)' }}>
           <img
-            src="/blkswan-header.jpg"
-            alt="BLKSWAN"
+            src="/bluswan-header-logo.jpg"
+            alt="BLUSWAN"
             style={{ width: '100%', display: 'block', height: 'auto' }}
           />
         </div>
