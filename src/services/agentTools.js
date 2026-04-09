@@ -142,6 +142,18 @@ export const AGENT_TOOLS = [
     },
   },
   {
+    name: 'glob',
+    description: 'Find files matching a glob pattern across the indexed repository. Supports *, **, ?, and {a,b} brace expansion. Returns sorted file paths. Faster than list_directory for targeted file discovery.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pattern: { type: 'string', description: 'Glob pattern, e.g. src/**/*.jsx or **/*.{ts,tsx}' },
+        path:    { type: 'string', description: 'Optional base directory to restrict results, e.g. src/components' },
+      },
+      required: ['pattern'],
+    },
+  },
+  {
     name: 'grep',
     description: 'Regex search across indexed file contents. Returns matching lines with file paths and line numbers. Covers the indexed portion of the repo (~800 files). Much faster than reading files one by one.',
     input_schema: {
@@ -351,10 +363,11 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
     !planMode && hasSrc ? `SOURCE repository (read-only):    ${srcLabel} (branch: ${sourceRepoConfig?.branch || 'main'})` : null,
     !planMode && hasSrc ? `` : null,
     planMode
-      ? `You have access to analyze_codebase, read_file (with optional start_line/end_line), read_many_files, list_directory, search_files, grep, and lint_file to explore and analyse the codebase.`
+      ? `You have access to analyze_codebase, read_file (with optional start_line/end_line), read_many_files, list_directory, glob, search_files, grep, and lint_file to explore and analyse the codebase.`
       : `You have access to tools that let you analyze_codebase, read files, write files, edit files, search the codebase, grep file contents, lint JS/TS files, run shell commands, and create pull requests.`,
     !planMode && hasSrc ? `You also have read_source_file and list_source_directory to read from the SOURCE repo.` : null,
     webSearch ? `You have web_search (Tavily) and web_fetch to look up documentation, errors, or research.` : `You have web_fetch to read URLs when the exec bridge is active.`,
+    `Use glob to find files by name pattern (e.g. src/**/*.jsx) — faster than list_directory for targeted discovery.`,
     `Use grep to search file contents by regex — far faster than opening files one by one.`,
     `Use read_many_files to read several files in one call.`,
     `Use lint_file after editing JS/TS files to catch errors before moving on.`,

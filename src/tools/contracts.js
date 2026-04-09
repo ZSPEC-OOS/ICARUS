@@ -36,6 +36,10 @@ export const TOOL_CONTRACTS = {
     input: { type: 'object', additionalProperties: false, properties: { paths: { type: 'array', items: baseString } }, required: ['paths'] },
     output: { type: 'string' },
   },
+  glob: {
+    input: { type: 'object', additionalProperties: false, properties: { pattern: baseString, path: baseString }, required: ['pattern'] },
+    output: { type: 'string' },
+  },
   grep: {
     input: { type: 'object', additionalProperties: false, properties: { pattern: baseString, path: baseString, ignore_case: { type: 'boolean' } }, required: ['pattern'] },
     output: { type: 'string' },
