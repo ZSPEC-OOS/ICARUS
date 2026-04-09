@@ -9,6 +9,35 @@
 
 import { classifyTask } from './taskClassifier.js'
 
+// ── Fallback preference persistence ──────────────────────────────────────────
+// When a fallback model succeeds after the primary fails, that preference is
+// stored in localStorage so the next session can skip the failing primary.
+// Entries expire after FALLBACK_PREF_MAX_AGE_MS to let temporary outages heal.
+const FALLBACK_PREFS_KEY     = 'icarus:router:fallback-prefs'
+const FALLBACK_PREF_MAX_AGE_MS = 24 * 60 * 60 * 1000   // 1 day
+
+function _loadFallbackPrefs() {
+  try {
+    const raw = localStorage.getItem(FALLBACK_PREFS_KEY)
+    if (!raw) return {}
+    const prefs = JSON.parse(raw)
+    const cutoff = Date.now() - FALLBACK_PREF_MAX_AGE_MS
+    // Prune stale entries
+    for (const role of Object.keys(prefs)) {
+      if (!prefs[role]?.at || Date.parse(prefs[role].at) < cutoff) delete prefs[role]
+    }
+    return prefs
+  } catch { return {} }
+}
+
+function _saveFallbackPref(role, modelId) {
+  try {
+    const prefs = _loadFallbackPrefs()
+    prefs[role] = { modelId, at: new Date().toISOString() }
+    localStorage.setItem(FALLBACK_PREFS_KEY, JSON.stringify(prefs))
+  } catch {}
+}
+
 // ── Cost tier heuristics ─────────────────────────────────────────────────────
 // Based on model name/id keywords; used only when costBudget.preferCheap=true.
 const CHEAP_MODEL_KEYWORDS = ['mini', 'haiku', 'flash', 'small', 'nano', 'lite', 'fast', 'micro']
@@ -104,6 +133,7 @@ export function createModelRouter(orchestrationConfig = {}, availableModels = []
     const strategy = cfg.strategy || 'single'
     let chosenModel = resolved.primary
     let remainingFallbacks = resolved.fallbacks
+    let reasonSuffix = `strategy=${strategy}`
 
     // Cost-aware: prefer a cheap model when budget flag is set
     if (strategy === 'cost_aware' && cfg.costBudget?.preferCheap) {
@@ -111,6 +141,23 @@ export function createModelRouter(orchestrationConfig = {}, availableModels = []
       if (cheap) {
         chosenModel = cheap
         remainingFallbacks = [resolved.primary, ...resolved.fallbacks].filter(m => m !== cheap)
+      }
+    }
+
+    // Persisted-fallback preference: if a previous session's fallback succeeded
+    // for this role, prefer that model to avoid hitting a known-bad primary.
+    // Only applied for 'fallback' and 'single' strategies; ensembles use all models.
+    if (strategy !== 'ensemble') {
+      const prefs = _loadFallbackPrefs()
+      const pref  = prefs[role]
+      if (pref?.modelId) {
+        const allModels  = [resolved.primary, ...resolved.fallbacks]
+        const prefModel  = allModels.find(m => m.modelId === pref.modelId || m.id === pref.modelId)
+        if (prefModel && prefModel !== resolved.primary) {
+          chosenModel        = prefModel
+          remainingFallbacks = allModels.filter(m => m !== prefModel)
+          reasonSuffix       = `strategy=${strategy}, persisted-fallback-pref`
+        }
       }
     }
 
@@ -122,7 +169,7 @@ export function createModelRouter(orchestrationConfig = {}, availableModels = []
       modelConfig: chosenModel,
       fallbacks: remainingFallbacks,
       cost: resolved.cost,
-      reasoning: `Role '${role}' (conf=${confidence.toFixed(2)}) → ${modelLabel} [strategy=${strategy}]`,
+      reasoning: `Role '${role}' (conf=${confidence.toFixed(2)}) → ${modelLabel} [${reasonSuffix}]`,
       scores,
     }
   }
@@ -226,7 +273,7 @@ export function createModelRouter(orchestrationConfig = {}, availableModels = []
     }
   }
 
-  return { route, classifyAndRoute, callWithFallback, callEnsemble, resolveModelForRole }
+  return { route, classifyAndRoute, callWithFallback, callEnsemble, resolveModelForRole, saveFallbackPref: _saveFallbackPref }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
