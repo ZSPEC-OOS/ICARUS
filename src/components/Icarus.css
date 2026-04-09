@@ -6104,6 +6104,32 @@ kbd {
   word-break: break-word;
 }
 
+/* ── Plan approval inline widget ─────────────────────────────────────────────── */
+.lk-stream-plan-approval {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border-left: 2px solid var(--lk-accent);
+  background: rgba(116,192,252,.06);
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: var(--lk-text-2);
+}
+.lk-stream-plan-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--lk-text-1);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.lk-stream-plan-actions {
+  display: flex;
+  gap: 6px;
+}
+
 /* ── Code pane redesign ───────────────────────────────────────────────────────── */
 
 /* File context bar */

@@ -49,8 +49,6 @@ import IcarusActivityFeed     from './icarus/IcarusActivityFeed'
 import IcarusCodePane         from './icarus/IcarusCodePane'
 import IcarusDiffViewer       from './icarus/IcarusDiffViewer'
 import IcarusDiffConfidence   from './icarus/IcarusDiffConfidence'
-import IcarusTaskContext      from './icarus/IcarusTaskContext'
-import IcarusTaskLanes        from './icarus/IcarusTaskLanes'
 import IcarusTerminal         from './icarus/IcarusTerminal'
 import IcarusToolsPane        from './icarus/IcarusToolsPane'
 import IcarusSettings         from './icarus/IcarusSettings'
@@ -300,7 +298,6 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   const [error,        setError]        = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [historyOpen,  setHistoryOpen]  = useState(false)
-  const [chatHistoryOpen, setChatHistoryOpen] = useState(false)
   const [sourceOpen,   setSourceOpen]   = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [history,      setHistory]      = useState(loadHistory)
@@ -1743,11 +1740,6 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           onClick={handleReset}
           title="New Chat"
         >＋</button>
-        <button
-          className={`lk-sidebar-btn${chatHistoryOpen ? ' lk-sidebar-btn--on' : ''}`}
-          onClick={() => setChatHistoryOpen(v => !v)}
-          title="Chat History"
-        >💬</button>
         <div className="lk-sidebar-spacer" />
         {shadowStatus && (
           <div className={`lk-sidebar-shadow${shadowContext.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`}
@@ -1973,260 +1965,31 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
             ══════════════════════════════════════════════════════════════════ */}
         <div className="lk-feed">
 
-          {/* ── Plan approval gate ────────────────────────────────────────── */}
-          {planApproval && (
-            <div className="lk-plan-approval">
-              <div className="lk-plan-approval-hd">📋 Plan ready — approve to execute, modify to revise, or reject to cancel</div>
-              {planApproval.summary && (
-                <div className="lk-plan-approval-summary">{planApproval.summary.slice(0, 600)}{planApproval.summary.length > 600 ? '…' : ''}</div>
-              )}
-              <div className="lk-plan-approval-actions">
-                <button className="lk-btn lk-btn--success" onClick={() => {
-                  const t = planApproval.task
-                  setPlanApproval(null)
-                  agentSession.run(t, conversation.slice(-10), { forceBuildMode: true })
-                }}>✓ Approve &amp; Execute</button>
-                <button className="lk-btn" onClick={() => {
-                  setPrompt(planApproval.task)
-                  setPlanApproval(null)
-                }}>✎ Modify</button>
-                <button className="lk-btn lk-btn--danger" onClick={() => setPlanApproval(null)}>✗ Reject</button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Feed status strip: plan, amplifier, remediation ──────────── */}
-          {(isAmplifying || amplifierDecisions.length > 0 || remediationStatus || isPlanning || filePlan.length > 0) && (
-            <div className="lk-feed-status">
-              {isAmplifying && <div className="lk-feed-pill"><span className="lk-spinner" /> Amplifying intent…</div>}
-              {amplifierDecisions.length > 0 && (
-                <div className="lk-amplifier-panel">
-                  <div className="lk-amplifier-hd">◆ BLKSWAN decided:</div>
-                  {amplifierDecisions.map((d, i) => <div key={i} className="lk-amplifier-item">· {d}</div>)}
-                </div>
-              )}
-              {remediationStatus && <div className="lk-feed-pill"><span className="lk-spinner" /> {remediationStatus}</div>}
-              {isPlanning && <div className="lk-feed-pill"><span className="lk-spinner" /> Planning across repo…</div>}
-              {filePlan.length > 0 && (
-                <div className="lk-plan-panel">
-                  <div className="lk-plan-hd">◆ Plan — {filePlan.length} file{filePlan.length !== 1 ? 's' : ''}</div>
-                  {filePlan.map((entry, i) => (
-                    <button key={entry.path}
-                      className={`lk-plan-card${i === activeFileIndex ? ' lk-plan-card--active' : ''} lk-plan-card--${entry.status}`}
-                      onClick={() => setActiveFileIndex(i)}>
-                      <span className="lk-plan-card-icon">
-                        {entry.status === 'done'       ? '✓' :
-                         entry.status === 'error'      ? '✗' :
-                         entry.status === 'generating' || entry.status === 'remediating' ? '…' :
-                         entry.status === 'fetching'   ? '⬇' : '·'}
-                      </span>
-                      <span className="lk-plan-card-path">{entry.path}</span>
-                      <span className="lk-plan-card-action">{entry.action === 'modify' ? 'edit' : 'new'}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── File tabs (multiple files in plan) ───────────────────────── */}
-          {filePlan.length > 1 && (
-            <div className="lk-file-tabs">
-              {filePlan.map((entry, i) => (
-                <div key={entry.path} className={`lk-file-tab-wrap${entry.status === 'error' ? ' lk-file-tab-wrap--error' : ''}`}>
-                  <button
-                    className={`lk-file-tab${i === activeFileIndex ? ' lk-file-tab--active' : ''} lk-file-tab--${entry.status}`}
-                    onClick={() => setActiveFileIndex(i)} title={entry.path}>
-                    <span className="lk-file-tab-status">
-                      {entry.status === 'done' ? '✓' : entry.status === 'error' ? '✗' :
-                       entry.status === 'generating' || entry.status === 'remediating' ? '…' : '·'}
-                    </span>
-                    {entry.path.split('/').pop()}
-                  </button>
-                  {entry.status === 'error' && !isGenerating && (
-                    <button
-                      className="lk-file-retry-btn"
-                      onClick={e => { e.stopPropagation(); handleRetryFile(i) }}
-                      title={`Retry ${entry.path}${entry.error ? ': ' + entry.error : ''}`}
-                    >↺</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {chatHistoryOpen && (
-            <div className="lk-inline-chat-history">
-              <div className="lk-inline-chat-history-hd">Chat History</div>
-              {conversation.length === 0 ? (
-                <div className="lk-empty-note">No chat messages yet.</div>
-              ) : (
-                conversation.slice(-8).map((msg, idx) => (
-                  <div key={`${msg.role}-${idx}`} className="lk-inline-chat-item">
-                    <span className="lk-inline-chat-role">{msg.role === 'user' ? 'You' : 'BLKSWAN'}</span>
-                    <span className="lk-inline-chat-text">{msg.content}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* ── Task context header — intent, goal, phase strip ──────────────── */}
-          {agentSession.isAgentRunning && (
-            <IcarusTaskContext
-              intent={agentSession.agentIntent}
-              task={agentSession.agentTask}
-              agentPhase={agentSession.agentPhase}
-              orchDecision={agentSession.orchDecision}
-            />
-          )}
-
-          {/* ── Parallel task lanes — shown when orchestration is active ──────── */}
-          {agentSession.orchLanes?.length > 0 && (
-            <IcarusTaskLanes lanes={agentSession.orchLanes} />
-          )}
-
-          {/* ── Agent activity feed — shown when agent is running or has output ── */}
-          {(agentSession.isAgentRunning || activityLog.length > 0) && (
-            <IcarusActivityFeed
-              activityLog={activityLog}
-              isAgentRunning={agentSession.isAgentRunning}
-              agentStreamText={agentSession.agentStreamText}
-              isGenerating={isGenerating}
-              isPushing={isPushing}
-              feedRef={activityFeedRef}
-              conversation={conversation}
-              agentIntent={agentSession.agentIntent}
-              agentTask={agentSession.agentTask}
-              agentPhase={agentSession.agentPhase}
-            />
-          )}
-
-          {/* ── Output area ────────────────────────────────────────────── */}
-          {!agentSession.isAgentRunning && hasOutputContent && (
-          <div className="lk-feed-output">
-
-          {/* ── Code tab ────────────────────────────────────────────────────── */}
-          {effectiveActiveTab === 'code' && (
-            <IcarusCodePane
-              generatedCode={assistantMessage.code || generatedCode}
-              isGenerating={isGenerating}
-              language={language}
-              hasGithub={hasGithub}
-              filePath={filePath}
-              refinementPrompt={refinementPrompt}
-              onRefinementChange={setRefinementPrompt}
-              onRefine={handleRefine}
-              onReset={handleReset}
-              turnCount={turnCount}
-              pipelinePhase={pipelinePhase}
-              pipelineSteps={pipelineSteps}
-              validationResults={validationResults}
-              livePlan={assistantMessage.plan}
-            />
-          )}
-
-          {/* ── Tests tab ────────────────────────────────────────────────────── */}
-          <div className="lk-output" style={{ display: effectiveActiveTab === 'tests' ? 'flex' : 'none', flexDirection: 'column' }}>
-            <div className="lk-code-scroll" style={{ flex: 1 }}>
-              {isGenTests ? (
-                <div className="lk-generating"><span className="lk-spinner" /> Generating tests…</div>
-              ) : testCode ? (
-                <pre className="lk-pre">
-                  <code dangerouslySetInnerHTML={{ __html: highlightCode(testCode, language) }} />
-                </pre>
-              ) : (
-                <div className="lk-placeholder">
-                  <div className="lk-placeholder-glyph">⊛</div>
-                  <p className="lk-placeholder-body">
-                    {generateTests
-                      ? 'Generate code first — test file will be auto-generated.'
-                      : 'Enable "Generate test file" in options, then generate code.'}
-                  </p>
-                  {filePath && <p className="lk-placeholder-tip">Tests will be saved to: <code>{testFilePath(filePath)}</code></p>}
-                </div>
-              )}
-            </div>
-
-            {/* ── Run Tests bar ────────────────────────────────────────────── */}
-            {testCode && !isGenTests && (
-              <div className="lk-run-bar">
-                <button className="lk-btn lk-btn--run" onClick={handleRunTests} disabled={isRunningTests}>
-                  {isRunningTests ? 'Running Tests…' : 'Run Tests'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {effectiveActiveTab === 'diff' && (
-            <IcarusDiffConfidence
-              diffText={diffText}
-              patchEdits={patchEdits}
-              verification={agentSession.lastVerification}
-              critique={agentSession.lastCritique}
-              orchestration={agentSession.orchDecision}
-              usedFallback={agentSession.orchLanes?.some(l => l.usedFallback)}
-            />
-          )}
-
-
-          {/* ── ENHANCEMENT 7 — Run tab (JS sandbox) ──────────────────────── */}
-          <div className="lk-output" style={{ display: effectiveActiveTab === 'run' ? 'flex' : 'none', flexDirection: 'column' }}>
-            <div className="lk-sandbox-controls">
-              <div className="lk-sandbox-warn">
-                ⚠ Isolated sandbox · JS (7 s) · Python via Pyodide (20 s) · No filesystem access
-              </div>
-              <div className="lk-sandbox-setup-row">
-                <input
-                  className="lk-input lk-sandbox-setup-input"
-                  placeholder="Setup / mock code (runs before main code)"
-                  value={sandboxSetup}
-                  onChange={e => setSandboxSetup(e.target.value)}
-                />
-                <button
-                  className="lk-btn lk-btn--run"
-                  onClick={handleRunInSandbox}
-                  disabled={!generatedCode || isRunning}
-                >
-                  {isRunning ? <><span className="lk-spinner" /> Running…</> : '▶ Run'}
-                </button>
-              </div>
-            </div>
-            <div className="lk-sandbox-output">
-              {sandboxOutput.length === 0 ? (
-                <div className="lk-sandbox-empty">Click ▶ Run to execute the generated code in a sandboxed environment.</div>
-              ) : (
-                sandboxOutput.map((line, i) => (
-                  <div key={i} className={`lk-sandbox-line lk-sandbox-line--${line.level}`}>
-                    <span className="lk-sandbox-level">{line.level}</span>
-                    <span className="lk-sandbox-text">{line.text}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {effectiveActiveTab === 'terminal' && (
-            <IcarusTerminal
-              terminalLog={terminalLog}
-              terminalInput={terminalInput}
-              onInputChange={e => setTerminalInput(e.target.value)}
-              isTerminalRunning={isTerminalRunning}
-              onRunCommand={runTerminalCommand}
-              onClearLog={() => setTerminalLog([])}
-            />
-          )}
-
-          {effectiveActiveTab === 'tools' && (
-            <IcarusToolsPane
-              bridgeAvailable={bridgeAvailable}
-              callExecBridge={callExecBridge}
-              onSetActiveTab={setActiveTab}
-            />
-          )}
-
-          </div>
-          )}{/* end lk-feed-output */}
+          {/* ── Single evolving task stream ───────────────────────────────── */}
+          <IcarusActivityFeed
+            activityLog={activityLog}
+            isAgentRunning={agentSession.isAgentRunning}
+            agentStreamText={agentSession.agentStreamText}
+            isGenerating={isGenerating}
+            isPushing={isPushing}
+            feedRef={activityFeedRef}
+            conversation={conversation}
+            agentIntent={agentSession.agentIntent}
+            agentTask={agentSession.agentTask}
+            agentPhase={agentSession.agentPhase}
+            filePlan={filePlan}
+            isAmplifying={isAmplifying}
+            amplifierDecisions={amplifierDecisions}
+            isPlanning={isPlanning}
+            remediationStatus={remediationStatus}
+            planApproval={planApproval}
+            onApprovePlan={() => {
+              const t = planApproval.task
+              setPlanApproval(null)
+              agentSession.run(t, conversation.slice(-10), { forceBuildMode: true })
+            }}
+            onCancelPlan={() => setPlanApproval(null)}
+          />
         </div>{/* end lk-feed */}
 
         <>{/* ══════════════════════════════════════════════════
