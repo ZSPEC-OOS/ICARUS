@@ -13,7 +13,7 @@ import {
 // Called after login so that Icarus's loadSettings() reads the cloud values on
 // first render. Each value uses the same storage path that Icarus writes to,
 // so the component initialises transparently with persisted data.
-function injectCloudSettings(settings) {
+async function injectCloudSettings(settings) {
   if (!settings) return
   try {
     const { githubToken, repo2Token, webSearchApiKey, models,
@@ -30,10 +30,10 @@ function injectCloudSettings(settings) {
     if (repo2Token !== undefined) sessionStorage.setItem('icarus:ghtoken2', repo2Token || '')
 
     // Search key must be stored via saveSearchKey() because loadSearchKey() decrypts it
-    if (webSearchApiKey !== undefined) saveSearchKey(webSearchApiKey || '')
+    if (webSearchApiKey !== undefined) await saveSearchKey(webSearchApiKey || '')
 
     // Models (with API keys) -> aiService storage (handles its own encryption)
-    if (Array.isArray(models) && models.length > 0) saveModels(models)
+    if (Array.isArray(models) && models.length > 0) await saveModels(models)
   } catch (err) {
     console.warn('[Icarus] injectCloudSettings failed:', err.message)
   }
@@ -68,8 +68,17 @@ export default function App() {
   const [settingsReady, setSettingsReady] = useState(false)
   const [cloudError, setCloudError] = useState('')
 
-  const [models, setModels] = useState(loadModels)
-  const [selectedModelId, setSelectedModelId] = useState(() => loadModels()[0]?.id || '')
+  const [models, setModels] = useState([])
+  const [selectedModelId, setSelectedModelId] = useState('')
+
+  // Async key decryption means we can't use loadModels as a synchronous
+  // useState initialiser — load once on mount instead.
+  useEffect(() => {
+    loadModels().then(m => {
+      setModels(m)
+      setSelectedModelId(prev => prev || m[0]?.id || '')
+    }).catch(() => {})
+  }, [])
 
   // Debounce ref - avoids a Firestore write on every keystroke
   const saveTimerRef = useRef(null)
@@ -97,8 +106,8 @@ export default function App() {
         }
 
         if (cloud) {
-          injectCloudSettings(cloud)
-          const freshModels = loadModels()
+          await injectCloudSettings(cloud)
+          const freshModels = await loadModels()
           setModels(freshModels)
           setSelectedModelId(freshModels[0]?.id || '')
           // Seed pending ref so the first handleSetModels call has full context
@@ -133,7 +142,7 @@ export default function App() {
   const handleSettingsChanged = useCallback((settings) => {
     const uid = authUserRef.current?.uid
     if (!uid) return
-    scheduleCloudSave(uid, { ...settings, models: loadModels() })
+    loadModels().then(m => scheduleCloudSave(uid, { ...settings, models: m })).catch(() => {})
   }, [scheduleCloudSave])
 
   // Model changes from IcarusSettings (API key entered/changed)
@@ -150,7 +159,8 @@ export default function App() {
       clearTimeout(saveTimerRef.current)
       const uid = authUserRef.current?.uid
       if (uid && pendingSettingsRef.current) {
-        await saveUserSettings(uid, { ...pendingSettingsRef.current, models: loadModels() })
+        const m = await loadModels().catch(() => [])
+        await saveUserSettings(uid, { ...pendingSettingsRef.current, models: m })
           .catch(() => {})
       }
     }
@@ -164,7 +174,7 @@ export default function App() {
       sessionStorage.removeItem('wrkflow:sk')
     } catch {}
     pendingSettingsRef.current = {}
-    setModels(loadModels())
+    setModels([])
     setPinUnlocked(false)
     try {
       sessionStorage.removeItem('icarus:pinUnlocked')
