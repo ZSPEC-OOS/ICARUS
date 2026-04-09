@@ -1141,6 +1141,9 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
     setError('')
     setAmplifierDecisions([])
     setRemediationStatus(null)
+    setPlanApproval(null)
+    setLastBranchName('')
+    setAttachedFiles([])
     setActiveTab('code')
   }, [resetConversation, clearActivity])
 
@@ -1643,7 +1646,6 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   }, [models, activeModelId, conversation, setConversation, setTurnCount])
 
   const handleSubmitPrompt = useCallback(() => {
-    setChatHistoryOpen(false)
     setHistoryOpen(false)
     setSettingsOpen(false)
     const userMsg = prompt.trim()
@@ -2142,11 +2144,23 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
                 <button
                   className="lk-toolbar-btn lk-toolbar-btn--stop"
                   onClick={handleAbort}
-                  disabled={!busy}
-                  title={busy ? 'Stop generation' : 'Nothing running'}
+                  disabled={!busy && !agentSession.isAgentRunning}
+                  title={busy || agentSession.isAgentRunning ? 'Stop generation' : 'Nothing running'}
                 >
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
                     <rect x="1.5" y="1.5" width="9" height="9" rx="2"/>
+                  </svg>
+                </button>
+
+                {/* Send button */}
+                <button
+                  className="lk-toolbar-btn lk-toolbar-btn--send"
+                  onClick={handleSubmitPrompt}
+                  disabled={busy || agentSession.isAgentRunning || (!prompt.trim() && attachedFiles.length === 0)}
+                  title="Send message"
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.109z"/>
                   </svg>
                 </button>
 

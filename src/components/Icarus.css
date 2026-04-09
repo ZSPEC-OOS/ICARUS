@@ -1023,6 +1023,19 @@ html, body, #root {
   background: var(--lk-danger-bg);
 }
 
+.lk-toolbar-btn--send {
+  color: var(--lk-accent);
+  border-color: rgba(77,156,255,0.25);
+}
+.lk-toolbar-btn--send:hover:not(:disabled) {
+  background: rgba(77,156,255,0.15);
+  border-color: var(--lk-accent);
+  color: #fff;
+}
+.lk-toolbar-btn--send:not(:disabled) {
+  opacity: 1;
+}
+
 .lk-toolbar-btn:disabled {
   opacity: 0.28;
   cursor: not-allowed;

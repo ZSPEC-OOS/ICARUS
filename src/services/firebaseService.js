@@ -127,6 +127,16 @@ export async function signUpWithEmail(email, password) {
   return cred.user
 }
 
+// Sign in anonymously — used for PIN-based login so settings persist via Firestore.
+// Firebase reuses the existing anonymous session on the same device, giving a
+// stable UID across PIN logins without requiring an email/password or Google account.
+export async function signInAnonymously() {
+  const auth = await getAuth()
+  const { signInAnonymously: _signAnon } = await import('firebase/auth')
+  const cred = await _signAnon(auth)
+  return cred.user
+}
+
 // Sign out the current user.
 export async function signOutUser() {
   const auth = await getAuth()

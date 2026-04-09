@@ -5,6 +5,7 @@ import { loadModels, saveModels, saveSearchKey } from './services/aiService'
 import {
   onAuthStateChange,
   signOutUser,
+  signInAnonymously,
   loadUserSettings,
   saveUserSettings,
 } from './services/firebaseService'
@@ -57,7 +58,7 @@ function Splash({ msg = 'Loading...' }) {
 }
 
 export default function App() {
-  const [pinUnlocked, setPinUnlocked] = useState(() => sessionStorage.getItem('icarus:pinUnlocked') === '1')
+  const [pinUnlocked, setPinUnlocked] = useState(false)
   // Three-phase state:
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
   //   authUser=null      -> Not logged in (show LoginScreen)
@@ -176,20 +177,25 @@ export default function App() {
     pendingSettingsRef.current = {}
     setModels([])
     setPinUnlocked(false)
-    try {
-      sessionStorage.removeItem('icarus:pinUnlocked')
-    } catch {}
   }, [])
 
-  const handlePinUnlock = useCallback(() => {
+  const handlePinUnlock = useCallback(async () => {
     setPinUnlocked(true)
     try {
-      sessionStorage.setItem('icarus:pinUnlocked', '1')
-    } catch {}
+      // Anonymous auth gives a stable UID so Firestore settings (including API keys)
+      // persist across PIN logins on the same device.
+      await signInAnonymously()
+      // onAuthStateChange will fire, load Firestore settings, then set authUser + settingsReady.
+    } catch (err) {
+      console.warn('[Icarus] Anonymous auth failed — using local-only mode:', err.message)
+      // Allow app to render without cloud settings
+      setSettingsReady(true)
+    }
   }, [])
 
   if (!authChecked) return <Splash />
   if (!authUser && !pinUnlocked) return <LoginScreen onUnlock={handlePinUnlock} />
+  if (pinUnlocked && !authUser && !settingsReady) return <Splash msg="Connecting…" />
   if (authUser && !settingsReady) return <Splash msg="Loading your settings..." />
 
   return (
