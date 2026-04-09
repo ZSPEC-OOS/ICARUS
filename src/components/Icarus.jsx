@@ -1710,7 +1710,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
       className={`lk-root${theme !== 'graphite' ? ` lk-theme-${theme}` : ''}`}
       style={{
         filter: ftFilter,
-        ...(theme === 'blkswan' && conversation.length > 0 ? { background: '#0b2c59' } : {}),
+        ...(theme === 'blkswan' && conversation.length > 0 ? { background: '#050d1c' } : {}),
       }}
       onKeyDown={handleKeyDown}
     >
