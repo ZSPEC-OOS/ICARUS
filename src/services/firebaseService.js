@@ -1,6 +1,6 @@
 // ─── firebaseService ──────────────────────────────────────────────────────────
 // Firebase initialisation, authentication, and cloud settings persistence.
-// Project: icarus-89579
+// Project: bluswan-ai-coder
 //
 // Settings are saved to Firestore at users/{uid}/settings.
 // Sensitive fields (API keys, tokens) are XOR-encrypted with the user's UID
@@ -12,12 +12,12 @@ const FB_CONFIG_KEY = 'icarus:firebase'
 
 // ── Hardcoded project config ──────────────────────────────────────────────────
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey:            'AIzaSyDvrUk8NGHI3H7LV02Y0bIyoku-WXEzhDE',
-  authDomain:        'icarus-89579.firebaseapp.com',
-  projectId:         'icarus-89579',
-  storageBucket:     'icarus-89579.firebasestorage.app',
-  messagingSenderId: '940295059330',
-  appId:             '1:940295059330:web:30d7b075de7ca9450c419b',
+  apiKey:            'AIzaSyA4sX64h-WXk2rZGFKWioAi00DPnx4wpNw',
+  authDomain:        'bluswan-ai-coder.firebaseapp.com',
+  projectId:         'bluswan-ai-coder',
+  storageBucket:     'bluswan-ai-coder.firebasestorage.app',
+  messagingSenderId: '69683631923',
+  appId:             '1:69683631923:web:7b1af3e2a9d5756efd5046',
 }
 
 let _app     = null
