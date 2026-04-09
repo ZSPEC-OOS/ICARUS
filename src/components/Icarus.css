@@ -694,6 +694,234 @@ html, body, #root {
 }
 .lk-modules-page-hd h2 { margin: 0; font-size: 0.95rem; }
 
+/* ── Input card (chat-style bordered container) ──────────────────── */
+.lk-input-card {
+  border: 1px solid var(--lk-border);
+  border-radius: 10px;
+  background: var(--lk-surface-2);
+  overflow: hidden;
+}
+
+.lk-input-branch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 5px;
+  border-bottom: 1px solid var(--lk-border-soft);
+  font-size: 0.71rem;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+  color: var(--lk-text-muted);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.lk-branch-base {
+  color: var(--lk-text-2);
+  font-weight: 500;
+}
+
+.lk-branch-arrow {
+  opacity: 0.45;
+  font-size: 0.75rem;
+}
+
+.lk-branch-feature {
+  color: var(--lk-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Textarea inside card — borderless, flush */
+.lk-input-card .lk-textarea {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none !important;
+  padding: 10px 12px 6px;
+  width: 100%;
+}
+.lk-input-card .lk-textarea:focus {
+  border: none;
+  box-shadow: none !important;
+}
+
+/* Attached files strip */
+.lk-attached-files-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 2px 12px 6px;
+}
+
+.lk-attached-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px 2px 8px;
+  background: var(--lk-accent-dim);
+  border: 1px solid var(--lk-border-glow);
+  border-radius: 5px;
+  font-size: 0.69rem;
+  color: var(--lk-accent);
+  max-width: 160px;
+}
+
+.lk-attached-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.lk-attached-chip-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.65;
+  font-size: 0.62rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.lk-attached-chip-remove:hover { opacity: 1; }
+
+/* ── Input toolbar (bottom row of card) ──────────────────────────── */
+.lk-input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px 6px;
+  border-top: 1px solid var(--lk-border-soft);
+  gap: 6px;
+}
+
+.lk-input-toolbar-left,
+.lk-input-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Toolbar icon buttons ─────────────────────────────────────────── */
+.lk-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--lk-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--lk-text-muted);
+  cursor: pointer;
+  font-size: 0.88rem;
+  line-height: 1;
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.lk-toolbar-btn:hover:not(:disabled) {
+  border-color: var(--lk-accent);
+  color: var(--lk-accent);
+  background: var(--lk-accent-dim);
+}
+
+.lk-toolbar-btn--plus {
+  font-size: 1.15rem;
+  font-weight: 300;
+}
+
+.lk-toolbar-btn--stop {
+  color: var(--lk-text-muted);
+}
+
+.lk-toolbar-btn--stop:hover:not(:disabled) {
+  border-color: var(--lk-danger);
+  color: var(--lk-danger);
+  background: var(--lk-danger-bg);
+}
+
+.lk-toolbar-btn:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+/* ── Inline model selector ────────────────────────────────────────── */
+.lk-toolbar-model-select {
+  height: 28px;
+  padding: 0 22px 0 8px;
+  background: transparent;
+  border: 1px solid var(--lk-border);
+  border-radius: 6px;
+  color: var(--lk-text-2);
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 160px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5' viewBox='0 0 9 5'%3E%3Cpath fill='%233d5a7a' d='M0 0l4.5 5L9 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  transition: border-color 0.14s;
+}
+
+.lk-toolbar-model-select:hover,
+.lk-toolbar-model-select:focus {
+  border-color: var(--lk-accent);
+  outline: none;
+}
+
+.lk-toolbar-model-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── BLKSWAN theme overrides for new input card ──────────────────── */
+.lk-root.lk-theme-blkswan .lk-input-card {
+  background: rgba(7, 15, 30, 0.82);
+  border-color: rgba(77, 156, 255, 0.22);
+}
+
+.lk-root.lk-theme-blkswan .lk-input-branch-row {
+  border-bottom-color: rgba(77, 156, 255, 0.09);
+}
+
+.lk-root.lk-theme-blkswan .lk-input-toolbar {
+  border-top-color: rgba(77, 156, 255, 0.09);
+}
+
+.lk-root.lk-theme-blkswan .lk-toolbar-btn {
+  border-color: rgba(77, 156, 255, 0.20);
+  color: #3d5a7a;
+}
+
+.lk-root.lk-theme-blkswan .lk-toolbar-btn:hover:not(:disabled) {
+  border-color: #3b8ef0;
+  color: #3b8ef0;
+  background: rgba(59, 142, 240, 0.12);
+}
+
+.lk-root.lk-theme-blkswan .lk-toolbar-model-select {
+  border-color: rgba(77, 156, 255, 0.20);
+  color: #93c5fd;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5' viewBox='0 0 9 5'%3E%3Cpath fill='%233b8ef0' d='M0 0l4.5 5L9 0z'/%3E%3C/svg%3E");
+}
+
+.lk-root.lk-theme-blkswan .lk-toolbar-model-select option {
+  background: #070f1e;
+  color: #e8f4ff;
+}
+
+.lk-root.lk-theme-blkswan .lk-input-card .lk-textarea {
+  background: transparent;
+}
+
 /* ── Action row inside input bar ─────────────────────────────────── */
 .lk-input-actions {
   display: flex;
