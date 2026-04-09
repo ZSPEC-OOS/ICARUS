@@ -355,11 +355,11 @@ html, body, #root {
 
 /* ── BLKSWAN: input bar — frosted glass over background */
 .lk-root.lk-theme-blkswan .lk-input-bar {
-  background: rgba(4, 10, 24, 0.88);
-  border-top-color: rgba(77, 156, 255, 0.18);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.50);
+  background: transparent;
+  border-top: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* ── BLKSWAN: feed output — semi-transparent so swan shows through */
