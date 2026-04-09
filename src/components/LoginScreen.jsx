@@ -67,41 +67,41 @@ export default function LoginScreen({ onUnlock }) {
 
   const bg = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    height: '100vh',
-    background: 'url(/blkswan-bg.jpg) center/cover no-repeat, #030b18',
+    minHeight: '100vh',
+    background: 'url(/blkswan-bg.jpg) center/cover no-repeat fixed, #030b18',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
   }
 
   const card = {
-    background: 'rgba(4, 10, 24, 0.92)',
-    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-    padding: '2.25rem 2rem', borderRadius: '16px',
-    width: '100%', maxWidth: '360px',
-    border: '1px solid rgba(77, 156, 255, 0.22)',
-    boxShadow: '0 8px 40px rgba(0,0,0,0.70), 0 0 60px rgba(30,80,200,0.12)',
+    background: 'rgba(3, 8, 20, 0.88)',
+    backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+    padding: '2.5rem 2rem 2rem', borderRadius: '20px',
+    width: '100%', maxWidth: '380px',
+    border: '1px solid rgba(77, 156, 255, 0.20)',
+    boxShadow: '0 12px 60px rgba(0,0,0,0.75), 0 0 80px rgba(20,60,180,0.15), inset 0 1px 0 rgba(255,255,255,0.05)',
     textAlign: 'center', margin: '0 16px',
   }
 
   const inp = {
-    display: 'block', width: '100%', padding: '0.6rem 0.75rem',
+    display: 'block', width: '100%', padding: '0.65rem 0.85rem',
     marginBottom: '0.75rem',
-    background: 'rgba(7, 15, 30, 0.80)',
-    border: '1px solid rgba(77, 156, 255, 0.25)',
-    color: '#e8f4ff', borderRadius: '8px',
+    background: 'rgba(5, 12, 28, 0.85)',
+    border: '1px solid rgba(77, 156, 255, 0.22)',
+    color: '#e8f4ff', borderRadius: '10px',
     fontSize: '16px', boxSizing: 'border-box', outline: 'none',
     fontFamily: 'inherit',
   }
 
   const ghostLink = {
     display: 'block', marginTop: '0.9rem',
-    background: 'none', border: 'none', color: '#1c2e4e',
+    background: 'none', border: 'none', color: 'rgba(77,156,255,0.35)',
     fontSize: '0.75rem', cursor: 'pointer',
-    fontFamily: 'inherit', textDecoration: 'underline',
+    fontFamily: 'inherit', textDecoration: 'none', letterSpacing: '0.02em',
   }
 
   const divider = {
     display: 'flex', alignItems: 'center', gap: '10px',
-    margin: '1rem 0', color: '#1c2e4e', fontSize: '0.72rem',
+    margin: '1.1rem 0', color: 'rgba(77,156,255,0.30)', fontSize: '0.72rem',
   }
 
   return (
@@ -109,9 +109,12 @@ export default function LoginScreen({ onUnlock }) {
       <div style={card}>
 
         {/* Logo */}
-        <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'center' }}>
-          <img src="/blkswan-header.jpg" alt="BLKSWAN"
-            style={{ height: '36px', width: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
+        <div style={{ marginBottom: '2rem' }}>
+          <img
+            src="/blkswan-header.jpg"
+            alt="BLKSWAN"
+            style={{ width: '72%', maxWidth: '240px', height: 'auto', display: 'block', margin: '0 auto', objectFit: 'contain' }}
+          />
         </div>
 
         {!showPin ? (

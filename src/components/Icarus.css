@@ -409,17 +409,25 @@ html, body, #root {
   font-size: 0; /* hidden; logo img used in JSX */
 }
 
-/* ── BLKSWAN: logo image in topbar and drawer */
+/* ── BLKSWAN: logo images — banner JPG, no border-radius */
 .lk-blkswan-logo {
-  height: 28px;
+  height: 26px;
   width: auto;
   display: block;
   flex-shrink: 0;
   object-fit: contain;
-  border-radius: 4px;
 }
 .lk-blkswan-logo--drawer {
-  height: 24px;
+  height: 22px;
+}
+
+/* Desktop topbar logo — fixed size, hidden on mobile */
+.lk-blkswan-topbar-logo {
+  height: 26px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -2812,10 +2820,11 @@ kbd {
     text-overflow: ellipsis;
   }
   /* Hide desktop-only topbar elements (all moved into the drawer) */
-  .lk-brand-sub     { display: none !important; }
-  .lk-turn-badge    { display: none !important; }
-  .lk-shadow-badge  { display: none !important; }
-  .lk-topbar-spacer { display: none !important; }
+  .lk-brand-sub          { display: none !important; }
+  .lk-blkswan-topbar-logo { display: none !important; }
+  .lk-turn-badge         { display: none !important; }
+  .lk-shadow-badge       { display: none !important; }
+  .lk-topbar-spacer      { display: none !important; }
 
   /* ── Input bar: hidden mode chip, hidden left section ───────────── */
   .lk-mode-chip  { display: none; }
