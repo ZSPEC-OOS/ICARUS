@@ -6091,6 +6091,28 @@ kbd {
   font-style: italic;
 }
 
+/* ── Single developing box ───────────────────────────────────────────────────── */
+.lk-developing-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 4px 0;
+  padding: 6px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(116, 192, 252, 0.15);
+  background: rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* Suppress inner panel background/border when nested inside developing box */
+.lk-developing-box .lk-stream-panel--inbox {
+  border-left: none;
+  background: transparent;
+  padding-left: 6px;
+}
+
 /* Live stream text panel */
 .lk-stream-panel {
   display: flex;
