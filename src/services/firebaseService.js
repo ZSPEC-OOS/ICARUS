@@ -91,6 +91,16 @@ export function getCurrentUser() {
   return _auth?.currentUser ?? null
 }
 
+// Sign in with Google — uses redirect (works reliably on iPhone/Safari).
+// After Google redirects back to the app, onAuthStateChange fires with the
+// authenticated user automatically; no further action needed.
+export async function signInWithGoogle() {
+  const auth = await getAuth()
+  const { GoogleAuthProvider, signInWithRedirect } = await import('firebase/auth')
+  const provider = new GoogleAuthProvider()
+  await signInWithRedirect(auth, provider)
+}
+
 // Sign in with email + password.  Throws a Firebase AuthError on failure.
 export async function signInWithEmail(email, password) {
   const auth = await getAuth()
