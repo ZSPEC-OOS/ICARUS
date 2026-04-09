@@ -98,41 +98,7 @@ function _xorEncrypt(text) {
 
 const DEFAULT_MODELS = []
 
-// ── Preset catalogue — used by the "Add Model" button in Settings ─────────────
-// Organised by provider.  baseUrl must include any path prefix the provider
-// puts before /chat/completions (e.g. Groq uses /openai/v1, xAI uses /v1).
-export const MODEL_PRESETS = [
-  // ── Anthropic ──────────────────────────────────────────────────────────────
-  { id: 'preset-claude-opus-46',   name: 'Claude Opus 4.6',      apiKey: '', baseUrl: 'https://api.anthropic.com/v1',                         modelId: 'claude-opus-4-6'            },
-  { id: 'preset-claude-sonnet-46', name: 'Claude Sonnet 4.6',    apiKey: '', baseUrl: 'https://api.anthropic.com/v1',                         modelId: 'claude-sonnet-4-6'          },
-  { id: 'preset-claude-haiku-45',  name: 'Claude Haiku 4.5',     apiKey: '', baseUrl: 'https://api.anthropic.com/v1',                         modelId: 'claude-haiku-4-5-20251001'  },
-  // ── OpenAI ─────────────────────────────────────────────────────────────────
-  { id: 'preset-gpt-4-1',          name: 'GPT-4.1',              apiKey: '', baseUrl: 'https://api.openai.com/v1',                            modelId: 'gpt-4.1'                    },
-  { id: 'preset-gpt-4o',           name: 'GPT-4o',               apiKey: '', baseUrl: 'https://api.openai.com/v1',                            modelId: 'gpt-4o'                     },
-  { id: 'preset-gpt-4o-mini',      name: 'GPT-4o mini',          apiKey: '', baseUrl: 'https://api.openai.com/v1',                            modelId: 'gpt-4o-mini'                },
-  { id: 'preset-o4-mini',          name: 'o4-mini',              apiKey: '', baseUrl: 'https://api.openai.com/v1',                            modelId: 'o4-mini'                    },
-  { id: 'preset-o3',               name: 'o3',                   apiKey: '', baseUrl: 'https://api.openai.com/v1',                            modelId: 'o3'                         },
-  // ── Google Gemini (OpenAI-compat endpoint) ─────────────────────────────────
-  { id: 'preset-gemini-25-pro',    name: 'Gemini 2.5 Pro',       apiKey: '', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', modelId: 'gemini-2.5-pro-preview-03-25' },
-  { id: 'preset-gemini-20-flash',  name: 'Gemini 2.0 Flash',     apiKey: '', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', modelId: 'gemini-2.0-flash'             },
-  { id: 'preset-gemini-15-pro',    name: 'Gemini 1.5 Pro',       apiKey: '', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', modelId: 'gemini-1.5-pro'               },
-  // ── Groq (free tier, fast inference) ─────────────────────────────────────
-  { id: 'preset-groq-llama33',     name: 'Llama 3.3 70B (Groq)', apiKey: '', baseUrl: 'https://api.groq.com/openai/v1',                       modelId: 'llama-3.3-70b-versatile'    },
-  { id: 'preset-groq-deepseek',    name: 'DeepSeek R1 (Groq)',   apiKey: '', baseUrl: 'https://api.groq.com/openai/v1',                       modelId: 'deepseek-r1-distill-llama-70b' },
-  // ── Mistral ────────────────────────────────────────────────────────────────
-  { id: 'preset-mistral-large',    name: 'Mistral Large',        apiKey: '', baseUrl: 'https://api.mistral.ai/v1',                            modelId: 'mistral-large-latest'       },
-  { id: 'preset-codestral',        name: 'Codestral',            apiKey: '', baseUrl: 'https://codestral.mistral.ai/v1',                      modelId: 'codestral-latest'           },
-  // ── DeepSeek ───────────────────────────────────────────────────────────────
-  { id: 'preset-deepseek-v3',      name: 'DeepSeek V3',          apiKey: '', baseUrl: 'https://api.deepseek.com/v1',                          modelId: 'deepseek-chat'              },
-  { id: 'preset-deepseek-r1',      name: 'DeepSeek R1',          apiKey: '', baseUrl: 'https://api.deepseek.com/v1',                          modelId: 'deepseek-reasoner'          },
-  // ── xAI / Grok ─────────────────────────────────────────────────────────────
-  { id: 'preset-grok-3',           name: 'Grok 3',               apiKey: '', baseUrl: 'https://api.x.ai/v1',                                  modelId: 'grok-3'                     },
-  { id: 'preset-grok-3-mini',      name: 'Grok 3 Mini',          apiKey: '', baseUrl: 'https://api.x.ai/v1',                                  modelId: 'grok-3-mini'                },
-  // ── OpenRouter (meta-router — one key, hundreds of models) ─────────────────
-  { id: 'preset-openrouter',       name: 'OpenRouter',           apiKey: '', baseUrl: 'https://openrouter.ai/api/v1',                         modelId: 'meta-llama/llama-3.3-70b-instruct:free' },
-  // ── Ollama (local — no key needed) ─────────────────────────────────────────
-  { id: 'preset-ollama',           name: 'Ollama (local)',        apiKey: 'ollama', baseUrl: 'http://localhost:11434/v1',                     modelId: 'llama3.2'                   },
-]
+// Presets removed — users add models manually via the custom model form.
 
 // IDs that were once automatically included but have since been removed from
 // DEFAULT_MODELS.  They are silently stripped from saved localStorage configs
@@ -280,8 +246,9 @@ export async function testModelConnection(modelConfig) {
         messages: [{ role: 'user', content: 'Hi' }],
       }, modelConfig))
     } else {
+      const tokenParam = modelConfig.useMaxCompletionTokens ? 'max_completion_tokens' : 'max_tokens'
       ;({ url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, {
-        max_tokens: 16,
+        [tokenParam]: 16,
         stream: false,
         messages: [{ role: 'user', content: 'Hi' }],
       }, modelConfig))
@@ -499,6 +466,12 @@ function buildAnthropicRequest(baseUrl, apiKey, modelId, body, modelConfig = {})
 }
 
 function buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig = {}) {
+  // Some models (e.g. OpenAI o-series) reject max_tokens; use max_completion_tokens instead.
+  if (modelConfig.useMaxCompletionTokens && 'max_tokens' in body) {
+    body = { ...body, max_completion_tokens: body.max_tokens }
+    const { max_tokens: _dropped, ...rest } = body
+    body = rest
+  }
   if (modelConfig.temperature !== undefined) {
     body.temperature = modelConfig.temperature
   }
