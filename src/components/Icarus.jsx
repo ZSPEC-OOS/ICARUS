@@ -278,6 +278,11 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   const [icarusMdDraft,    setIcarusMdDraft]    = useState('')
   const [isSavingIcarusMd, setIsSavingIcarusMd] = useState(false)
 
+  // ── File attachments & branch tracking ────────────────────────────────
+  const [attachedFiles, setAttachedFiles] = useState([])
+  const [lastBranchName, setLastBranchName] = useState('')
+  const fileInputRef = useRef(null)
+
   // ── UI state ───────────────────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGenTests,   setIsGenTests]   = useState(false)
@@ -1443,6 +1448,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         if (!dryRun) await createBranch(githubToken, repoOwner, repoName, targetBranch, baseSha)
         log(`${dryRun ? '○' : '✓'} Branch "${targetBranch}"${dryRun ? ' (dry run)' : ''}`)
         updateActivity(newBrId, { status: 'done', msg: `⬆ Branch "${targetBranch}" ready${dryRun ? ' (dry run)' : ''}` })
+        setLastBranchName(targetBranch)
       }
 
       // Push each file in the plan
@@ -1602,15 +1608,20 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
     setHistoryOpen(false)
     setSettingsOpen(false)
     const userMsg = prompt.trim()
-    if (!userMsg) return
+    if (!userMsg && attachedFiles.length === 0) return
+    const fileContext = attachedFiles.length > 0
+      ? `\n\n[Attached files: ${attachedFiles.map(f => f.name).join(', ')}]`
+      : ''
+    const fullMsg = (userMsg + fileContext).trim()
     setPrompt('')
-    if (isConversationalPrompt(userMsg)) {
-      handleConversationalReply(userMsg)
+    setAttachedFiles([])
+    if (isConversationalPrompt(fullMsg)) {
+      handleConversationalReply(fullMsg)
       return
     }
-    if (shouldUseAgent) agentSession.run(userMsg, conversation.slice(-10))
-    else handleGenerate(userMsg)
-  }, [prompt, isConversationalPrompt, handleConversationalReply, shouldUseAgent, agentSession, conversation, handleGenerate])
+    if (shouldUseAgent) agentSession.run(fullMsg, conversation.slice(-10))
+    else handleGenerate(fullMsg)
+  }, [prompt, attachedFiles, isConversationalPrompt, handleConversationalReply, shouldUseAgent, agentSession, conversation, handleGenerate])
 
   const handleKeyDown = useCallback((e) => {
     const submitByEnter = e.key === 'Enter' && !e.shiftKey && !e.isComposing
@@ -1769,12 +1780,6 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
                   title="ShadowContext: background repo index">◆ {shadowStatus}</div>
               )}
           </>
-          <select className="lk-model-select" value={activeModelId}
-            onChange={e => { setActiveModelId(e.target.value); onModelChange?.(e.target.value) }} disabled={busy}>
-            <option value="">Model…</option>
-            {(models || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-
           {/* Account / logout — shown when Firebase auth is active */}
           {onLogout && (
             <button
@@ -2114,11 +2119,11 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         </div>{/* end lk-feed */}
 
         <>{/* ══════════════════════════════════════════════════
-            BOTTOM INPUT BAR — prompt + controls (Claude Code style)
+            BOTTOM INPUT BAR — chat card layout
             ══════════════════════════════════════════════════════════════════ */}
         <div className="lk-input-bar">
 
-          {/* Inline status: error, push progress, PR link, repo badge */}
+          {/* Status messages above the card */}
           {error && <div className="lk-error" role="alert">{error}</div>}
           {isPushing && pushStep && (
             <div className="lk-push-status"><span className="lk-spinner" /> {pushStep}</div>
@@ -2130,105 +2135,149 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
             </a>
           )}
 
-          {/* Prompt textarea */}
-          <textarea
-            className="lk-textarea"
-            placeholder="Message BLKSWAN..."
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isGenerating || agentSession.isAgentRunning}
-          />
+          {/* Input card */}
+          <div className="lk-input-card">
 
-          {/* Actions row */}
-          <div className="lk-input-actions">
+            {/* Branch row */}
+            <div className="lk-input-branch-row">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style={{flexShrink:0,opacity:0.6}}>
+                <path d="M5.559 8.855c.166 1.183 1.19 2.145 2.456 2.145a2.58 2.58 0 0 0 2.516-2H12a1 1 0 1 0 0-2h-1.47A2.58 2.58 0 0 0 8.015 5C6.749 5 5.725 5.962 5.559 7.145H4a1 1 0 1 0 0 2h1.559zM8.015 7a.58.58 0 1 1 0 1.16.58.58 0 0 1 0-1.16z"/>
+                <path fillRule="evenodd" d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8zm7-6a6 6 0 1 0 0 12A6 6 0 0 0 8 2z"/>
+              </svg>
+              <span className="lk-branch-base">{baseBranch || 'main'}</span>
+              {lastBranchName && (
+                <>
+                  <span className="lk-branch-arrow">←</span>
+                  <span className="lk-branch-feature">{lastBranchName}</span>
+                </>
+              )}
+            </div>
 
-            {/* Left: meta info */}
-            <div className="lk-input-left">
-              {costEstimate && (
-                <span className="lk-cost-row">
-                  <span className="lk-cost-tokens">~{costEstimate.inputTokens.toLocaleString()}</span>
-                  <span className="lk-cost-sep">·</span>
-                  <span className="lk-cost-usd">{formatCost(costEstimate.totalUSD)}</span>
-                </span>
-              )}
-              {(repoOwner || repoName) && (
-                <div className="lk-repo-badge">
-                  <span className="lk-repo-dot" />
-                  <span>{repoOwner && repoName ? `${repoOwner}/${repoName}` : repoOwner || repoName}</span>
-                  {githubToken ? <span className="lk-repo-auth">● auth</span> : <span className="lk-repo-noauth">○ no token</span>}
-                </div>
-              )}
-              {/* Local folder attachment */}
-              {localDirHandle ? (
-                <div className="lk-local-badge">
-                  <span className="lk-local-badge-icon">📁</span>
-                  <span className="lk-local-badge-name" title="Local folder attached">{localDirHandle.name}</span>
-                  <button className="lk-local-badge-detach" title="Detach local folder" onClick={() => setLocalDirHandle(null)}>✕</button>
-                </div>
-              ) : (
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              accept="image/*,text/*,application/json,application/pdf,.md,.txt,.js,.ts,.jsx,.tsx,.py,.go,.rs,.java,.css,.html"
+              style={{ display: 'none' }}
+              onChange={e => {
+                const files = Array.from(e.target.files || [])
+                if (files.length) setAttachedFiles(prev => [...prev, ...files])
+                e.target.value = ''
+              }}
+            />
+
+            {/* Textarea */}
+            <textarea
+              className="lk-textarea"
+              placeholder="Reply..."
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isGenerating || agentSession.isAgentRunning}
+            />
+
+            {/* Attached files chips */}
+            {attachedFiles.length > 0 && (
+              <div className="lk-attached-files-row">
+                {attachedFiles.map((f, i) => (
+                  <div key={i} className="lk-attached-chip">
+                    <span className="lk-attached-chip-name" title={f.name}>{f.name}</span>
+                    <button
+                      className="lk-attached-chip-remove"
+                      onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}
+                      title="Remove attachment"
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Toolbar */}
+            <div className="lk-input-toolbar">
+
+              {/* Left: + attach button + folder icon */}
+              <div className="lk-input-toolbar-left">
                 <button
-                  className="lk-btn lk-btn--small lk-btn--attach"
-                  title="Attach a local repo folder — agent will read/write files directly on disk"
-                  onClick={async () => {
-                    try { setLocalDirHandle(await pickDirectory()) }
-                    catch (e) { if (e.name !== 'AbortError') setError(`Folder access denied: ${e.message}`) }
-                  }}
-                >📁 Attach folder</button>
-              )}
-              <button
-                className={`lk-btn lk-btn--small lk-btn--attach${activeTab === 'modules' ? ' lk-btn--active' : ''}`}
-                onClick={() => setActiveTab('modules')}
-                title="Open modules page"
-              >⊕ Modules</button>
-            </div>
-
-            {/* Right: action buttons */}
-            <div className="lk-input-right">
-              <>
-
-                  {/* Push button — only when there's generated code to push */}
-                  {hasGithub && filePlan.some(e => e.code?.trim()) && (() => {
-                    const hasDiffs  = filePlan.some(e => e.diffText?.trim())
-                    const fileCount = filePlan.filter(e => e.code?.trim()).length
-                    const pushLabel = fileCount > 1 ? `${fileCount} files` : 'to GitHub'
-                    return (
-                      <>
-                        <button className={`lk-btn lk-btn--push${hasDiffs ? ' lk-btn--push-ready' : ''}`} onClick={handlePush}>
-                          <span className="lk-btn-icon">⬆</span>Push {pushLabel}
-                        </button>
-                      </>
-                    )
-                  })()}
-
-                  {/* Run Tests — after a successful push with bridge available */}
-                  {bridgeAvailable && prResult && (
-                    <button className="lk-btn lk-btn--run" onClick={handleRunProjectTests} disabled={isRunningPostPushTests}>
-                      <span className="lk-btn-icon">⊛</span>
-                      {isRunningPostPushTests ? 'Running…' : 'Run Tests'}
-                    </button>
-                  )}
-
-                  {/* Single Send button — agent when GitHub connected, generate otherwise */}
+                  className="lk-toolbar-btn lk-toolbar-btn--plus"
+                  title="Attach files or photos"
+                  onClick={() => fileInputRef.current?.click()}
+                >+</button>
+                {localDirHandle ? (
+                  <div className="lk-local-badge lk-local-badge--compact">
+                    <span className="lk-local-badge-icon" title={`Attached: ${localDirHandle.name}`}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a2 2 0 0 1 .342-1.31z"/></svg>
+                    </span>
+                    <span className="lk-local-badge-name" title={localDirHandle.name}>{localDirHandle.name}</span>
+                    <button className="lk-local-badge-detach" title="Detach folder" onClick={() => setLocalDirHandle(null)}>✕</button>
+                  </div>
+                ) : (
                   <button
-                    className="lk-btn lk-btn--send"
-                    onClick={handleSubmitPrompt}
-                    disabled={!prompt.trim() || agentSession.isAgentRunning || isGenerating}
+                    className="lk-toolbar-btn"
+                    title="Attach local repo folder"
+                    onClick={async () => {
+                      try { setLocalDirHandle(await pickDirectory()) }
+                      catch (e) { if (e.name !== 'AbortError') setError(`Folder access denied: ${e.message}`) }
+                    }}
                   >
-                    <span className="lk-btn-icon">▶</span>
-                    {agentSession.isAgentRunning ? 'Working…' : isGenerating || isPlanning || isAmplifying ? 'Thinking…' : 'Send'}
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a2 2 0 0 1 .342-1.31z"/>
+                    </svg>
                   </button>
+                )}
+              </div>
 
-                  {/* Terminate — always visible next to Send when running */}
-                  {busy && (
-                    <button className="lk-btn lk-btn--abort lk-btn--abort-inline" onClick={handleAbort} title="Terminate process">
-                      Terminate Process
+              {/* Right: push, run-tests, model selector, stop */}
+              <div className="lk-input-toolbar-right">
+
+                {/* Push button — contextual */}
+                {hasGithub && filePlan.some(e => e.code?.trim()) && (() => {
+                  const hasDiffs  = filePlan.some(e => e.diffText?.trim())
+                  const fileCount = filePlan.filter(e => e.code?.trim()).length
+                  const pushLabel = fileCount > 1 ? `${fileCount} files` : 'to GitHub'
+                  return (
+                    <button className={`lk-btn lk-btn--push${hasDiffs ? ' lk-btn--push-ready' : ''}`} onClick={handlePush}>
+                      <span className="lk-btn-icon">⬆</span>Push {pushLabel}
                     </button>
-                  )}
+                  )
+                })()}
 
-              </>
-            </div>
-          </div>{/* end lk-input-actions */}
+                {/* Run Tests — contextual */}
+                {bridgeAvailable && prResult && (
+                  <button className="lk-btn lk-btn--run" onClick={handleRunProjectTests} disabled={isRunningPostPushTests}>
+                    <span className="lk-btn-icon">⊛</span>
+                    {isRunningPostPushTests ? 'Running…' : 'Run Tests'}
+                  </button>
+                )}
+
+                {/* Model selector — inline in toolbar */}
+                <select
+                  className="lk-toolbar-model-select"
+                  value={activeModelId}
+                  onChange={e => { setActiveModelId(e.target.value); onModelChange?.(e.target.value) }}
+                  disabled={busy}
+                >
+                  <option value="">Model…</option>
+                  {(models || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+
+                {/* Stop button — always visible, active when busy */}
+                <button
+                  className="lk-toolbar-btn lk-toolbar-btn--stop"
+                  onClick={handleAbort}
+                  disabled={!busy}
+                  title={busy ? 'Stop generation' : 'Nothing running'}
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
+                    <rect x="1.5" y="1.5" width="9" height="9" rx="2"/>
+                  </svg>
+                </button>
+
+              </div>
+            </div>{/* end lk-input-toolbar */}
+
+          </div>{/* end lk-input-card */}
+
         </div>{/* end lk-input-bar */}
         </>
         </>
