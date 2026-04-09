@@ -12,6 +12,7 @@ import { runAgentLoop } from '../../services/agentLoop.js'
 import { makeExecutor }  from '../../services/agentExecutor.js'
 import { AGENT_TOOLS, buildAgentSystemPrompt } from '../../services/agentTools.js'
 import { shadowContext } from '../../services/shadowContext.js'
+import { loadEnhancerConfig } from '../../services/enhancers/config.js'
 import {
   detectIntent,
   INTENT_LABELS,
@@ -151,6 +152,7 @@ export function useAgentSession({
       executeTool: executor,
       modelConfig,
       availableModels: availableModels || [],
+      enhancerConfig: loadEnhancerConfig(),
       signal:      ctrl.signal,
       conversationHistory,
       onEvent: (ev) => {

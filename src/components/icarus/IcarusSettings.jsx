@@ -9,6 +9,7 @@ import {
   clearFirebaseConfig,
   getFirebaseStatus,
 } from '../../services/firebaseService.js'
+import { loadEnhancerConfig, saveEnhancerConfig } from '../../services/enhancers/config.js'
 
 // ─── IcarusSettings ────────────────────────────────────────────────────────────
 // Settings drawer: GitHub credentials, theme picker, fine-tune sliders,
@@ -94,6 +95,16 @@ const IcarusSettings = memo(function IcarusSettings({
   const [addModelOpen,   setAddModelOpen]   = useState(false)
   const [newModelName,   setNewModelName]   = useState('')
   const [searchTestResult, setSearchTestResult] = useState(null)  // { testing, ok, error, ms }
+
+  // ── Agent capability toggles ─────────────────────────────────────────────
+  const [deepReasoningEnabled, setDeepReasoningEnabled] = useState(
+    () => loadEnhancerConfig().deepReasoning?.enabled ?? false
+  )
+  function handleDeepReasoningToggle(e) {
+    const enabled = e.target.checked
+    setDeepReasoningEnabled(enabled)
+    saveEnhancerConfig({ deepReasoning: { enabled } })
+  }
 
   function updateModelKey(id, key) {
     const updated = (models || []).map(m => m.id === id ? { ...m, apiKey: key } : m)
@@ -435,6 +446,7 @@ const IcarusSettings = memo(function IcarusSettings({
         <label className="lk-toggle"><input type="checkbox" checked={doCreatePR} onChange={e => setDoCreatePR(e.target.checked)} /><span>Auto-create pull request</span></label>
         <label className="lk-toggle lk-toggle--warn"><input type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} /><span>Dry run — preview only, no commits</span></label>
         <label className="lk-toggle"><input type="checkbox" checked={enableThinking} onChange={e => setEnableThinking(e.target.checked)} /><span>Extended thinking <span className="lk-hint-inline">(Claude only — deeper reasoning, slower)</span></span></label>
+        <label className="lk-toggle"><input type="checkbox" checked={deepReasoningEnabled} onChange={handleDeepReasoningToggle} /><span>Deep reasoning pipeline <span className="lk-hint-inline">(structured plan → RAG retrieval → critique loop)</span></span></label>
       </div>
 
       {/* Creativity slider */}
