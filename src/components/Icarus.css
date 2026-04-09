@@ -527,6 +527,170 @@ html, body, #root {
 
 .lk-topbar-spacer { flex: 1; }
 
+/* ── Repo picker ──────────────────────────────────────────────────── */
+.lk-repo-picker-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.lk-repo-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: var(--lk-surface-2);
+  border: 1px solid var(--lk-border);
+  border-radius: 6px;
+  color: var(--lk-text-2);
+  font-size: 0.74rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.14s, background 0.14s;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lk-repo-picker-btn:hover {
+  border-color: var(--lk-accent);
+  background: var(--lk-accent-dim);
+  color: var(--lk-accent);
+}
+
+.lk-repo-picker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.lk-repo-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  width: 320px;
+  background: var(--lk-surface);
+  border: 1px solid var(--lk-border);
+  border-radius: 10px;
+  box-shadow: var(--lk-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.lk-repo-picker-search-wrap {
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--lk-border-soft);
+}
+
+.lk-repo-picker-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  background: var(--lk-surface-2);
+  border: 1px solid var(--lk-border);
+  border-radius: 6px;
+  color: var(--lk-text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.14s;
+}
+
+.lk-repo-picker-search:focus {
+  border-color: var(--lk-accent);
+}
+
+.lk-repo-picker-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.lk-repo-picker-status {
+  padding: 12px 14px;
+  font-size: 0.76rem;
+  color: var(--lk-text-muted);
+  text-align: center;
+}
+
+.lk-repo-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  color: var(--lk-text-2);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  gap: 8px;
+  transition: background 0.1s;
+}
+
+.lk-repo-picker-item:hover {
+  background: var(--lk-accent-dim);
+  color: var(--lk-text);
+}
+
+.lk-repo-picker-item--active {
+  background: var(--lk-accent-dim);
+  color: var(--lk-accent);
+}
+
+.lk-repo-picker-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.lk-repo-picker-item-branch {
+  font-size: 0.68rem;
+  color: var(--lk-text-muted);
+  font-family: 'SF Mono', ui-monospace, monospace;
+  flex-shrink: 0;
+}
+
+/* BLKSWAN theme overrides */
+.lk-root.lk-theme-blkswan .lk-repo-picker-btn {
+  background: rgba(7, 15, 30, 0.70);
+  border-color: rgba(77, 156, 255, 0.22);
+  color: #93c5fd;
+}
+
+.lk-root.lk-theme-blkswan .lk-repo-picker-btn:hover {
+  border-color: #3b8ef0;
+  background: rgba(59, 142, 240, 0.12);
+  color: #60a5fa;
+}
+
+.lk-root.lk-theme-blkswan .lk-repo-picker-dropdown {
+  background: rgba(5, 12, 28, 0.96);
+  border-color: rgba(77, 156, 255, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.lk-root.lk-theme-blkswan .lk-repo-picker-search {
+  background: rgba(7, 15, 30, 0.80);
+  border-color: rgba(77, 156, 255, 0.22);
+  color: #e8f4ff;
+}
+
+.lk-root.lk-theme-blkswan .lk-repo-picker-search-wrap {
+  border-bottom-color: rgba(77, 156, 255, 0.10);
+}
+
+.lk-root.lk-theme-blkswan .lk-repo-picker-item { color: #93c5fd; }
+.lk-root.lk-theme-blkswan .lk-repo-picker-item:hover { background: rgba(59, 142, 240, 0.12); color: #e8f4ff; }
+.lk-root.lk-theme-blkswan .lk-repo-picker-item--active { background: rgba(59, 142, 240, 0.14); color: #3b8ef0; }
+.lk-root.lk-theme-blkswan .lk-repo-picker-item-branch { color: #3d5a7a; }
+
 .lk-header-brand { /* keep compat alias */
   display: flex;
   align-items: baseline;
@@ -629,14 +793,24 @@ html, body, #root {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
-  padding: 10px 14px 12px;
+  padding: 10px 20px 14px;
   background: var(--lk-surface);
   border-top: 1px solid var(--lk-border);
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
   z-index: 5;
   position: sticky;
   bottom: 0;
+}
+
+/* Centered inner column — ~half screen width */
+.lk-input-inner {
+  width: 100%;
+  max-width: 660px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .lk-inline-chat-history {
