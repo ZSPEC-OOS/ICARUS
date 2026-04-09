@@ -1692,7 +1692,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
         {/* ── Mobile-only drawer nav (hidden on desktop via CSS) ──────────── */}
         <div className="lk-sidebar-mobile-nav">
           <div className="lk-sidebar-nav-brand">
-            <img src="/blkswan-header.jpg" alt="BLKSWAN" className="lk-blkswan-logo lk-blkswan-logo--drawer" />
+            <img src="/bluswan-header-logo.jpg" alt="BLUSWAN" className="lk-blkswan-logo lk-blkswan-logo--drawer" />
             <button className="lk-sidebar-btn lk-sidebar-btn--new"
               onClick={() => { handleReset(); setMobileDrawerOpen(false) }} title="New session">＋</button>
           </div>
@@ -1745,13 +1745,13 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
           {/* Mobile: hamburger + centered title (hidden on desktop via CSS) */}
           <button className="lk-hamburger" onClick={() => setMobileDrawerOpen(v => !v)} aria-label="Open navigation">≡</button>
           <span className="lk-topbar-mobile-title">
-            <img src="/blkswan-header.jpg" alt="BLKSWAN" className="lk-blkswan-logo" />
+            <img src="/bluswan-header-logo.jpg" alt="BLUSWAN" className="lk-blkswan-logo" />
           </span>
           <>
 
               <img
-                src="/blkswan-header.jpg"
-                alt="BLKSWAN"
+                src="/bluswan-header-logo.jpg"
+                alt="BLUSWAN"
                 className="lk-blkswan-topbar-logo"
               />
 
