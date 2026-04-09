@@ -230,6 +230,7 @@ export async function runAgentLoop({
                 response = result
                 if (usedFallback) {
                   activeModelConfig = modelUsed
+                  router.saveFallbackPref(routing.role, modelUsed.modelId || modelUsed.id)
                   onEvent({ type: 'orchestration_fallback_used', role: routing.role, modelId: modelUsed.modelId || modelUsed.id, fallbackIndex })
                 }
               } else {
@@ -272,6 +273,11 @@ export async function runAgentLoop({
             onEvent({ type: 'tool_start', id, name: tc.name, input: tc.input })
           })
 
+          // Per-batch in-flight map: if two identical cacheable tool calls arrive in
+          // the same turn, the second awaits the first's Promise instead of executing
+          // a redundant duplicate request.
+          const inFlight = new Map()
+
           const settled = await Promise.allSettled(response.toolCalls.map(async tc => {
             const id = toolCallIds.get(tc)
             const cacheKey = `${tc.name}:${JSON.stringify(tc.input || {})}`
@@ -282,6 +288,13 @@ export async function runAgentLoop({
                   onEvent({ type: 'tool_done', id, name: tc.name, result: cached, error: null, cached: true })
                   efficiencyMetricsService.record({ taskId, stage: `tool:${tc.name}`, cacheHit: true })
                   return cached
+                }
+                // Coalesce duplicate in-flight calls — await the existing Promise
+                if (inFlight.has(cacheKey)) {
+                  const result = await inFlight.get(cacheKey)
+                  onEvent({ type: 'tool_done', id, name: tc.name, result, error: null, cached: true })
+                  efficiencyMetricsService.record({ taskId, stage: `tool:${tc.name}`, cacheHit: true })
+                  return result
                 }
               }
 
@@ -295,8 +308,13 @@ export async function runAgentLoop({
                 }
               }
 
-              const result = await executeTool(tc.name, tc.input)
-              if (CACHEABLE_TOOLS.has(tc.name)) semanticCacheService.set('file_content', cacheKey, result)
+              const execPromise = executeTool(tc.name, tc.input)
+              if (CACHEABLE_TOOLS.has(tc.name)) inFlight.set(cacheKey, execPromise)
+              const result = await execPromise
+              if (CACHEABLE_TOOLS.has(tc.name)) {
+                semanticCacheService.set('file_content', cacheKey, result)
+                inFlight.delete(cacheKey)
+              }
 
               if (tc.name === 'run_command') executionTrace.commandRuns.push({ input: tc.input, result })
 
@@ -333,6 +351,7 @@ export async function runAgentLoop({
               efficiencyMetricsService.record({ taskId, stage: `tool:${tc.name}`, cacheHit: false })
               return result
             } catch (err) {
+              if (CACHEABLE_TOOLS.has(tc.name)) inFlight.delete(`${tc.name}:${JSON.stringify(tc.input || {})}`)
               onEvent({ type: 'tool_done', id, name: tc.name, result: `ERROR: ${err.message}`, error: err.message })
               return `ERROR: ${err.message}`
             }
@@ -407,9 +426,25 @@ export async function runAgentLoop({
   const failedSummary = verification?.failedGateIds?.length
     ? `Reliability gates failed: ${verification.failedGateIds.join(', ')}`
     : 'Reliability verification failed.'
-  const rollbackSummary = run.context.rollback?.rolledBack
-    ? `Automatic rollback applied via ${run.context.rollback.strategy}.`
-    : 'Rollback failed; repository may be partially modified.'
+
+  const rollbackResult = run.context.rollback
+  const rollbackSucceeded = !!rollbackResult?.rolledBack
+
+  if (!rollbackSucceeded) {
+    // Rollback failed — the repo may be in a partially-modified state.
+    // Emit a dedicated event so the UI can surface a prominent warning
+    // rather than letting it silently blend into the 'done' message.
+    onEvent({
+      type: 'rollback_failed',
+      strategy: rollbackResult?.strategy || 'unknown',
+      errors: rollbackResult?.errors || [],
+      filesAffected: filesChanged,
+    })
+  }
+
+  const rollbackSummary = rollbackSucceeded
+    ? `Automatic rollback applied via ${rollbackResult.strategy}.`
+    : `⚠ Rollback failed (strategy: ${rollbackResult?.strategy || 'unknown'})${rollbackResult?.errors?.length ? ` — ${rollbackResult.errors.join('; ')}` : ''}. Repository may be partially modified — manual review required.`
 
   onEvent({ type: 'done', text: `${finalText}\n\n[Autonomous Reliability Loop]\n${failedSummary}\n${rollbackSummary}`, filesChanged })
 }
