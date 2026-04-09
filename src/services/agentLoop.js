@@ -2,6 +2,7 @@ import { callWithToolsStreaming } from './aiService.js'
 import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS, AGENT_LOOP_WINDOW } from '../config/constants.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
 import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
+import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
 import { memoryGraphService } from './memoryGraphService.js'
 import { createReliabilityLoopFSM } from './reliability/fsm.js'
 import { evaluateReliabilityGates, detectApiSignatureChange, evaluateBenchmarkRegressionGate } from './reliability/gateEvaluators.js'
@@ -260,6 +261,16 @@ export async function runAgentLoop({
             meta: { role: routing.role, modelId: activeModelConfig.modelId || activeModelConfig.id, strategy: routing.strategy },
           })
           if (response.text) diary.onModelText(response.text)
+
+          // Per-turn critique: run mid-session when the model produces substantial
+          // narration before tool calls.  Only emits an event when issues are found
+          // (avoids noise on clean turns).  The full critique still runs in verify.
+          if (enhancerConfig.critique?.enabled && response.text?.trim().length > 60 && response.toolCalls.length > 0) {
+            const turnCritique = runCritiquePass({ draftText: response.text, config: enhancerConfig.critique })
+            if (!turnCritique.passed) {
+              onEvent({ type: 'critique_turn', turn, critique: turnCritique })
+            }
+          }
 
           if (response.isDone || response.toolCalls.length === 0) {
             finalText = response.text || 'Task completed.'
