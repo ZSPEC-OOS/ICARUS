@@ -1,4 +1,4 @@
-import { MEMORY_VECTOR_DIM, MEMORY_MAX_INGEST_CHARS } from '../config/constants.js'
+import { MEMORY_VECTOR_DIM, MEMORY_MAX_INGEST_CHARS, MEMORY_MAX_NODES, MEMORY_MAX_EDGES } from '../config/constants.js'
 
 const STORAGE_KEY = 'icarus:memory-graph:v1'
 const VECTOR_DIM = MEMORY_VECTOR_DIM
@@ -134,6 +134,31 @@ class MemoryGraphService {
     }
   }
 
+  // Evict the oldest ~10 % of nodes when the cap is exceeded.
+  // "Oldest" is determined by updatedAt — least-recently-touched nodes go first.
+  _enforceNodeCap() {
+    if (this.nodes.size <= MEMORY_MAX_NODES) return
+    const evictCount = Math.ceil(MEMORY_MAX_NODES * 0.1)
+    const sorted = [...this.nodes.values()].sort((a, b) =>
+      Date.parse(a.updatedAt || 0) - Date.parse(b.updatedAt || 0)
+    )
+    for (let i = 0; i < evictCount && i < sorted.length; i++) {
+      this.nodes.delete(sorted[i].id)
+    }
+  }
+
+  // Evict the oldest ~10 % of edges when the cap is exceeded.
+  _enforceEdgeCap() {
+    if (this.edges.size <= MEMORY_MAX_EDGES) return
+    const evictCount = Math.ceil(MEMORY_MAX_EDGES * 0.1)
+    const sorted = [...this.edges.values()].sort((a, b) =>
+      Date.parse(a.updatedAt || 0) - Date.parse(b.updatedAt || 0)
+    )
+    for (let i = 0; i < evictCount && i < sorted.length; i++) {
+      this.edges.delete(sorted[i].id)
+    }
+  }
+
   upsertNode(node) {
     this.init()
     const existing = this.nodes.get(node.id)
@@ -151,6 +176,7 @@ class MemoryGraphService {
       embedding: embedText(`${node.title || existing?.title || ''} ${node.summary || existing?.summary || ''} ${(node.tags || []).join(' ')}`),
     }
     this.nodes.set(merged.id, merged)
+    this._enforceNodeCap()
     this._scheduleFlush()
     return merged
   }
@@ -170,6 +196,7 @@ class MemoryGraphService {
       updatedAt: nowIso(),
       metadata: { ...(existing?.metadata || {}), ...(edge.metadata || {}) },
     })
+    this._enforceEdgeCap()
     this._scheduleFlush()
   }
 

@@ -33,6 +33,11 @@ export const MAX_TRACE_LINES          = 2000      // max JSONL lines kept in too
 // ── Memory graph ──────────────────────────────────────────────────────────────
 export const MEMORY_VECTOR_DIM        = 128       // hash-embedding vector dimensions
 export const MEMORY_MAX_INGEST_CHARS  = 4000      // max chars ingested per file node
+export const MEMORY_MAX_NODES         = 2000      // LRU cap: evict oldest nodes beyond this limit
+export const MEMORY_MAX_EDGES         = 5000      // LRU cap: evict oldest edges beyond this limit
+
+// ── Trace store ───────────────────────────────────────────────────────────────
+export const TRACE_MAX_AGE_DAYS       = 7         // evict trace entries older than this many days
 
 // ── Streaming ─────────────────────────────────────────────────────────────────
 export const STREAM_CHUNK_TIMEOUT_MS  = 30_000    // abort stream if no chunk arrives within this window (ms)

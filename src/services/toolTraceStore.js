@@ -1,5 +1,5 @@
 import { schemaVersion } from '../tools/contracts.js'
-import { MAX_TRACE_LINES } from '../config/constants.js'
+import { MAX_TRACE_LINES, TRACE_MAX_AGE_DAYS } from '../config/constants.js'
 
 const TRACE_STORAGE_KEY = 'icarus:tool-traces:jsonl'
 let activeLoopState = null
@@ -26,9 +26,25 @@ function readLines() {
   }
 }
 
+// Drop entries older than TRACE_MAX_AGE_DAYS. Called inside writeLines so
+// stale data is pruned on every write without a separate scheduled job.
+function pruneByAge(lines) {
+  const cutoff = Date.now() - TRACE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000
+  return lines.filter(line => {
+    try {
+      const entry = JSON.parse(line)
+      if (!entry?.timestamp) return true   // keep entries without a timestamp
+      return Date.parse(entry.timestamp) >= cutoff
+    } catch {
+      return false   // drop malformed lines
+    }
+  })
+}
+
 function writeLines(lines) {
   try {
-    const trimmed = lines.slice(-MAX_TRACE_LINES)
+    const aged    = pruneByAge(lines)
+    const trimmed = aged.slice(-MAX_TRACE_LINES)
     localStorage.setItem(TRACE_STORAGE_KEY, trimmed.join('\n'))
   } catch (e) {
     console.warn('[ToolTraceStore] failed to persist traces (localStorage quota exceeded?):', e.message)
