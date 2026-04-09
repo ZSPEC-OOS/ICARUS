@@ -179,12 +179,7 @@ export default function App() {
   }, [])
 
   if (!authChecked) return <Splash />
-  // Show LoginScreen when not authenticated at all.
-  // onFirebaseLogin is a no-op — onAuthStateChange fires automatically after signIn
-  // and will load cloud settings (models, tokens) before showing Icarus.
-  if (!authUser && !pinUnlocked) return (
-    <LoginScreen onUnlock={handlePinUnlock} onFirebaseLogin={() => {}} />
-  )
+  if (!authUser && !pinUnlocked) return <LoginScreen onUnlock={handlePinUnlock} />
   if (authUser && !settingsReady) return <Splash msg="Loading your settings..." />
 
   return (
