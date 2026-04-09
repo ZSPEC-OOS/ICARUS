@@ -332,11 +332,9 @@ html, body, #root {
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.60);
 }
 
-/* ── BLKSWAN: full background — cosmic swan image */
+/* ── BLKSWAN: solid dark base — Aurora WebGL handles the visual background */
 .lk-root.lk-theme-blkswan {
-  background:
-    url('/blkswan-bg.jpg') center / cover no-repeat,
-    #030b18;
+  background: #030b18;
 }
 
 /* ── BLKSWAN: topbar stays dark-navy opaque over background */
