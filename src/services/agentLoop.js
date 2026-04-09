@@ -14,7 +14,7 @@ import { packContextSections } from './enhancers/contextPacker.js'
 import { enforceQualityFloor } from './enhancers/qualityFloor.js'
 import { createModelRouter } from './orchestration/modelRouter.js'
 
-function makeSessionDiary() {
+export function makeSessionDiary() {
   const filesRead = new Set()
   const filesChanged = []
   const textSnippets = []
@@ -46,7 +46,7 @@ const LOOP_WINDOW = AGENT_LOOP_WINDOW
 const CACHEABLE_TOOLS = new Set(['analyze_codebase', 'read_file', 'read_many_files', 'list_directory', 'search_files', 'grep'])
 const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'delete_file', 'revert_file'])
 
-function toolSignature(toolCalls) {
+export function toolSignature(toolCalls) {
   return toolCalls.map(tc => `${tc.name}:${JSON.stringify(tc.input).slice(0, 100)}`).sort().join('|')
 }
 
@@ -75,7 +75,7 @@ function buildToolResultMessages(toolCalls, results, isAnthropic, rawAssistantCo
   ]
 }
 
-function pruneMessages(messages, diary = null, isAnthropic = false) {
+export function pruneMessages(messages, diary = null, isAnthropic = false) {
   const head = messages.slice(0, 2)
   const tail = messages.slice(2)
   const keep = AGENT_KEEP_TURNS * 2
