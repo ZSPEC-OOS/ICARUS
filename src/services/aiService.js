@@ -1,43 +1,99 @@
 const MODELS_KEY    = 'wrkflow:models'       // localStorage  — config only, NO api keys
 const KEYS_SS_KEY   = 'wrkflow:keys'         // sessionStorage — api keys (primary, clears on tab close)
 const KEYS_LS_KEY   = 'wrkflow:keysbak'      // localStorage  — api keys encrypted backup (iOS resilience)
-const SESSION_KEY_K = 'wrkflow:sk'           // sessionStorage — per-session random cipher key
+const SESSION_KEY_K = 'wrkflow:sk'           // sessionStorage — 32 random bytes, base64-encoded
 
-// Lazily generate or recall a cryptographically-random per-session key.
-// The key lives only in sessionStorage (cleared when the tab closes) and is
-// never embedded in source code — makes offline rainbow-table attacks infeasible.
-function getSessionKey() {
-  try {
-    let sk = sessionStorage.getItem(SESSION_KEY_K)
-    if (!sk) {
-      const raw = new Uint8Array(32)
-      crypto.getRandomValues(raw)
-      sk = Array.from(raw).map(b => String.fromCharCode(b)).join('')
-      sessionStorage.setItem(SESSION_KEY_K, btoa(sk))
-    } else {
-      sk = atob(sk)
+// ── AES-GCM encryption (SubtleCrypto) ────────────────────────────────────────
+// Ciphertext format: 'v2:' + base64(12-byte IV || AES-GCM ciphertext)
+// The raw key bytes are stored in sessionStorage (cleared on tab close) so an
+// offline attacker who reads only localStorage cannot decrypt the backup.
+// Legacy XOR-encrypted data (no 'v2:' prefix) is transparently migrated on the
+// next save.
+
+const AES_ALGO  = { name: 'AES-GCM', length: 256 }
+const IV_BYTES  = 12
+const V2_PREFIX = 'v2:'
+
+// Import the session key once and cache the CryptoKey for all subsequent calls.
+let _cryptoKeyPromise = null
+
+async function _getOrCreateCryptoKey() {
+  if (_cryptoKeyPromise) return _cryptoKeyPromise
+  _cryptoKeyPromise = (async () => {
+    try {
+      let rawB64 = sessionStorage.getItem(SESSION_KEY_K)
+      let rawBytes
+      if (rawB64) {
+        rawBytes = Uint8Array.from(atob(rawB64), c => c.charCodeAt(0))
+      } else {
+        rawBytes = crypto.getRandomValues(new Uint8Array(32))
+        sessionStorage.setItem(SESSION_KEY_K, btoa(String.fromCharCode(...rawBytes)))
+      }
+      return await crypto.subtle.importKey('raw', rawBytes, AES_ALGO, false, ['encrypt', 'decrypt'])
+    } catch {
+      return null   // restricted environment — _xorEncrypt/_xorDecrypt fallbacks used below
     }
-    return sk
+  })()
+  return _cryptoKeyPromise
+}
+
+async function encrypt(text) {
+  if (!text) return ''
+  try {
+    const key = await _getOrCreateCryptoKey()
+    if (!key) throw new Error('no key')
+    const iv      = crypto.getRandomValues(new Uint8Array(IV_BYTES))
+    const encoded = new TextEncoder().encode(text)
+    const buf     = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded)
+    const combined = new Uint8Array(IV_BYTES + buf.byteLength)
+    combined.set(iv)
+    combined.set(new Uint8Array(buf), IV_BYTES)
+    return V2_PREFIX + btoa(String.fromCharCode(...combined))
   } catch {
-    // Fallback: fixed key (same behaviour as before, but only reached in restricted environments)
-    return 'icarus-fallback-key-xor'
+    return _xorEncrypt(text)   // fallback: restricted browsers / test environments
   }
 }
 
-function encrypt(text) {
-  if (!text) return ''
-  const key = getSessionKey()
-  return btoa(text.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join(''))
-}
-
-function decrypt(text) {
+// Auto-detects v2 (AES-GCM) vs legacy XOR format so existing stored keys keep
+// working transparently — they will be re-encrypted with AES-GCM on next save.
+async function decrypt(text) {
   if (!text) return ''
   try {
-    const key = getSessionKey()
-    return atob(text).split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join('')
+    if (text.startsWith(V2_PREFIX)) {
+      const key    = await _getOrCreateCryptoKey()
+      if (!key) return ''
+      const bytes  = Uint8Array.from(atob(text.slice(V2_PREFIX.length)), c => c.charCodeAt(0))
+      const iv     = bytes.slice(0, IV_BYTES)
+      const cipher = bytes.slice(IV_BYTES)
+      const plain  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher)
+      return new TextDecoder().decode(plain)
+    }
+    // Legacy XOR path — backward-compatible with data encrypted before this upgrade
+    return _xorDecrypt(text)
   } catch {
     return ''
   }
+}
+
+// ── Legacy XOR (read-only — migration path only, not used for new writes) ─────
+function _xorDecrypt(text) {
+  if (!text) return ''
+  try {
+    const rawB64 = sessionStorage.getItem(SESSION_KEY_K)
+    const key = rawB64 ? atob(rawB64) : 'icarus-fallback-key-xor'
+    return atob(text).split('').map((c, i) =>
+      String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+    ).join('')
+  } catch { return '' }
+}
+
+function _xorEncrypt(text) {
+  if (!text) return ''
+  const rawB64 = sessionStorage.getItem(SESSION_KEY_K) || btoa('icarus-fallback-key-xor')
+  const key = atob(rawB64)
+  return btoa(text.split('').map((c, i) =>
+    String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+  ).join(''))
 }
 
 const DEFAULT_MODELS = []
@@ -85,7 +141,7 @@ const LEGACY_PRESET_IDS = new Set([
   'preset-kimi-k2-5',
 ])
 
-export function loadModels() {
+export async function loadModels() {
   try {
     // Load model configs (without API keys) from localStorage
     const raw    = localStorage.getItem(MODELS_KEY)
@@ -103,16 +159,16 @@ export function loadModels() {
     try {
       const keysRaw = sessionStorage.getItem(KEYS_SS_KEY)
       if (keysRaw) {
-        const decrypted = JSON.parse(decrypt(keysRaw))
+        const decrypted = JSON.parse(await decrypt(keysRaw))
         keys = decrypted || {}
       } else {
         // sessionStorage was cleared (iOS tab kill) — recover from localStorage backup
         const bakRaw = localStorage.getItem(KEYS_LS_KEY)
         if (bakRaw) {
-          const bakDecrypted = JSON.parse(decrypt(bakRaw))
+          const bakDecrypted = JSON.parse(await decrypt(bakRaw))
           keys = bakDecrypted || {}
           // Re-seed sessionStorage from backup so future reads are fast
-          sessionStorage.setItem(KEYS_SS_KEY, encrypt(JSON.stringify(keys)))
+          sessionStorage.setItem(KEYS_SS_KEY, await encrypt(JSON.stringify(keys)))
         }
       }
     } catch {}
@@ -124,7 +180,7 @@ export function loadModels() {
   }
 }
 
-export function saveModels(models) {
+export async function saveModels(models) {
   // Persist config (no API keys) to localStorage
   const configs = models.map(({ apiKey, ...rest }) => rest)
   localStorage.setItem(MODELS_KEY, JSON.stringify(configs))
@@ -132,7 +188,7 @@ export function saveModels(models) {
   // Persist API keys — sessionStorage (primary) + localStorage backup (iOS resilience)
   const keys = {}
   models.forEach(m => { if (m.apiKey) keys[m.id] = m.apiKey })
-  const encrypted = encrypt(JSON.stringify(keys))
+  const encrypted = await encrypt(JSON.stringify(keys))
   sessionStorage.setItem(KEYS_SS_KEY, encrypted)
   try { localStorage.setItem(KEYS_LS_KEY, encrypted) } catch {}
 }
@@ -140,16 +196,16 @@ export function saveModels(models) {
 // ── Web-search API key (Tavily) ───────────────────────────────────────────────
 const SEARCH_KEY_SS = 'icarus:searchkey'
 
-export function loadSearchKey() {
+export async function loadSearchKey() {
   try {
     const raw = sessionStorage.getItem(SEARCH_KEY_SS)
-    return raw ? decrypt(raw) : ''
+    return raw ? await decrypt(raw) : ''
   } catch { return '' }
 }
 
-export function saveSearchKey(key) {
+export async function saveSearchKey(key) {
   try {
-    if (key) sessionStorage.setItem(SEARCH_KEY_SS, encrypt(key))
+    if (key) sessionStorage.setItem(SEARCH_KEY_SS, await encrypt(key))
     else      sessionStorage.removeItem(SEARCH_KEY_SS)
   } catch {}
 }

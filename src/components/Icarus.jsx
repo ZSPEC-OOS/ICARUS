@@ -219,7 +219,9 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   // localDirHandle: File System Access API handle for a locally attached repo folder
   const [localDirHandle,  setLocalDirHandle]  = useState(null)
   // webSearchApiKey: Tavily API key for agent web_search tool
-  const [webSearchApiKey, setWebSearchApiKey] = useState(() => loadSearchKey())
+  // loadSearchKey is async (AES-GCM decryption) so we seed state from useEffect.
+  const [webSearchApiKey, setWebSearchApiKey] = useState('')
+  useEffect(() => { loadSearchKey().then(setWebSearchApiKey).catch(() => {}) }, [])
 
   // ── Multi-file plan ────────────────────────────────────────────────────
   // Each entry: {path, action, purpose, existingContent, _sha, code, testCode,
