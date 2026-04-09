@@ -1,7 +1,6 @@
-import { memo, useRef } from 'react'
-import { INTENT_LABELS } from '../../services/interactivePipeline.js'
+import { memo, useRef, useEffect } from 'react'
 
-// ─── Inline markdown (unchanged from original) ────────────────────────────────
+// ─── Inline markdown (for chat bubbles and stream text) ───────────────────────
 function renderInlineMarkdown(text) {
   const parts = String(text || '').split(/(`[^`]+`|\*\*[^*]+\*\*)/g)
   return parts.map((part, idx) => {
@@ -41,135 +40,6 @@ function renderMarkdown(text) {
   return blocks
 }
 
-// ─── Entry icon system ────────────────────────────────────────────────────────
-// Each type gets a distinct glyph with its own colour class so entries are
-// scannable without reading the text.
-function EntryIcon({ entry }) {
-  if (entry.status === 'active' && !isCompleteMsg(entry.msg)) {
-    return <span className="lk-spinner" />
-  }
-  const t = entry.type
-  const s = entry.status
-  if (t === 'write')  return <span className="lk-ei lk-ei--write">✏</span>
-  if (t === 'done')   return <span className="lk-ei lk-ei--done">✓</span>
-  if (t === 'error' || s === 'error') return <span className="lk-ei lk-ei--error">✗</span>
-  if (t === 'warn'  || s === 'warning') return <span className="lk-ei lk-ei--warn">⚠</span>
-  if (t === 'plan')   return <span className="lk-ei lk-ei--plan">◈</span>
-  if (t === 'agent')  return <span className="lk-ei lk-ei--agent">⚡</span>
-  if (t === 'ci')     return <span className="lk-ei lk-ei--ci">⌥</span>
-  if (t === 'fetch')  return <span className="lk-ei lk-ei--fetch">↓</span>
-  if (t === 'tool')   return <span className="lk-ei lk-ei--tool">●</span>
-  if (s === 'done')   return <span className="lk-ei lk-ei--done">✓</span>
-  if (s === 'skip')   return <span className="lk-ei lk-ei--skip">–</span>
-  return <span className="lk-ei lk-ei--default">·</span>
-}
-
-function isCompleteMsg(msg = '') { return /agent complete/i.test(msg) }
-
-// ─── Tool entry body ──────────────────────────────────────────────────────────
-// Parses `● verb: args — detail` from tool messages into structured markup.
-function ToolEntryBody({ msg, detail }) {
-  // Strip leading bullet
-  const clean = String(msg || '').replace(/^[●•·]\s*/, '')
-
-  // Split on first colon to separate verb from args (only if verb is short)
-  const colonIdx = clean.indexOf(':')
-  if (colonIdx > 0 && colonIdx <= 18) {
-    const verb = clean.slice(0, colonIdx).trim()
-    const rest = clean.slice(colonIdx + 1).trim()
-
-    // Further split rest on ' — ' to separate path from description
-    const dashIdx = rest.indexOf(' — ')
-    const path    = dashIdx > 0 ? rest.slice(0, dashIdx).trim() : rest
-    const desc    = dashIdx > 0 ? rest.slice(dashIdx + 3).trim() : ''
-
-    return (
-      <span className="lk-activity-body">
-        <span className="lk-tool-verb">{verb}</span>
-        {path && <span className="lk-tool-path">{path}</span>}
-        {desc && <span className="lk-tool-desc">{desc}</span>}
-        {detail && <span className="lk-activity-detail">{detail.slice(0, 100)}</span>}
-      </span>
-    )
-  }
-
-  // Fallback: render as plain message
-  return (
-    <span className="lk-activity-body">
-      <span className="lk-activity-msg">{renderInlineMarkdown(clean)}</span>
-      {detail && <span className="lk-activity-detail">{detail.slice(0, 100)}</span>}
-    </span>
-  )
-}
-
-// ─── Phase section divider ────────────────────────────────────────────────────
-function PhaseDivider({ phase }) {
-  const LABELS = {
-    scoping:    'Reading codebase',
-    planning:   'Planning',
-    coding:     'Writing code',
-    reviewing:  'Reviewing',
-    validating: 'Running tests',
-    finalizing: 'Finalising',
-  }
-  return (
-    <div className="lk-phase-divider" aria-hidden>
-      <span className="lk-phase-divider-label">{LABELS[phase] || phase}</span>
-    </div>
-  )
-}
-
-// ─── Phase inference from entry (presentation-only heuristic) ─────────────────
-// We classify each entry so we can insert dividers when the phase changes.
-// This is purely visual — it never alters the entry data.
-function inferEntryPhase(entry) {
-  const msg = (entry.msg || '').toLowerCase()
-  if (entry.type === 'plan')   return 'planning'
-  if (entry.type === 'write')  return 'coding'
-  if (entry.type === 'fetch')  return 'scoping'
-  if (entry.type === 'ci')     return 'validating'
-  if (entry.type === 'tool') {
-    if (/\b(read|list|grep|search|analyz|scan|fetch|index)\b/.test(msg)) return 'scoping'
-    if (/\b(write|edit|creat|delet|revert)\b/.test(msg))                 return 'coding'
-    if (/\b(lint|test|run|npm|build|check)\b/.test(msg))                 return 'validating'
-    if (/\b(pull.request|pr|push|commit|branch)\b/.test(msg))            return 'finalizing'
-    if (/\b(todo|plan|task)\b/.test(msg))                                 return 'planning'
-  }
-  return null
-}
-
-// ─── Single activity entry ────────────────────────────────────────────────────
-const ActivityEntry = memo(function ActivityEntry({ entry }) {
-  const complete  = isCompleteMsg(entry.msg)
-  const isToolRow = entry.type === 'tool' || entry.type === 'write' || entry.type === 'fetch'
-  const isNarrate = entry.type === 'agent' && !complete
-
-  const cls = [
-    'lk-activity-line',
-    `lk-activity-line--${entry.status}`,
-    `lk-activity-line--${entry.type}`,
-    complete  ? 'lk-activity-line--agent-complete' : '',
-    isNarrate ? 'lk-activity-line--narration' : '',
-  ].filter(Boolean).join(' ')
-
-  return (
-    <div className={cls}>
-      <span className="lk-activity-icon">
-        <EntryIcon entry={entry} />
-      </span>
-
-      {isToolRow ? (
-        <ToolEntryBody msg={entry.msg} detail={entry.detail} />
-      ) : (
-        <span className="lk-activity-body">
-          <span className="lk-activity-msg">{renderInlineMarkdown(entry.msg)}</span>
-          {entry.detail && <span className="lk-activity-detail">{entry.detail}</span>}
-        </span>
-      )}
-    </div>
-  )
-})
-
 // ─── Main component ───────────────────────────────────────────────────────────
 const BluswanActivityFeed = memo(function BluswanActivityFeed({
   activityLog,
@@ -182,29 +52,29 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   agentIntent: _agentIntent,
   agentTask: _agentTask,
   agentPhase: _agentPhase,
-  // Process state — rendered inline as stream entries
   filePlan = [],
   isAmplifying = false,
   amplifierDecisions = [],
   isPlanning = false,
   remediationStatus = null,
-  // Plan approval
   planApproval = null,
   onApprovePlan,
   onCancelPlan,
 }) {
-  // Build the render list: entries interleaved with phase dividers
-  const renderedItems = []
-  let lastPhase = null
+  const streamBoxRef = useRef(null)
 
-  for (const entry of activityLog) {
-    const phase = inferEntryPhase(entry)
-    if (phase && phase !== lastPhase && !isCompleteMsg(entry.msg)) {
-      renderedItems.push({ _divider: true, phase, id: `div-${entry.id}` })
-      lastPhase = phase
-    }
-    renderedItems.push(entry)
-  }
+  // Auto-scroll to bottom on every render so new lines stay visible
+  useEffect(() => {
+    const el = streamBoxRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  })
+
+  const isDeveloping =
+    activityLog.length > 0 ||
+    amplifierDecisions.length > 0 ||
+    filePlan.length > 0 ||
+    isAmplifying || isPlanning || isGenerating || isPushing ||
+    remediationStatus || (isAgentRunning && agentStreamText)
 
   return (
     <div className="lk-output lk-activity-output" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -226,97 +96,83 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
           </div>
         )}
 
-        {/* ── Activity log entries ───────────────────────────────────────── */}
-        {renderedItems.map(item =>
-          item._divider
-            ? <PhaseDivider key={item.id} phase={item.phase} />
-            : <ActivityEntry key={item.id} entry={item} />
+        {/* ── Single developing stream box ───────────────────────────────── */}
+        {isDeveloping && (
+          <div className="lk-developing-box" ref={streamBoxRef}>
+
+            {/* Activity log — all entries as plain text lines */}
+            {activityLog.map(entry => {
+              const text = [entry.msg, entry.detail].filter(Boolean).join(' — ')
+              const done = entry.status === 'done' || entry.status === 'skip'
+              const active = entry.status === 'active'
+              return (
+                <div
+                  key={entry.id}
+                  className={[
+                    'lk-stream-line',
+                    done   ? 'lk-stream-line--dim'  : '',
+                    active ? 'lk-stream-line--live' : '',
+                  ].filter(Boolean).join(' ')}
+                >
+                  {text}
+                </div>
+              )
+            })}
+
+            {/* Amplifier decisions */}
+            {amplifierDecisions.map((d, i) => (
+              <div key={`amp-${i}`} className="lk-stream-line">{d}</div>
+            ))}
+
+            {/* Status lines — no spinners, just text */}
+            {isAmplifying    && <div className="lk-stream-line lk-stream-line--live">Amplifying intent</div>}
+            {isPlanning      && <div className="lk-stream-line lk-stream-line--live">Planning across repo</div>}
+            {remediationStatus && <div className="lk-stream-line lk-stream-line--live">{remediationStatus}</div>}
+            {isGenerating    && <div className="lk-stream-line lk-stream-line--live">Generating</div>}
+            {isPushing       && <div className="lk-stream-line lk-stream-line--live">Pushing</div>}
+
+            {/* File plan — each file as a text line */}
+            {filePlan.map(entry => {
+              const action = entry.action === 'modify' ? 'editing' : 'writing'
+              const done   = entry.status === 'done'
+              const err    = entry.status === 'error'
+              const live   = !done && !err
+              return (
+                <div
+                  key={`fp-${entry.path}`}
+                  className={[
+                    'lk-stream-line',
+                    done ? 'lk-stream-line--dim'   : '',
+                    err  ? 'lk-stream-line--error' : '',
+                    live ? 'lk-stream-line--live'  : '',
+                  ].filter(Boolean).join(' ')}
+                >
+                  {action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
+                </div>
+              )
+            })}
+
+            {/* Live stream text — appends at bottom with blinking cursor */}
+            {isAgentRunning && agentStreamText && (
+              <div className="lk-stream-line lk-stream-line--current">
+                {renderInlineMarkdown(agentStreamText)}
+                <span className="lk-stream-cursor">▋</span>
+              </div>
+            )}
+
+          </div>
         )}
 
-        {/* ── Single developing box ─────────────────────────────────────── */}
-        {(isAmplifying || amplifierDecisions.length > 0 || isPlanning || filePlan.length > 0 ||
-          remediationStatus || planApproval || (isAgentRunning && agentStreamText) ||
-          isGenerating || isPushing) && (
-          <div className="lk-developing-box">
-
-            {isAmplifying && (
-              <div className="lk-activity-line lk-activity-line--active">
-                <span className="lk-activity-icon"><span className="lk-spinner" /></span>
-                <span className="lk-activity-body"><span className="lk-activity-msg">Amplifying intent…</span></span>
-              </div>
-            )}
-
-            {amplifierDecisions.map((d, i) => (
-              <div key={i} className="lk-activity-line lk-activity-line--done lk-activity-line--plan">
-                <span className="lk-activity-icon"><span className="lk-ei lk-ei--plan">◈</span></span>
-                <span className="lk-activity-body"><span className="lk-activity-msg">{d}</span></span>
-              </div>
-            ))}
-
-            {isPlanning && (
-              <div className="lk-activity-line lk-activity-line--active">
-                <span className="lk-activity-icon"><span className="lk-spinner" /></span>
-                <span className="lk-activity-body"><span className="lk-activity-msg">Planning across repo…</span></span>
-              </div>
-            )}
-
-            {filePlan.map(entry => (
-              <div key={entry.path} className={`lk-activity-line lk-activity-line--${entry.status === 'done' ? 'done' : entry.status === 'error' ? 'error' : 'active'} lk-activity-line--tool`}>
-                <span className="lk-activity-icon">
-                  {entry.status === 'done'
-                    ? <span className="lk-ei lk-ei--done">✓</span>
-                    : entry.status === 'error'
-                    ? <span className="lk-ei lk-ei--error">✗</span>
-                    : (entry.status === 'generating' || entry.status === 'remediating')
-                    ? <span className="lk-spinner" />
-                    : <span className="lk-ei lk-ei--default">·</span>}
-                </span>
-                <ToolEntryBody
-                  msg={`${entry.action === 'modify' ? 'edit' : 'write'}: ${entry.path}`}
-                  detail={entry.error || null}
-                />
-              </div>
-            ))}
-
-            {remediationStatus && (
-              <div className="lk-activity-line lk-activity-line--active">
-                <span className="lk-activity-icon"><span className="lk-spinner" /></span>
-                <span className="lk-activity-body"><span className="lk-activity-msg">{remediationStatus}</span></span>
-              </div>
-            )}
-
-            {planApproval && (
-              <div className="lk-stream-plan-approval">
-                <div className="lk-stream-plan-text">
-                  <span className="lk-ei lk-ei--plan" style={{ marginRight: '6px' }}>◈</span>
-                  Plan ready{planApproval.summary ? ` — ${planApproval.summary.slice(0, 160)}` : ''}
-                </div>
-                <div className="lk-stream-plan-actions">
-                  <button className="lk-btn lk-btn--small lk-btn--success" onClick={onApprovePlan}>▶ Execute</button>
-                  <button className="lk-btn lk-btn--small" onClick={onCancelPlan}>✗ Cancel</button>
-                </div>
-              </div>
-            )}
-
-            {isAgentRunning && agentStreamText && (
-              <div className="lk-stream-panel lk-stream-panel--inbox">
-                <span className="lk-stream-panel-icon">⚡</span>
-                <span className="lk-stream-panel-text">
-                  {renderInlineMarkdown(agentStreamText)}
-                  <span className="lk-stream-cursor">|</span>
-                </span>
-              </div>
-            )}
-
-            {(isGenerating || isPushing) && (
-              <div className="lk-activity-line lk-activity-line--active">
-                <span className="lk-activity-icon"><span className="lk-spinner" /></span>
-                <span className="lk-activity-body">
-                  <span className="lk-activity-msg">{isGenerating ? 'Generating…' : 'Pushing…'}</span>
-                </span>
-              </div>
-            )}
-
+        {/* ── Plan approval — outside stream box, needs button interaction ── */}
+        {planApproval && (
+          <div className="lk-stream-plan-approval">
+            <div className="lk-stream-plan-text">
+              Plan ready{planApproval.summary ? ` — ${planApproval.summary.slice(0, 160)}` : ''}
+            </div>
+            <div className="lk-stream-plan-actions">
+              <button className="lk-btn lk-btn--small lk-btn--success" onClick={onApprovePlan}>▶ Execute</button>
+              <button className="lk-btn lk-btn--small" onClick={onCancelPlan}>✗ Cancel</button>
+            </div>
           </div>
         )}
 
