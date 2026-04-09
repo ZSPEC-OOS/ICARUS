@@ -1752,11 +1752,7 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
               <img
                 src="/blkswan-header.jpg"
                 alt="BLKSWAN"
-                className="lk-blkswan-logo lk-brand-sub"
-                style={{
-                  transform: `translate(${titleOffsetX}px, ${titleOffsetY}px)`,
-                  height: `${Math.max(22, titleSize * 2.2)}px`,
-                }}
+                className="lk-blkswan-topbar-logo"
               />
 
               {turnCount > 0 && (
