@@ -91,14 +91,24 @@ export function getCurrentUser() {
   return _auth?.currentUser ?? null
 }
 
-// Sign in with Google — uses redirect (works reliably on iPhone/Safari).
-// After Google redirects back to the app, onAuthStateChange fires with the
-// authenticated user automatically; no further action needed.
+// Sign in with Google.
+// Uses signInWithPopup (triggered by user gesture — works on iPhone/Safari).
+// Falls back to signInWithRedirect if the popup is blocked.
 export async function signInWithGoogle() {
   const auth = await getAuth()
-  const { GoogleAuthProvider, signInWithRedirect } = await import('firebase/auth')
+  const { GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await import('firebase/auth')
   const provider = new GoogleAuthProvider()
-  await signInWithRedirect(auth, provider)
+  try {
+    const cred = await signInWithPopup(auth, provider)
+    return cred.user
+  } catch (err) {
+    // popup-blocked: fall back to redirect
+    if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/popup-closed-by-user') {
+      await signInWithRedirect(auth, provider)
+      return null // page will reload after redirect
+    }
+    throw err
+  }
 }
 
 // Sign in with email + password.  Throws a Firebase AuthError on failure.
