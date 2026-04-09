@@ -6091,27 +6091,39 @@ kbd {
   font-style: italic;
 }
 
-/* ── Single developing box ───────────────────────────────────────────────────── */
+/* ── Single developing stream box ───────────────────────────────────────────── */
 .lk-developing-box {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  margin: 4px 0;
-  padding: 6px 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(116, 192, 252, 0.15);
+  height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 16px;
+  margin: 4px 0 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(116, 192, 252, 0.10);
   background: rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  scroll-behavior: smooth;
+  scrollbar-width: none;
 }
+.lk-developing-box::-webkit-scrollbar { display: none; }
 
-/* Suppress inner panel background/border when nested inside developing box */
-.lk-developing-box .lk-stream-panel--inbox {
-  border-left: none;
-  background: transparent;
-  padding-left: 6px;
+.lk-stream-line {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11.5px;
+  line-height: 1.8;
+  color: rgba(176, 186, 208, 0.55);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
+.lk-stream-line--dim   { color: rgba(176, 186, 208, 0.22); }
+.lk-stream-line--live  { color: rgba(176, 186, 208, 0.88); }
+.lk-stream-line--current {
+  color: var(--lk-text);
+  font-size: 12px;
+}
+.lk-stream-line--error { color: var(--lk-danger); opacity: 0.75; }
 
 /* Live stream text panel */
 .lk-stream-panel {
