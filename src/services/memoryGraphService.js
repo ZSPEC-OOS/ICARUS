@@ -1,6 +1,8 @@
+import { MEMORY_VECTOR_DIM, MEMORY_MAX_INGEST_CHARS } from '../config/constants.js'
+
 const STORAGE_KEY = 'icarus:memory-graph:v1'
-const VECTOR_DIM = 128
-const MAX_FILE_INGEST_CHARS = 4000
+const VECTOR_DIM = MEMORY_VECTOR_DIM
+const MAX_FILE_INGEST_CHARS = MEMORY_MAX_INGEST_CHARS
 
 function nowIso() {
   return new Date().toISOString()
@@ -100,8 +102,8 @@ class MemoryGraphService {
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
-      } catch {
-        // noop
+      } catch (e) {
+        console.warn('[MemoryGraph] failed to persist graph to localStorage (quota exceeded?):', e.message)
       }
     }
     this._persistToDiskBestEffort(snapshot)
