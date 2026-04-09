@@ -1708,11 +1708,14 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   return (
     <div
       className={`lk-root${theme !== 'graphite' ? ` lk-theme-${theme}` : ''}`}
-      style={{ filter: ftFilter }}
+      style={{
+        filter: ftFilter,
+        ...(theme === 'blkswan' && conversation.length > 0 ? { background: '#0b2c59' } : {}),
+      }}
       onKeyDown={handleKeyDown}
     >
-      {/* ── Aurora WebGL background — BLKSWAN theme only ─────────────────── */}
-      {theme === 'blkswan' && (
+      {/* ── Aurora WebGL background — BLKSWAN theme only, hidden after first message ── */}
+      {theme === 'blkswan' && conversation.length === 0 && (
         <Aurora
           colorStops={['#071630', '#3b8ef0', '#112252']}
           amplitude={1.0}
