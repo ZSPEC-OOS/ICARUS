@@ -17,11 +17,19 @@ export default function LoginScreen({ onUnlock }) {
     setLoading(true)
     try {
       await signInWithGoogle()
-      // signInWithGoogle does a full-page redirect to Google.
-      // When it returns, onAuthStateChange in App.jsx fires automatically
-      // and loads all cloud settings (models, API keys) from Firestore.
+      // If popup succeeded, onAuthStateChange fires → models load automatically.
+      // If redirect fallback was used, the page reloads → no further action needed.
     } catch (err) {
-      setError('Google sign-in failed. Try again.')
+      const code = err?.code || ''
+      const msg =
+        code === 'auth/operation-not-allowed'
+          ? 'Google sign-in is not enabled in Firebase — enable it under Authentication → Sign-in methods.'
+          : code === 'auth/unauthorized-domain'
+          ? 'This domain is not authorised in Firebase — add it under Authentication → Authorized domains.'
+          : code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user'
+          ? 'Sign-in cancelled.'
+          : `Google sign-in failed (${code || err?.message || 'unknown error'})`
+      setError(msg)
       setLoading(false)
     }
   }
