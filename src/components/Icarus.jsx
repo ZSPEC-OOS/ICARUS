@@ -13,6 +13,7 @@ import {
   dispatchWorkflow,
   getWorkflowRuns,
   getWorkflowRun,
+  listUserRepos,
 } from '../services/githubService'
 import { estimateCost, formatCost } from '../utils/tokenEstimator'
 import { shadowContext } from '../services/shadowContext'
@@ -283,6 +284,13 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   const [attachedFiles, setAttachedFiles] = useState([])
   const [lastBranchName, setLastBranchName] = useState('')
   const fileInputRef = useRef(null)
+
+  // ── Repo picker ────────────────────────────────────────────────────────
+  const [repoPickerOpen,    setRepoPickerOpen]    = useState(false)
+  const [repoPickerSearch,  setRepoPickerSearch]  = useState('')
+  const [userRepos,         setUserRepos]         = useState([])
+  const [repoPickerLoading, setRepoPickerLoading] = useState(false)
+  const repoPickerRef = useRef(null)
 
   // ── UI state ───────────────────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false)
@@ -1150,6 +1158,39 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Repo picker — fetch repos on first open, close on outside click
+  const openRepoPicker = useCallback(async () => {
+    setRepoPickerOpen(true)
+    setRepoPickerSearch('')
+    if (userRepos.length > 0 || !githubToken) return
+    setRepoPickerLoading(true)
+    try {
+      const repos = await listUserRepos(githubToken)
+      setUserRepos(repos)
+    } catch { /* silently ignore */ }
+    finally { setRepoPickerLoading(false) }
+  }, [githubToken, userRepos.length])
+
+  useEffect(() => {
+    if (!repoPickerOpen) return
+    const handler = e => {
+      if (repoPickerRef.current && !repoPickerRef.current.contains(e.target)) {
+        setRepoPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [repoPickerOpen])
+
+  const handlePickRepo = useCallback(async (repo) => {
+    setRepoOwner(repo.owner.login)
+    setRepoName(repo.name)
+    setBaseBranch(repo.default_branch || 'main')
+    setRepoPickerOpen(false)
+    setLastBranchName('')
+  }, [])
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Reindex shadow context (clears cache and re-crawls the repo)
   const handleReindex = useCallback(async () => {
     if (!hasGithub) return
@@ -1779,6 +1820,65 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
                 className="lk-blkswan-topbar-logo"
               />
 
+              {/* ── Repo picker ───────────────────────────────────────────── */}
+              {githubToken && (
+                <div className="lk-repo-picker-wrap" ref={repoPickerRef}>
+                  <button
+                    className="lk-repo-picker-btn"
+                    onClick={openRepoPicker}
+                    title="Switch repository"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{flexShrink:0,opacity:0.7}}>
+                      <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8V1.5Z"/>
+                    </svg>
+                    <span className="lk-repo-picker-label">
+                      {repoOwner && repoName ? `${repoOwner}/${repoName}` : 'Select repo…'}
+                    </span>
+                    <svg width="9" height="9" viewBox="0 0 9 6" fill="currentColor" style={{flexShrink:0,opacity:0.5}}>
+                      <path d="M0 0l4.5 6L9 0z"/>
+                    </svg>
+                  </button>
+
+                  {repoPickerOpen && (
+                    <div className="lk-repo-picker-dropdown">
+                      <div className="lk-repo-picker-search-wrap">
+                        <input
+                          className="lk-repo-picker-search"
+                          placeholder="Search repos…"
+                          value={repoPickerSearch}
+                          onChange={e => setRepoPickerSearch(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="lk-repo-picker-list">
+                        {repoPickerLoading && (
+                          <div className="lk-repo-picker-status">Loading repositories…</div>
+                        )}
+                        {!repoPickerLoading && userRepos.length === 0 && (
+                          <div className="lk-repo-picker-status">No repositories found.</div>
+                        )}
+                        {!repoPickerLoading && userRepos
+                          .filter(r => {
+                            const q = repoPickerSearch.toLowerCase()
+                            return !q || r.full_name.toLowerCase().includes(q)
+                          })
+                          .map(r => (
+                            <button
+                              key={r.id}
+                              className={`lk-repo-picker-item${repoOwner === r.owner.login && repoName === r.name ? ' lk-repo-picker-item--active' : ''}`}
+                              onClick={() => handlePickRepo(r)}
+                            >
+                              <span className="lk-repo-picker-item-name">{r.full_name}</span>
+                              <span className="lk-repo-picker-item-branch">{r.default_branch}</span>
+                            </button>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {turnCount > 0 && (
                 <div className="lk-turn-badge">
                   {turnCount} {turnCount === 1 ? 'turn' : 'turns'}
@@ -2134,6 +2234,9 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
             ══════════════════════════════════════════════════════════════════ */}
         <div className="lk-input-bar">
 
+          {/* Centered content wrapper */}
+          <div className="lk-input-inner">
+
           {/* Status messages above the card */}
           {error && <div className="lk-error" role="alert">{error}</div>}
           {isPushing && pushStep && (
@@ -2288,6 +2391,8 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
             </div>{/* end lk-input-toolbar */}
 
           </div>{/* end lk-input-card */}
+
+          </div>{/* end lk-input-inner */}
 
         </div>{/* end lk-input-bar */}
         </>

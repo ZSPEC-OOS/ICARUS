@@ -31,6 +31,19 @@ export async function getRepo(token, owner, repo) {
   return ghFetch(token, `/repos/${owner}/${repo}`)
 }
 
+// List all repos accessible to the authenticated user, sorted by recent push.
+// Fetches up to maxPages*100 repos (default: 300).
+export async function listUserRepos(token, maxPages = 3) {
+  const all = []
+  for (let page = 1; page <= maxPages; page++) {
+    const batch = await ghFetch(token, `/user/repos?sort=pushed&per_page=100&page=${page}&type=all`)
+    if (!Array.isArray(batch) || batch.length === 0) break
+    all.push(...batch)
+    if (batch.length < 100) break
+  }
+  return all
+}
+
 export async function getBranch(token, owner, repo, branch) {
   return ghFetch(token, `/repos/${owner}/${repo}/branches/${encodeURIComponent(branch)}`)
 }
