@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { clearApiKeys, saveModels, MODEL_PRESETS, testModelConnection, testSearchConnection, loadSearchKey, saveSearchKey } from '../../services/aiService.js'
+import { clearApiKeys, saveModels, testModelConnection, testSearchConnection, loadSearchKey, saveSearchKey } from '../../services/aiService.js'
 import { getRepo } from '../../services/githubService.js'
 import { parseGitHubUrl } from '../../utils/codeUtils.js'
 import {
@@ -92,8 +92,9 @@ const IcarusSettings = memo(function IcarusSettings({
   }
 
   // ── Model API key helper ────────────────────────────────────────────────────
-  const [addModelOpen,   setAddModelOpen]   = useState(false)
-  const [newModelName,   setNewModelName]   = useState('')
+  const [addModelOpen,          setAddModelOpen]          = useState(false)
+  const [newModelName,          setNewModelName]          = useState('')
+  const [newModelUseCompTokens, setNewModelUseCompTokens] = useState(false)
   const [searchTestResult, setSearchTestResult] = useState(null)  // { testing, ok, error, ms }
 
   // ── Agent capability toggles ─────────────────────────────────────────────
@@ -118,23 +119,17 @@ const IcarusSettings = memo(function IcarusSettings({
     saveModels(updated)
   }
 
-  function addPreset(preset) {
-    const already = (models || []).some(m => m.id === preset.id)
-    if (already) { setAddModelOpen(false); return }
-    const updated = [...(models || []), { ...preset }]
-    setModels(updated)
-    saveModels(updated)
-    setAddModelOpen(false)
-  }
-
   function addCustomModel() {
     const name = newModelName.trim()
     if (!name) return
     const id = `custom-${Date.now()}`
-    const updated = [...(models || []), { id, name, apiKey: '', baseUrl: '', modelId: '' }]
+    const model = { id, name, apiKey: '', baseUrl: '', modelId: '' }
+    if (newModelUseCompTokens) model.useMaxCompletionTokens = true
+    const updated = [...(models || []), model]
     setModels(updated)
     saveModels(updated)
     setNewModelName('')
+    setNewModelUseCompTokens(false)
     setAddModelOpen(false)
   }
 
@@ -260,17 +255,18 @@ const IcarusSettings = memo(function IcarusSettings({
                   Add
                 </button>
               </div>
-              <div className="lk-settings-add-model-hd" style={{ marginTop: '0.75rem' }}>Or pick a preset</div>
-              {MODEL_PRESETS
-                .filter(p => !(models || []).some(m => m.id === p.id))
-                .map(p => (
-                  <button key={p.id} className="lk-settings-preset-btn" onClick={() => addPreset(p)}>
-                    <span className="lk-settings-preset-name">{p.name}</span>
-                    {p.baseUrl && <span className="lk-hint">{p.baseUrl}</span>}
-                  </button>
-                ))
-              }
-              <button className="lk-btn lk-btn--small" onClick={() => { setAddModelOpen(false); setNewModelName('') }}>Cancel</button>
+              <label className="lk-toggle" style={{ marginTop: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={newModelUseCompTokens}
+                  onChange={e => setNewModelUseCompTokens(e.target.checked)}
+                />
+                <span>
+                  Use <code>max_completion_tokens</code> instead of <code>max_tokens</code>
+                  <span className="lk-hint-inline"> (required for OpenAI o-series: o1, o3, o4-mini)</span>
+                </span>
+              </label>
+              <button className="lk-btn lk-btn--small" style={{ marginTop: '0.5rem' }} onClick={() => { setAddModelOpen(false); setNewModelName(''); setNewModelUseCompTokens(false) }}>Cancel</button>
             </div>
           ) : (
             <button className="lk-btn lk-btn--small lk-settings-add-btn" onClick={() => setAddModelOpen(true)}>
