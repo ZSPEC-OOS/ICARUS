@@ -1707,11 +1707,8 @@ export default function Icarus({ onClose, models, setModels, selectedModelId, on
 
   return (
     <div
-      className={`lk-root${theme !== 'graphite' ? ` lk-theme-${theme}` : ''}`}
-      style={{
-        filter: ftFilter,
-        ...(theme === 'blkswan' && conversation.length > 0 ? { background: '#050d1c' } : {}),
-      }}
+      className={`lk-root${theme !== 'graphite' ? ` lk-theme-${theme}` : ''}${theme === 'blkswan' && conversation.length > 0 ? ' lk-root--chatting' : ''}`}
+      style={{ filter: ftFilter }}
       onKeyDown={handleKeyDown}
     >
       {/* ── Aurora WebGL background — BLKSWAN theme only, hidden after first message ── */}

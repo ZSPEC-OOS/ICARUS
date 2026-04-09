@@ -337,6 +337,11 @@ html, body, #root {
   background: #030b18;
 }
 
+/* ── BLKSWAN: after first message — switch to surface colour so text is legible */
+.lk-root.lk-theme-blkswan.lk-root--chatting {
+  background: #070f1e;
+}
+
 /* ── BLKSWAN: topbar stays dark-navy opaque over background */
 .lk-root.lk-theme-blkswan .lk-topbar {
   background: rgba(4, 10, 24, 0.92);
