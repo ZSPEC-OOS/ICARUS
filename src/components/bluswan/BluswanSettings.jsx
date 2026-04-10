@@ -583,48 +583,6 @@ const BluswanSettings = memo(function BluswanSettings({
         </div>
       </div>
 
-      {/* Security */}
-      <div className="lk-security-section">
-        <div className="lk-security-label">Security</div>
-        <div className="lk-security-body">
-          <span className="lk-security-note">
-            API keys and tokens are encrypted with your account ID and saved to your Firestore account —
-            restored automatically when you sign in. Local session copies are cleared when the tab closes.
-          </span>
-          <div className="lk-permission-mode">
-            <span className="lk-security-note">Push permission mode:</span>
-            <div className="lk-permission-btns">
-              {[
-                { id: 'auto',   label: 'Auto',   title: 'Push immediately — no confirmation dialogs' },
-                { id: 'ask',    label: 'Ask',    title: 'Confirm before every GitHub write (default)' },
-                { id: 'manual', label: 'Manual', title: 'Confirm with extra context before each write' },
-              ].map(m => (
-                <button
-                  key={m.id}
-                  className={`lk-btn lk-btn--small${permissionMode === m.id ? ' lk-btn--active' : ''}`}
-                  title={m.title}
-                  onClick={() => {
-                    setPermissionMode(m.id)
-                    try { localStorage.setItem('bluswan:permMode', m.id) } catch {}
-                  }}
-                >{m.label}</button>
-              ))}
-            </div>
-          </div>
-          <button
-            className="lk-btn lk-btn--clear-creds"
-            onClick={() => {
-              clearApiKeys()
-              setGithubToken('')
-              try { sessionStorage.removeItem(GHTOKEN_SS_KEY) } catch {}
-            }}
-            title="Remove all stored credentials from this session"
-          >
-            ⊘ Clear all credentials
-          </button>
-        </div>
-      </div>
-
       {/* BLUSWAN.md editor */}
       <div className="lk-security-section">
         <div className="lk-security-label">Project Instructions (BLUSWAN.md)</div>
