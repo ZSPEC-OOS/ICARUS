@@ -187,18 +187,13 @@ const BluswanSettings = memo(function BluswanSettings({
 
     setSaveErrors(e => ({ ...e, [m.id]: null }))
     setSavingModels(s => ({ ...s, [m.id]: true }))
-    try {
-      const uid = getCurrentUser()?.uid
-      if (!uid) throw new Error('Not authenticated — sign in to save')
-      await saveModelDoc(uid, m)
-      // Collapse the panel — model is now committed to Firebase
-      setCollapsedModels(c => new Set([...c, m.id]))
-      onModelSaved?.(m.id)
-    } catch (err) {
-      setSaveErrors(e => ({ ...e, [m.id]: err.message }))
-    } finally {
-      setSavingModels(s => ({ ...s, [m.id]: false }))
-    }
+    // Fire-and-forget Firebase write — saveModelDoc swallows its own errors.
+    // Collapse unconditionally so local state is always committed.
+    const uid = getCurrentUser()?.uid
+    saveModelDoc(uid, m)
+    setCollapsedModels(c => new Set([...c, m.id]))
+    onModelSaved?.(m.id)
+    setSavingModels(s => ({ ...s, [m.id]: false }))
   }
 
   return (

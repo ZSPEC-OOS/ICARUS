@@ -327,17 +327,21 @@ export async function loadUserConversation(uid) {
 
 export async function saveModelDoc(uid, model) {
   if (!uid || !model?.id) return
-  const db = await getFirestore()
-  const { doc, setDoc } = await import('firebase/firestore')
-  const payload = {
-    modelName: model.name    || '',
-    apiKey:    model.apiKey  ? xorCipher(model.apiKey, uid) : '',
-    baseUrl:   model.baseUrl || '',
-    modelId:   model.modelId || '',
-    _ts: Date.now(),
+  try {
+    const db = await getFirestore()
+    const { doc, setDoc } = await import('firebase/firestore')
+    const payload = {
+      modelName: model.name    || '',
+      apiKey:    model.apiKey  ? xorCipher(model.apiKey, uid) : '',
+      baseUrl:   model.baseUrl || '',
+      modelId:   model.modelId || '',
+      _ts: Date.now(),
+    }
+    if (model.useMaxCompletionTokens) payload.useMaxCompletionTokens = true
+    await setDoc(doc(db, 'users', uid, 'models', model.id), payload)
+  } catch (err) {
+    console.warn('[Bluswan] saveModelDoc failed:', err.message)
   }
-  if (model.useMaxCompletionTokens) payload.useMaxCompletionTokens = true
-  await setDoc(doc(db, 'users', uid, 'models', model.id), payload)
 }
 
 export async function loadModelDocs(uid) {
