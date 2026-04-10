@@ -230,6 +230,63 @@ export async function rerunWorkflow(token, owner, repo, runId) {
   } catch { return null }
 }
 
+// ── GitHub Device OAuth Flow ─────────────────────────────────────────────────
+// Authenticates a browser-side SPA with GitHub without exposing any client secret.
+// Requires a GitHub OAuth App (only the public client_id is used — no secret).
+//
+// Setup: github.com → Settings → Developer settings → OAuth Apps → New OAuth App
+//   • Application name: BLUSWAN
+//   • Homepage URL: your app URL
+//   • Authorization callback URL: (any value — device flow doesn't redirect)
+// Copy the Client ID and paste it into BLUSWAN Settings → GitHub Client ID.
+//
+// Scopes requested: repo (full repo access) + read:user (display username)
+
+export async function initiateDeviceFlow(clientId) {
+  const res = await fetch('https://github.com/login/device/code', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: clientId, scope: 'repo read:user' }),
+  })
+  if (!res.ok) throw new Error(`GitHub returned ${res.status}`)
+  const data = await res.json()
+  if (data.error) throw new Error(data.error_description || data.error)
+  return data // { device_code, user_code, verification_uri, expires_in, interval }
+}
+
+// Polls until the user authorizes at github.com/login/device.
+// Resolves with the access_token string; rejects on denial or expiry.
+export function pollDeviceToken(clientId, deviceCode, intervalSec = 5) {
+  return new Promise((resolve, reject) => {
+    let delay = Math.max(intervalSec, 5) * 1000
+    const poll = async () => {
+      try {
+        const res = await fetch('https://github.com/login/oauth/access_token', {
+          method: 'POST',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: clientId,
+            device_code: deviceCode,
+            grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+          }),
+        })
+        const data = await res.json()
+        if (data.access_token)              { resolve(data.access_token); return }
+        if (data.error === 'access_denied') { reject(new Error('Access denied')); return }
+        if (data.error === 'expired_token') { reject(new Error('Code expired — try again')); return }
+        if (data.error === 'slow_down')     { delay += 5000 }
+        // 'authorization_pending' — keep waiting
+        setTimeout(poll, delay)
+      } catch (err) { reject(err) }
+    }
+    setTimeout(poll, delay)
+  })
+}
+
+export async function getAuthenticatedUser(token) {
+  return ghFetch(token, '/user')
+}
+
 // Generate a branch name: bluswan/{timestamp}-{slug}-{shortId}
 export function generateBranchName(prompt) {
   const ts = Date.now()

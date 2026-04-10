@@ -6463,3 +6463,96 @@ kbd {
 /* Generating state label */
 .lk-generating { display: flex; align-items: center; gap: 8px; }
 .lk-generating-label { color: var(--lk-text-muted); font-size: 12px; }
+
+/* ── GitHub OAuth Connect UI ──────────────────────────────────────────────── */
+.lk-gh-oauth-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.lk-gh-oauth-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--lk-text-2);
+  margin-bottom: 0.1rem;
+}
+.lk-gh-divider {
+  text-align: center;
+  font-size: 10px;
+  color: var(--lk-text-muted);
+  margin: 0.5rem 0;
+  opacity: 0.6;
+}
+.lk-gh-flow-status {
+  font-size: 11px;
+  color: var(--lk-text-muted);
+  padding: 0.25rem 0;
+}
+.lk-gh-flow-pending {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: rgba(77,156,255,0.06);
+  border: 1px solid rgba(77,156,255,0.15);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+.lk-gh-flow-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  color: var(--lk-text-2);
+}
+.lk-gh-flow-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(77,156,255,0.2);
+  font-size: 10px;
+  font-weight: 700;
+  color: #4d9cff;
+  flex-shrink: 0;
+}
+.lk-gh-flow-link {
+  color: #4d9cff;
+  text-decoration: none;
+  font-weight: 600;
+}
+.lk-gh-flow-link:hover { text-decoration: underline; }
+.lk-gh-flow-code {
+  display: inline-block;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #4d9cff;
+  background: rgba(77,156,255,0.12);
+  border: 1px solid rgba(77,156,255,0.3);
+  border-radius: 6px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  margin: 0 0.25rem;
+}
+.lk-gh-flow-code:hover { background: rgba(77,156,255,0.2); }
+.lk-gh-flow-waiting {
+  font-size: 11px;
+  color: var(--lk-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+@keyframes lk-spin { to { transform: rotate(360deg); } }
+.lk-gh-flow-spinner {
+  display: inline-block;
+  animation: lk-spin 1.2s linear infinite;
+}
+.lk-gh-connected {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}

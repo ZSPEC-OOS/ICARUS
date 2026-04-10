@@ -171,6 +171,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [repoName,       setRepoName]       = useState(saved.repoName    || '')
   const [baseBranch,     setBaseBranch]     = useState(saved.baseBranch  || 'main')
   const [githubToken,    setGithubToken]    = useState(saved.githubToken || '')
+  const [githubClientId, setGithubClientId] = useState(saved.githubClientId || '')
   const [doCreateBranch, setDoCreateBranch] = useState(saved.doCreateBranch ?? true)
   const [doCreatePR,     setDoCreatePR]     = useState(saved.doCreatePR     ?? true)
   const [dryRun,         setDryRun]         = useState(saved.dryRun         ?? false)
@@ -319,7 +320,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   // ── Persist settings ───────────────────────────────────────────────────
   useEffect(() => {
     const s = {
-      repoOwner, repoName, baseBranch, githubToken,
+      repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking,
       webSearchApiKey,
       permissionMode,
@@ -328,7 +329,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
     saveSettings(s)
     // Notify App.jsx so it can debounce-save to Firestore (cloud persistence)
     onSettingsChangedRef.current?.(s)
-  }, [repoOwner, repoName, baseBranch, githubToken,
+  }, [repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking, webSearchApiKey, permissionMode,
       generateTests, doCreateBranch, doCreatePR, dryRun])
 
@@ -1864,10 +1865,11 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
         {/* ── Drawers (overlay inside lk-main) ─────────────────────────────── */}
         {settingsOpen && (
           <BluswanSettings
-            githubToken={githubToken}     setGithubToken={setGithubToken}
-            repoOwner={repoOwner}         setRepoOwner={setRepoOwner}
-            repoName={repoName}           setRepoName={setRepoName}
-            baseBranch={baseBranch}       setBaseBranch={setBaseBranch}
+            githubToken={githubToken}         setGithubToken={setGithubToken}
+            githubClientId={githubClientId}   setGithubClientId={setGithubClientId}
+            repoOwner={repoOwner}             setRepoOwner={setRepoOwner}
+            repoName={repoName}               setRepoName={setRepoName}
+            baseBranch={baseBranch}           setBaseBranch={setBaseBranch}
             hasGithub={hasGithub}
             onReindex={handleReindex}
             generateTests={generateTests}     setGenerateTests={setGenerateTests}
