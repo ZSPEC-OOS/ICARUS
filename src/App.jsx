@@ -8,6 +8,7 @@ import {
   signInAnonymously,
   loadUserSettings,
   saveUserSettings,
+  loadModelDocs,
 } from './services/firebaseService'
 
 // Populate localStorage + sessionStorage from cloud settings
@@ -71,6 +72,7 @@ export default function App() {
 
   const [models, setModels] = useState([])
   const [selectedModelId, setSelectedModelId] = useState('')
+  const [fbModelIds, setFbModelIds] = useState([])
 
   // Async key decryption means we can't use loadModels as a synchronous
   // useState initialiser — load once on mount instead.
@@ -115,6 +117,22 @@ export default function App() {
           pendingSettingsRef.current = cloud
         }
 
+        // Load per-model documents — the authoritative cross-device store.
+        // If the models/ collection has documents they override what came from
+        // the settings blob, and their IDs are passed down so the settings UI
+        // can render them in collapsed (already-saved) state.
+        try {
+          const fbModels = await loadModelDocs(user.uid)
+          if (fbModels.length > 0) {
+            await saveModels(fbModels)
+            setModels(fbModels)
+            setSelectedModelId(fbModels[0]?.id || '')
+            setFbModelIds(fbModels.map(m => m.id))
+          }
+        } catch (err) {
+          console.warn('[Bluswan] Could not load model docs:', err.message)
+        }
+
         setAuthUser(user)
         setSettingsReady(true)
       } else {
@@ -153,6 +171,13 @@ export default function App() {
     if (!uid) return
     scheduleCloudSave(uid, { ...pendingSettingsRef.current, models: updated })
   }, [scheduleCloudSave])
+
+  // Called by BluswanSettings after a model is successfully saved to Firebase.
+  // Keeps fbModelIds in sync so the settings drawer remount shows the right
+  // collapsed-state set even after models saved in the current session.
+  const handleModelSaved = useCallback((modelId) => {
+    setFbModelIds(prev => prev.includes(modelId) ? prev : [...prev, modelId])
+  }, [])
 
   const handleLogout = useCallback(async () => {
     // Flush any pending save before signing out
@@ -218,6 +243,8 @@ export default function App() {
         onSettingsChanged={handleSettingsChanged}
         onLogout={handleLogout}
         userEmail={authUser?.email || 'pin-user@local'}
+        savedModelIds={fbModelIds}
+        onModelSaved={handleModelSaved}
       />
     </>
   )

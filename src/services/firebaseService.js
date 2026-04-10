@@ -319,5 +319,44 @@ export async function loadUserConversation(uid) {
   }
 }
 
+// ── Per-model documents ───────────────────────────────────────────────────────
+// Each model is persisted as a separate document under users/{uid}/models/{modelId}.
+// API keys are XOR-encrypted with the user UID (same scheme as saveUserSettings).
+// This collection is the authoritative cross-device store for model configuration;
+// on app load it is read after auth and takes priority over the settings-blob models.
+
+export async function saveModelDoc(uid, model) {
+  if (!uid || !model?.id) return
+  const db = await getFirestore()
+  const { doc, setDoc } = await import('firebase/firestore')
+  const payload = {
+    modelName: model.name    || '',
+    apiKey:    model.apiKey  ? xorCipher(model.apiKey, uid) : '',
+    baseUrl:   model.baseUrl || '',
+    modelId:   model.modelId || '',
+    _ts: Date.now(),
+  }
+  if (model.useMaxCompletionTokens) payload.useMaxCompletionTokens = true
+  await setDoc(doc(db, 'users', uid, 'models', model.id), payload)
+}
+
+export async function loadModelDocs(uid) {
+  if (!uid) return []
+  const db = await getFirestore()
+  const { collection, getDocs } = await import('firebase/firestore')
+  const snap = await getDocs(collection(db, 'users', uid, 'models'))
+  return snap.docs.map(d => {
+    const data = d.data()
+    return {
+      id:      d.id,
+      name:    data.modelName || '',
+      apiKey:  data.apiKey  ? xorDecipher(data.apiKey, uid) : '',
+      baseUrl: data.baseUrl || '',
+      modelId: data.modelId || '',
+      ...(data.useMaxCompletionTokens ? { useMaxCompletionTokens: true } : {}),
+    }
+  })
+}
+
 // ── Auto-init on module load ──────────────────────────────────────────────────
 initFirebaseSync(loadFirebaseConfig())
