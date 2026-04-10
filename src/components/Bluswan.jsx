@@ -171,9 +171,9 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [repoName,       setRepoName]       = useState(saved.repoName    || '')
   const [baseBranch,     setBaseBranch]     = useState(saved.baseBranch  || 'main')
   const [githubToken,    setGithubToken]    = useState(saved.githubToken || '')
-  const [doCreateBranch, setDoCreateBranch] = useState(true)
-  const [doCreatePR,     setDoCreatePR]     = useState(true)
-  const [dryRun,         setDryRun]         = useState(false)
+  const [doCreateBranch, setDoCreateBranch] = useState(saved.doCreateBranch ?? true)
+  const [doCreatePR,     setDoCreatePR]     = useState(saved.doCreatePR     ?? true)
+  const [dryRun,         setDryRun]         = useState(saved.dryRun         ?? false)
 
   // ── Theme + fine-tune ──────────────────────────────────────────────────
   const [theme, setTheme] = useState(saved.theme || 'bluswan')
@@ -207,7 +207,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [refinementPrompt, setRefinementPrompt] = useState('')
 
   // ── Enhancement toggles ────────────────────────────────────────────────
-  const [generateTests,   setGenerateTests]   = useState(false)
+  const [generateTests,   setGenerateTests]   = useState(saved.generateTests ?? false)
   // creativity 0-100: maps to temperature 0.2–1.0 (0 = precise, 100 = creative)
   const [creativity,      setCreativity]      = useState(saved.creativity ?? 50)
   // enableThinking: Anthropic extended thinking (deeper reasoning, slower)
@@ -358,6 +358,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
       creativity, enableThinking,
       webSearchApiKey,
       permissionMode,
+      generateTests, doCreateBranch, doCreatePR, dryRun,
     }
     saveSettings(s)
     // Notify App.jsx so it can debounce-save to Firestore (cloud persistence)
@@ -366,7 +367,8 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
       theme, brightness, contrast, saturation, highlight, shadow,
       headerHeight, titleSize, titleOffsetX, titleOffsetY,
       toggleOffsetX, toggleOffsetY,
-      creativity, enableThinking, webSearchApiKey, permissionMode])
+      creativity, enableThinking, webSearchApiKey, permissionMode,
+      generateTests, doCreateBranch, doCreatePR, dryRun])
 
   // ── Phase 4: start ShadowContext indexing when credentials are ready ────
   useEffect(() => {
