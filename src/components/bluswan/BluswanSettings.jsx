@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useState, useEffect, useRef } from 'react'
 import { clearApiKeys, saveModels, testModelConnection, testSearchConnection, loadSearchKey, saveSearchKey } from '../../services/aiService.js'
 import { getRepo } from '../../services/githubService.js'
 import { parseGitHubUrl } from '../../utils/codeUtils.js'
@@ -105,9 +105,19 @@ const BluswanSettings = memo(function BluswanSettings({
   const [searchTestResult, setSearchTestResult] = useState(null)  // { testing, ok, error, ms }
 
   // ── Web Search collapse / save state ───────────────────────────────────────
-  // Start collapsed when a key is already loaded (restored from Firebase/local).
+  // webSearchApiKey loads asynchronously in the parent (AES-GCM decrypt), so we
+  // can't rely on its initial value alone.  Start from whatever is available now,
+  // then collapse once the first time a key arrives — without re-collapsing if the
+  // user later expands the panel to edit.
   const [wsCollapsed, setWsCollapsed] = useState(() => !!webSearchApiKey)
   const [wsSaving,    setWsSaving]    = useState(false)
+  const wsAutoCollapsedRef = useRef(!!webSearchApiKey)
+  useEffect(() => {
+    if (webSearchApiKey && !wsAutoCollapsedRef.current) {
+      wsAutoCollapsedRef.current = true
+      setWsCollapsed(true)
+    }
+  }, [webSearchApiKey])
 
   // ── Per-model collapse / save state ────────────────────────────────────────
   // Models whose IDs are in this set show only their name (collapsed). They
