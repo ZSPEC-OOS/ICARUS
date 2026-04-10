@@ -6092,27 +6092,88 @@ kbd {
 }
 
 /* ── Single developing stream box ───────────────────────────────────────────── */
-/* ── Wrapper gives the canvas its positioning context ────────────────────── */
+/* ── Stream box wrapper ─────────────────────────────────────────────────────
+   Gives the spin-clip its positioning context.                               */
 .lk-developing-box-wrap {
   position: relative;
   margin: 4px 0 8px;
 }
 
-/* ── Glow canvas: absolutely positioned over the box, drawn by JS RAF ─────
-   Canvas 2D stroke operations always trigger a repaint on every browser,
-   including iOS Safari where CSS custom-property animation inside
-   conic-gradient is unreliable.                                              */
-.lk-glow-canvas {
+/* ── Rotating arc (processing only) ────────────────────────────────────────
+   Uses CSS transform:rotate() — hardware-accelerated on every iOS version.
+   The clip div has overflow:hidden + border-radius so the spinning gradient
+   is cropped to the border shape.  The ::after mask covers the interior so
+   only the 2 px border zone is visible.                                      */
+.lk-spin-clip {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 12px;       /* 10px box radius + 2px extension */
+  overflow: hidden;
   pointer-events: none;
+  z-index: 0;
+}
+
+.lk-spin-gradient {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent           0%,
+    transparent          60%,
+    rgba(116,192,252,0.12) 72%,
+    rgba(116,192,252,0.85) 87%,
+    rgba(220,245,255,0.95) 93%,
+    rgba(116,192,252,0.85) 97%,
+    transparent          100%
+  );
+  animation: lk-spin 1.8s linear infinite;
+}
+
+/* Inner mask — covers the gradient center so only the 2 px border ring shows */
+.lk-spin-clip::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
   border-radius: 10px;
+  background: #1c1d21;       /* close to --lk-surface; hides gradient interior */
   z-index: 1;
+}
+
+@keyframes lk-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Static states: solid border + box-shadow glow ─────────────────────── */
+.lk-developing-box-wrap--done .lk-developing-box {
+  border: 1.5px solid rgba(81, 207, 102, 0.60);
+  box-shadow:
+    0 0 18px rgba(81, 207, 102, 0.32),
+    0 0 36px rgba(81, 207, 102, 0.14),
+    inset 0 0 12px rgba(81, 207, 102, 0.06);
+}
+
+.lk-developing-box-wrap--error .lk-developing-box,
+.lk-developing-box-wrap--terminated .lk-developing-box {
+  border: 1.5px solid rgba(255, 107, 107, 0.60);
+  box-shadow:
+    0 0 18px rgba(255, 107, 107, 0.32),
+    0 0 36px rgba(255, 107, 107, 0.14),
+    inset 0 0 12px rgba(255, 107, 107, 0.06);
 }
 
 .lk-developing-box {
   position: relative;
+  z-index: 1;                /* sits above the spin-clip */
   height: 320px;
   overflow-y: auto;
   overflow-x: hidden;
