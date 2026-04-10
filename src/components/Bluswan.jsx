@@ -632,6 +632,8 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
     emitStreamEvent(createStreamEvent('status', { phase: 'understanding' }))
     setAmplifierDecisions([])
     setIsGenerating(true)
+    // Add user message immediately so it appears in chat before generation completes
+    setConversation(prev => [...prev, { role: 'user', content: requestText }])
 
     if (!isRefinement) {
       setGitStatus(null); setPrResult(null); setSandboxOutput([])
@@ -718,7 +720,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
           validation: refValidation,
           notes: ['Further follow-ups will continue from this state.'],
         })
-        setConversation(prev => [...prev, { role: 'user', content: effectiveMsg }, { role: 'assistant', content: refOut }])
+        setConversation(prev => [...prev, { role: 'assistant', content: refOut }])
         setTurnCount(t => t + 1)
         setRefinementPrompt('')
         setActiveTab('code')
@@ -764,7 +766,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
             validation: planOnlyValidation,
             notes: ['Run /code to execute this plan.'],
           })
-          setConversation(prev => [...prev, { role: 'user', content: requestText }, { role: 'assistant', content: planOnlyText }])
+          setConversation(prev => [...prev, { role: 'assistant', content: planOnlyText }])
           setTurnCount(t => t + 1)
           setActivePhase('complete')
           return
@@ -976,7 +978,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
               command === '/plan' ? 'Plan-only mode requested.' : 'Use follow-up prompts to iteratively modify generated files.',
             ],
           })
-          setConversation(prev => [...prev, { role: 'user', content: requestText }, { role: 'assistant', content: assistantText }])
+          setConversation(prev => [...prev, { role: 'assistant', content: assistantText }])
           setTurnCount(t => t + 1)
           const updated = [he, ...history]
           setHistory(updated)

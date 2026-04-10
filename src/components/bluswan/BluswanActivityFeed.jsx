@@ -87,7 +87,8 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     amplifierDecisions.length > 0 ||
     filePlan.length > 0 ||
     isAmplifying || isPlanning || isGenerating || isPushing ||
-    remediationStatus || (isAgentRunning && agentStreamText)
+    remediationStatus || (isAgentRunning && agentStreamText) ||
+    !!planApproval || wasTerminated || hasError
 
   const errorReason = hasError
     ? (() => {
@@ -109,20 +110,27 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
         {/* ── Chat history ──────────────────────────────────────────────── */}
         {conversation?.length > 0 && (
           <div className="lk-chat-history">
-            {conversation.map((msg, i) => {
-              // Skip last assistant msg if it will appear as summary inside the box
-              if (summaryMsg && msg.role === 'assistant' && i === conversation.length - 1) return null
-              return (
-                <div key={i} className={`lk-chat-msg lk-chat-msg--${msg.role}`}>
-                  <span className="lk-chat-label">{msg.role === 'user' ? 'You' : 'BLUSWAN'}</span>
-                  <div className="lk-chat-bubble lk-chat-bubble--markdown">
-                    {typeof msg.content === 'string'
-                      ? renderMarkdown(msg.content.slice(0, 4000) + (msg.content.length > 4000 ? '…' : ''))
-                      : '[content]'}
+            {(() => {
+              let userCount = 0
+              return conversation.map((msg, i) => {
+                // Skip last assistant msg if it will appear as summary inside the box
+                if (summaryMsg && msg.role === 'assistant' && i === conversation.length - 1) return null
+                if (msg.role === 'user') userCount++
+                const label = msg.role === 'user'
+                  ? (userCount === 1 ? 'Task:' : `Edit ${userCount - 1}:`)
+                  : 'BLUSWAN'
+                return (
+                  <div key={i} className={`lk-chat-msg lk-chat-msg--${msg.role}`}>
+                    <span className="lk-chat-label">{label}</span>
+                    <div className="lk-chat-bubble lk-chat-bubble--markdown">
+                      {typeof msg.content === 'string'
+                        ? renderMarkdown(msg.content.slice(0, 4000) + (msg.content.length > 4000 ? '…' : ''))
+                        : '[content]'}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })
+            })()}
           </div>
         )}
 
@@ -209,20 +217,20 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                   </div>
                 )}
 
-              </div>
-            </div>
-          </div>
-        )}
+                {/* Plan approval — inside the box so all output stays together */}
+                {planApproval && (
+                  <div className="lk-stream-plan-approval">
+                    <div className="lk-stream-plan-text">
+                      Plan ready{planApproval.summary ? ` — ${planApproval.summary.slice(0, 160)}` : ''}
+                    </div>
+                    <div className="lk-stream-plan-actions">
+                      <button className="lk-btn lk-btn--small lk-btn--success" onClick={onApprovePlan}>▶ Execute</button>
+                      <button className="lk-btn lk-btn--small" onClick={onCancelPlan}>✗ Cancel</button>
+                    </div>
+                  </div>
+                )}
 
-        {/* ── Plan approval — outside stream box, needs button interaction ── */}
-        {planApproval && (
-          <div className="lk-stream-plan-approval">
-            <div className="lk-stream-plan-text">
-              Plan ready{planApproval.summary ? ` — ${planApproval.summary.slice(0, 160)}` : ''}
-            </div>
-            <div className="lk-stream-plan-actions">
-              <button className="lk-btn lk-btn--small lk-btn--success" onClick={onApprovePlan}>▶ Execute</button>
-              <button className="lk-btn lk-btn--small" onClick={onCancelPlan}>✗ Cancel</button>
+              </div>
             </div>
           </div>
         )}
