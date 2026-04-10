@@ -130,12 +130,6 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
         {isDeveloping && (
           <div className="lk-developing-box-center">
             <div className={['lk-developing-box-wrap', boxState && `lk-developing-box-wrap--${boxState}`].filter(Boolean).join(' ')}>
-              {/* Spinning arc: CSS transform:rotate() — hardware-accelerated on iOS */}
-              {boxState === 'processing' && (
-                <div className="lk-spin-clip" aria-hidden="true">
-                  <div className="lk-spin-gradient" />
-                </div>
-              )}
               <div className="lk-developing-box" ref={streamBoxRef}>
 
                 {/* Activity log — all entries as plain text lines */}
