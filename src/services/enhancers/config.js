@@ -44,7 +44,9 @@ export const DEFAULT_ENHANCER_CONFIG = {
     enforceOnAgentInput: true,
   },
   rag: {
-    enabled: false,
+    // Enabled by default — degrades gracefully when shadowContext is not ready
+    // (returns empty contexts and adds zero latency in that case).
+    enabled: true,
     bm25Weight: 0.45,
     vectorWeight: 0.55,
     rerankTopK: 12,
@@ -73,8 +75,11 @@ export const DEFAULT_ENHANCER_CONFIG = {
     summaryStyle: 'concise_plus_detailed',
   },
   orchestration: {
-    enabled: false,
-    strategy: 'single',         // 'single' | 'fallback' | 'ensemble' | 'cost_aware'
+    // Enabled with 'fallback' strategy: when no role-specific model is configured
+    // the router gracefully returns strategy='no_config' and uses the default model,
+    // so turning this on has zero cost for unconfigured setups.
+    enabled: true,
+    strategy: 'fallback',       // 'single' | 'fallback' | 'ensemble' | 'cost_aware'
     logDecisions: true,
     roles: {
       planner:        { primary: null, fallbacks: [], cost: 'high' },

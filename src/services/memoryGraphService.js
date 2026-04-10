@@ -1,6 +1,6 @@
 import { MEMORY_VECTOR_DIM, MEMORY_MAX_INGEST_CHARS, MEMORY_MAX_NODES, MEMORY_MAX_EDGES } from '../config/constants.js'
 
-const STORAGE_KEY = 'bluswan:memory-graph:v1'
+const STORAGE_KEY = 'bluswan:memory-graph:v2'
 const VECTOR_DIM = MEMORY_VECTOR_DIM
 const MAX_FILE_INGEST_CHARS = MEMORY_MAX_INGEST_CHARS
 
@@ -21,11 +21,57 @@ function stableHash(token) {
   return Math.abs(h)
 }
 
+// Second independent FNV-1a seed used to compute a distinct hash per token,
+// reducing the collision rate when projecting into VECTOR_DIM buckets.
+function stableHash2(token) {
+  let h = 0x84222325
+  for (let i = 0; i < token.length; i++) {
+    h ^= token.charCodeAt(i)
+    h = Math.imul(h, 0x45d9f3b)
+  }
+  return Math.abs(h)
+}
+
+// High-frequency tokens that carry little discriminative signal.
+// Weighted at 0.1× so they don't dominate the embedding.
+const STOP_WORDS = new Set([
+  'the','a','an','is','are','was','were','be','been','being',
+  'in','of','on','to','for','and','or','not','it','that','this',
+  'with','from','by','at','as','have','has','had','do','does',
+  'did','its','if','but','we','our','can','all','i','you','he',
+  'she','they','their','them','my','your','will','would','should',
+])
+
+/**
+ * Produces a normalised embedding vector for `text` using dual independent
+ * FNV-1a hash projections plus bigram features.
+ *
+ * Improvements over the previous single-hash approach:
+ *   • Two independent hashes per token halve collision density.
+ *   • Bigrams capture adjacent-word context ("write_file", "agent_loop").
+ *   • Stop-word penalty prevents common tokens from dominating cosine scores.
+ *   • Secondary hash weighted at 0.6× keeps primary projection dominant.
+ */
 function embedText(text = '') {
   const vec = new Array(VECTOR_DIM).fill(0)
   const tokens = tokenize(text)
-  for (const t of tokens) vec[stableHash(t) % VECTOR_DIM] += 1
-  const mag = Math.sqrt(vec.reduce((sum, n) => sum + (n * n), 0)) || 1
+
+  for (const t of tokens) {
+    if (t.length < 2) continue
+    const w = STOP_WORDS.has(t) ? 0.1 : 1.0
+    // Primary projection
+    vec[stableHash(t) % VECTOR_DIM] += w
+    // Secondary independent projection at 0.6× weight
+    vec[stableHash2(t) % VECTOR_DIM] += w * 0.6
+  }
+
+  // Bigram features: pairs like "agent_loop" add phrase-level signal
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const bigram = `${tokens[i]}_${tokens[i + 1]}`
+    vec[stableHash(bigram) % VECTOR_DIM] += 0.4
+  }
+
+  const mag = Math.sqrt(vec.reduce((sum, n) => sum + n * n, 0)) || 1
   return vec.map(v => v / mag)
 }
 
