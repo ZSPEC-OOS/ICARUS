@@ -12,7 +12,7 @@ export default function LoginScreen({ onUnlock }) {
     if (pin !== APP_PIN) { setError('Incorrect PIN.'); return }
     setLoading(true)
     setError('')
-    await onUnlock?.()
+    await onUnlock?.(pin)
     // Loading state intentionally stays true — App.jsx will unmount this screen
     // once Firebase anonymous auth completes and authUser is set.
   }
