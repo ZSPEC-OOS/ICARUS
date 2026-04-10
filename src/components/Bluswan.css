@@ -332,14 +332,14 @@ html, body, #root {
   --lk-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.60);
 }
 
-/* ── BLUSWAN: solid dark base — Aurora WebGL handles the visual background */
+/* ── BLUSWAN: transparent root — Aurora WebGL is always the visual background */
 .lk-root.lk-theme-bluswan {
-  background: #030b18;
+  background: transparent;
 }
 
-/* ── BLUSWAN: after first message — switch to surface colour so text is legible */
+/* ── BLUSWAN: after first message — subtle dark veil so text stays legible */
 .lk-root.lk-theme-bluswan.lk-root--chatting {
-  background: #070f1e;
+  background: rgba(3, 7, 18, 0.55);
 }
 
 /* ── BLUSWAN: topbar stays dark-navy opaque over background */
@@ -1203,7 +1203,7 @@ html, body, #root {
 
 /* ── BLUSWAN theme overrides for new input card ──────────────────── */
 .lk-root.lk-theme-bluswan .lk-input-card {
-  background: rgba(7, 15, 30, 0.82);
+  background: rgba(7, 15, 30, 0.62);
   border-color: rgba(77, 156, 255, 0.22);
 }
 
@@ -3855,6 +3855,15 @@ kbd {
   border: 1px solid var(--lk-border);
   color: var(--lk-text-2);
   border-bottom-left-radius: 3px;
+}
+
+/* ── BLUSWAN: semi-transparent chat bubbles so aurora bleeds through ── */
+.lk-root.lk-theme-bluswan .lk-chat-msg--user .lk-chat-bubble {
+  background: rgba(59, 142, 240, 0.10);
+}
+.lk-root.lk-theme-bluswan .lk-chat-msg--assistant .lk-chat-bubble {
+  background: rgba(12, 22, 40, 0.55);
+  border-color: rgba(77, 156, 255, 0.12);
 }
 
 /* ── BLUSWAN.md editor ─────────────────────────────────────────────── */
