@@ -1,4 +1,7 @@
 import { MEMORY_VECTOR_DIM, MEMORY_MAX_INGEST_CHARS, MEMORY_MAX_NODES, MEMORY_MAX_EDGES } from '../config/constants.js'
+import { createLogger } from '../utils/logger.js'
+
+const log = createLogger('MemoryGraph')
 
 const STORAGE_KEY = 'bluswan:memory-graph:v2'
 const VECTOR_DIM = MEMORY_VECTOR_DIM
@@ -149,7 +152,7 @@ class MemoryGraphService {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
       } catch (e) {
-        console.warn('[MemoryGraph] failed to persist graph to localStorage (quota exceeded?):', e.message)
+        log.warn('failed to persist graph to localStorage (quota exceeded?)', e.message)
       }
     }
     this._persistToDiskBestEffort(snapshot)

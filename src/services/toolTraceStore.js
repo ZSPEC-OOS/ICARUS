@@ -1,5 +1,8 @@
 import { schemaVersion } from '../tools/contracts.js'
 import { MAX_TRACE_LINES, TRACE_MAX_AGE_DAYS } from '../config/constants.js'
+import { createLogger } from '../utils/logger.js'
+
+const log = createLogger('ToolTraceStore')
 
 const TRACE_STORAGE_KEY = 'bluswan:tool-traces:jsonl'
 let activeLoopState = null
@@ -21,7 +24,7 @@ function readLines() {
     const raw = localStorage.getItem(TRACE_STORAGE_KEY) || ''
     return raw.split('\n').filter(Boolean)
   } catch (e) {
-    console.warn('[ToolTraceStore] failed to read traces from localStorage:', e.message)
+    log.warn('failed to read traces from localStorage', e.message)
     return []
   }
 }
@@ -47,7 +50,7 @@ function writeLines(lines) {
     const trimmed = aged.slice(-MAX_TRACE_LINES)
     localStorage.setItem(TRACE_STORAGE_KEY, trimmed.join('\n'))
   } catch (e) {
-    console.warn('[ToolTraceStore] failed to persist traces (localStorage quota exceeded?):', e.message)
+    log.warn('failed to persist traces (localStorage quota exceeded?)', e.message)
   }
 }
 

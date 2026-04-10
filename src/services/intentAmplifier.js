@@ -8,6 +8,9 @@
 //   // decisions → ['Using JWT because jsonwebtoken found in package.json', …]
 
 import { runPrompt } from './aiService.js'
+import { createLogger } from '../utils/logger.js'
+
+const log = createLogger('IntentAmplifier')
 
 // A prompt is "vague" if it's short and lacks technical specifics, OR contains
 // unresolved pronoun/reference that requires prior context to understand.
@@ -96,7 +99,7 @@ export async function amplifyPrompt(vaguePrompt, conventions, model, signal, rec
     }
   } catch (e) {
     // Silent fallback — original prompt is used
-    console.warn('[IntentAmplifier] parse failed:', e.message)
+    log.warn('parse failed', e.message)
   }
 
   return { enrichedPrompt: vaguePrompt, decisions: [] }

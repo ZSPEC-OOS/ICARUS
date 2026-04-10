@@ -14,6 +14,9 @@
 import { listDirectory, getFileContent } from './githubService.js'
 import { decodeBase64 } from '../utils/base64.js'
 import { memoryGraphService } from './memoryGraphService.js'
+import { createLogger } from '../utils/logger.js'
+
+const log = createLogger('ShadowContext')
 import {
   SHADOW_MAX_FILES         as MAX_FILES,
   SHADOW_MAX_DEPTH         as MAX_DEPTH,
@@ -111,10 +114,10 @@ class ShadowContextStore {
           contentIndex: this._contentIndex,
         }))
       } catch (e) {
-        console.warn('[ShadowContext] failed to cache index to sessionStorage (quota exceeded?):', e.message)
+        log.warn('failed to cache index to sessionStorage (quota exceeded?)', e.message)
       }
     } catch (e) {
-      console.warn('[ShadowContext] indexing error:', e.message)
+      log.warn('indexing error', e.message)
     } finally {
       this.isIndexing = false
       this._onUpdate?.()
@@ -438,7 +441,7 @@ class ShadowContextStore {
             imports: this._extractImports(content),
           }
         } catch (e) {
-          console.warn('[ShadowContext] failed to fetch content for', f.path, '—', e.message)
+          log.warn('failed to fetch content for ' + f.path, e.message)
         }
       }))
     }
@@ -488,16 +491,71 @@ class ShadowContextStore {
     }
   }
 
-  // Extract function, class, and top-level const names from source
+  // Extract function, class, and top-level const names from source.
+  //
+  // Improvements over original:
+  //   • Exported symbols are collected first and tagged so buildRepoMap can
+  //     prioritise them; the AI benefits most from knowing the public API.
+  //   • `export { Name, Name as Alias }` named-export lists are now captured.
+  //   • Arrow-function consts (const handler = async () => {}) are detected by
+  //     checking whether the RHS starts with a function/arrow expression.
+  //   • React hooks (camelCase functions starting with 'use') are recognised.
+  //   • Single-character names and generic noise ('i', 'e', 'tmp') are filtered.
   _extractSymbols(content) {
-    const symbols = []
-    const re = /^(?:export\s+(?:default\s+)?)?(?:async\s+)?(?:function\s+(\w+)|class\s+(\w+)|const\s+(\w+)\s*=|let\s+(\w+)\s*=|def\s+(\w+)\s*\(|func\s+(\w+)\s*[\(\{]|type\s+(\w+)\s*[=\{]|interface\s+(\w+)\s*\{)/gm
-    let m
-    while ((m = re.exec(content)) !== null) {
-      const name = m[1] || m[2] || m[3] || m[4] || m[5] || m[6] || m[7] || m[8]
-      if (name && !symbols.includes(name)) symbols.push(name)
+    const str = String(content || '')
+    const seen = new Set()
+    // Exported symbols collected first so they appear at the top of the list
+    const exported = []
+    const internal = []
+
+    function add(name, isExport) {
+      if (!name || name.length < 2) return
+      // Filter obvious noise: loop vars, single-letter, generic names
+      if (/^(i|j|k|e|n|m|x|y|v|d|t|r|s|f|p|el|ev|fn|cb|ok|id|op|tmp|err|res|req|key|val|obj|arr|ctx|ref|idx|len|cnt|row|col|buf|ptr)$/.test(name)) return
+      if (seen.has(name)) return
+      seen.add(name)
+      if (isExport) exported.push(name)
+      else internal.push(name)
     }
-    return symbols.slice(0, 60)
+
+    // ── Pattern 1: export { Name, Other as Alias, … } ──────────────────────
+    const namedExportBlock = /export\s*\{([^}]+)\}/gm
+    let m
+    while ((m = namedExportBlock.exec(str)) !== null) {
+      for (const part of m[1].split(',')) {
+        // Handle "Name as Alias" — the exported name is the alias
+        const alias = part.match(/\bas\s+(\w+)/)
+        const orig  = part.match(/^\s*(\w+)/)
+        add(alias ? alias[1] : orig?.[1], true)
+      }
+    }
+
+    // ── Pattern 2: export (default)? (async)? function/class Name ──────────
+    const exportedDecl = /^export\s+(?:default\s+)?(?:async\s+)?(?:function\s+(\w+)|class\s+(\w+))/gm
+    while ((m = exportedDecl.exec(str)) !== null) add(m[1] || m[2], true)
+
+    // ── Pattern 3: export const/let Name = (function / arrow / class) ───────
+    const exportedConst = /^export\s+(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:\(|function\s*\(|class\s*[\{(])/gm
+    while ((m = exportedConst.exec(str)) !== null) add(m[1], true)
+
+    // ── Pattern 4: export default function / class (anonymous OK) ────────────
+    const exportDefault = /^export\s+default\s+(?:async\s+)?(?:function|class)\s+(\w+)/gm
+    while ((m = exportDefault.exec(str)) !== null) add(m[1], true)
+
+    // ── Pattern 5: internal function / class declarations ────────────────────
+    const internalDecl = /^(?:async\s+)?function\s+(\w+)|^class\s+(\w+)/gm
+    while ((m = internalDecl.exec(str)) !== null) add(m[1] || m[2], false)
+
+    // ── Pattern 6: React hooks — const useX = (…) => / function useX ────────
+    const hooks = /\bconst\s+(use[A-Z]\w+)\s*=|function\s+(use[A-Z]\w+)\s*\(/gm
+    while ((m = hooks.exec(str)) !== null) add(m[1] || m[2], /^export\b/.test(str.slice(Math.max(0, m.index - 10), m.index + 5)))
+
+    // ── Pattern 7: Python def / Go func / TypeScript type|interface ──────────
+    const otherLang = /^(?:def\s+(\w+)\s*\(|func\s+(\w+)\s*[\({]|type\s+(\w+)\s*[=\{]|interface\s+(\w+)\s*\{)/gm
+    while ((m = otherLang.exec(str)) !== null) add(m[1] || m[2] || m[3] || m[4], false)
+
+    // Exported symbols first, then internal — up to 60 total
+    return [...exported, ...internal].slice(0, 60)
   }
 
   // Extract imported module paths
