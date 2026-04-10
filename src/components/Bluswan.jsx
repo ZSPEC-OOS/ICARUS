@@ -277,6 +277,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [repoPickerSearch,  setRepoPickerSearch]  = useState('')
   const [userRepos,         setUserRepos]         = useState([])
   const [repoPickerLoading, setRepoPickerLoading] = useState(false)
+  const [repoPickerError,   setRepoPickerError]   = useState(null)
   const repoPickerRef = useRef(null)
 
   // ── UI state ───────────────────────────────────────────────────────────
@@ -1139,17 +1140,28 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
 
   // ─────────────────────────────────────────────────────────────────────────
   // Repo picker — fetch repos on first open, close on outside click
-  const openRepoPicker = useCallback(async () => {
-    setRepoPickerOpen(true)
-    setRepoPickerSearch('')
-    if (userRepos.length > 0 || !githubToken) return
+  const loadRepos = useCallback(async () => {
+    if (!githubToken) return
     setRepoPickerLoading(true)
+    setRepoPickerError(null)
     try {
       const repos = await listUserRepos(githubToken)
       setUserRepos(repos)
-    } catch { /* silently ignore */ }
-    finally { setRepoPickerLoading(false) }
-  }, [githubToken, userRepos.length])
+      if (repos.length === 0) setRepoPickerError('No repositories returned. Check token scopes (needs repo).')
+    } catch (err) {
+      console.error('[Bluswan] listUserRepos failed:', err)
+      setRepoPickerError(err.message || 'Failed to load repositories')
+    } finally {
+      setRepoPickerLoading(false)
+    }
+  }, [githubToken])
+
+  const openRepoPicker = useCallback(async () => {
+    setRepoPickerOpen(true)
+    setRepoPickerSearch('')
+    if (userRepos.length > 0) return
+    await loadRepos()
+  }, [githubToken, userRepos.length, loadRepos])
 
   useEffect(() => {
     if (!repoPickerOpen) return
@@ -1937,7 +1949,13 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
                         {repoPickerLoading && (
                           <div className="lk-repo-picker-status">Loading repositories…</div>
                         )}
-                        {!repoPickerLoading && userRepos.length === 0 && (
+                        {!repoPickerLoading && repoPickerError && (
+                          <div className="lk-repo-picker-error">
+                            <span>{repoPickerError}</span>
+                            <button className="lk-repo-picker-retry" onClick={loadRepos}>Retry</button>
+                          </div>
+                        )}
+                        {!repoPickerLoading && !repoPickerError && userRepos.length === 0 && (
                           <div className="lk-repo-picker-status">No repositories found.</div>
                         )}
                         {!repoPickerLoading && userRepos
