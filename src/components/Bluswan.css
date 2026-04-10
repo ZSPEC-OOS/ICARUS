@@ -6375,6 +6375,15 @@ kbd {
   to   { transform: rotate(360deg); }
 }
 
+/* ── Processing state: faint blue border anchors the spin arc ───────────── */
+.lk-developing-box-wrap--processing .lk-developing-box {
+  border: 1.5px solid rgba(116, 192, 252, 0.35);
+  box-shadow:
+    0 0 12px rgba(116, 192, 252, 0.18),
+    0 0 28px rgba(116, 192, 252, 0.08),
+    inset 0 0 8px rgba(116, 192, 252, 0.04);
+}
+
 /* ── Static states: solid border + box-shadow glow ─────────────────────── */
 .lk-developing-box-wrap--done .lk-developing-box {
   border: 1.5px solid rgba(81, 207, 102, 0.60);
