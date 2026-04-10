@@ -46,11 +46,11 @@ export default function LoginScreen({ onUnlock }) {
       }}>
 
         {/* ── Full-width logo banner ── */}
-        <div style={{ background: '#020810', borderBottom: '1px solid rgba(77,156,255,0.15)' }}>
+        <div style={{ background: '#020810', borderBottom: '1px solid rgba(77,156,255,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 32px' }}>
           <img
-            src="/bluswan-header-logo.jpg"
+            src="/NEWLOGO-header.png"
             alt="BLUSWAN"
-            style={{ width: '100%', display: 'block', height: 'auto' }}
+            style={{ maxWidth: '100%', maxHeight: '56px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
           />
         </div>
 

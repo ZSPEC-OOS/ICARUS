@@ -6512,13 +6512,20 @@ kbd {
     inset 0 0 12px rgba(81, 207, 102, 0.06);
 }
 
-.lk-developing-box-wrap--error .lk-developing-box,
-.lk-developing-box-wrap--terminated .lk-developing-box {
+.lk-developing-box-wrap--error .lk-developing-box {
   border: 1.5px solid rgba(255, 107, 107, 0.60);
   box-shadow:
     0 0 18px rgba(255, 107, 107, 0.32),
     0 0 36px rgba(255, 107, 107, 0.14),
     inset 0 0 12px rgba(255, 107, 107, 0.06);
+}
+
+.lk-developing-box-wrap--terminated .lk-developing-box {
+  border: 1.5px solid rgba(81, 207, 102, 0.60);
+  box-shadow:
+    0 0 18px rgba(81, 207, 102, 0.32),
+    0 0 36px rgba(81, 207, 102, 0.14),
+    inset 0 0 12px rgba(81, 207, 102, 0.06);
 }
 
 .lk-developing-box {
