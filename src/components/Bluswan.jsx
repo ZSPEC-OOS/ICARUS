@@ -86,6 +86,15 @@ function saveSettings(s) {
 function loadHistory()  { try { return JSON.parse(localStorage.getItem(HISTORY_KEY))  || [] } catch { return [] } }
 function saveHistory(h) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 60))) } catch {} }
 
+function formatRelativeDate(ts) {
+  const diff = Date.now() - ts
+  if (diff < 60000)        return 'just now'
+  if (diff < 3600000)      return `${Math.floor(diff / 60000)}m ago`
+  if (diff < 86400000)     return `${Math.floor(diff / 3600000)}h ago`
+  if (diff < 7 * 86400000) return `${Math.floor(diff / 86400000)}d ago`
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 // ─── Utilities imported from ../utils/codeUtils and ../utils/diff ────────────
 
 // ─── Pure system-prompt builder (no hooks — safe to call inside async loops) ──
@@ -1722,20 +1731,24 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
           </div>
           <div className="lk-sidebar-nav-sep" />
           <div className="lk-sidebar-nav-section-hd">
-            <span>Recent</span>
+            <span>Task History</span>
             {history.length > 0 && (
               <button className="lk-sidebar-nav-section-clear"
                 onClick={() => { setHistory([]); saveHistory([]) }}>Clear</button>
             )}
           </div>
           {history.length === 0
-            ? <span className="lk-sidebar-nav-empty">No history yet.</span>
+            ? <span className="lk-sidebar-nav-empty">No tasks yet.</span>
             : <div className="lk-sidebar-nav-history">
-                {history.slice(0, 10).map(e => (
+                {history.slice(0, 20).map(e => (
                   <button key={e.id} className="lk-sidebar-nav-history-item"
                     onClick={() => { setPrompt(e.prompt); setMobileDrawerOpen(false) }}>
-                    <span className="lk-sidebar-nav-history-text">{e.prompt}</span>
-                    <span className="lk-sidebar-nav-history-date">{new Date(e.timestamp).toLocaleDateString()}</span>
+                    <div className="lk-sidebar-nav-history-icon">⚡</div>
+                    <div className="lk-sidebar-nav-history-body">
+                      <span className="lk-sidebar-nav-history-text">{e.prompt}</span>
+                      {e.filePath && <span className="lk-sidebar-nav-history-file">{e.filePath.split('/').pop()}</span>}
+                    </div>
+                    <span className="lk-sidebar-nav-history-date">{formatRelativeDate(e.timestamp)}</span>
                   </button>
                 ))}
               </div>
@@ -1889,22 +1902,25 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
           />
         )}
 
-      {/* ── History drawer ─────────────────────────────────────────────────── */}
+      {/* ── Task History drawer ────────────────────────────────────────────── */}
       {historyOpen && (
         <div className="lk-drawer lk-drawer--history">
           <div className="lk-drawer-hd">
-            <span>Recent requests</span>
+            <span>Task History</span>
             {history.length > 0 && <button className="lk-drawer-clear" onClick={() => { setHistory([]); saveHistory([]) }}>Clear all</button>}
           </div>
           {history.length === 0
-            ? <div className="lk-empty-note">No history yet.</div>
-            : <div className="lk-history-list">
+            ? <div className="lk-empty-note">No tasks yet.</div>
+            : <div className="lk-task-history-list">
                 {history.map(e => (
-                  <button key={e.id} className="lk-history-item"
+                  <button key={e.id} className="lk-task-history-item"
                     onClick={() => { setPrompt(e.prompt); setHistoryOpen(false) }}>
-                    <span className="lk-history-prompt">{e.prompt}</span>
-                    {e.filePath && <span className="lk-history-file">{e.filePath}</span>}
-                    <span className="lk-history-date">{new Date(e.timestamp).toLocaleDateString()}</span>
+                    <div className="lk-task-history-icon">⚡</div>
+                    <div className="lk-task-history-body">
+                      <span className="lk-task-history-title">{e.prompt}</span>
+                      {e.filePath && <span className="lk-task-history-file">{e.filePath.split('/').pop()}</span>}
+                    </div>
+                    <span className="lk-task-history-date">{formatRelativeDate(e.timestamp)}</span>
                   </button>
                 ))}
               </div>
