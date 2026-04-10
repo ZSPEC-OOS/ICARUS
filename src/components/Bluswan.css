@@ -2864,6 +2864,23 @@ kbd {
 
   /* Theme swatches: 4 columns on small screens */
   .lk-theme-swatches { grid-template-columns: repeat(4, 1fr); }
+
+  /* ── Developing box: restore original mobile layout ─────────────── */
+  .lk-developing-box-center {
+    flex: none;
+    display: block;
+    padding: 0;
+  }
+  .lk-developing-box-wrap {
+    width: 100%;
+    max-width: none;
+    flex: none;
+    margin: 4px 0 8px;
+  }
+  .lk-developing-box {
+    height: 320px;
+    padding: 14px 16px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -6094,9 +6111,22 @@ kbd {
 /* ── Single developing stream box ───────────────────────────────────────────── */
 /* ── Stream box wrapper ─────────────────────────────────────────────────────
    Gives the spin-clip its positioning context.                               */
+/* ── Centering wrapper — fills remaining feed space, centres the box ── */
+.lk-developing-box-center {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
 .lk-developing-box-wrap {
   position: relative;
-  margin: 4px 0 8px;
+  width: 100%;
+  max-width: 900px;
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Rotating arc (processing only) ────────────────────────────────────────
@@ -6174,10 +6204,10 @@ kbd {
 .lk-developing-box {
   position: relative;
   z-index: 1;                /* sits above the spin-clip */
-  height: 320px;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 14px 16px;
+  padding: 20px;
   margin: 0;
   border-radius: 10px;
   border: 1px solid rgba(116, 192, 252, 0.10);
@@ -6186,6 +6216,7 @@ kbd {
   -webkit-backdrop-filter: blur(6px);
   scroll-behavior: smooth;
   scrollbar-width: none;
+  box-sizing: border-box;
 }
 .lk-developing-box::-webkit-scrollbar { display: none; }
 
@@ -6254,6 +6285,31 @@ kbd {
 .lk-stream-panel-text {
   flex: 1;
   word-break: break-word;
+}
+
+/* ── Summary block — final assistant response shown inside the box ── */
+.lk-stream-summary {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(116, 192, 252, 0.12);
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(232, 244, 255, 0.82);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lk-stream-summary p  { margin: 0 0 0.5em; }
+.lk-stream-summary h2,
+.lk-stream-summary h3,
+.lk-stream-summary h4 { margin: 0.75em 0 0.35em; color: #e8f4ff; }
+.lk-stream-summary ul { margin: 0 0 0.5em 1.25em; padding: 0; }
+.lk-stream-summary li { margin-bottom: 0.2em; }
+.lk-stream-summary code {
+  background: rgba(116,192,252,0.1);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 11px;
 }
 
 /* ── Plan approval inline widget ─────────────────────────────────────────────── */
