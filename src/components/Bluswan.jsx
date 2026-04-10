@@ -296,6 +296,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [longRequestMode,  setLongRequestMode]  = useState(false)
   const [lrmPlan,          setLrmPlan]          = useState(null)   // null | phase plan object
   const [lrmGeneratingPlan, setLrmGeneratingPlan] = useState(false)
+  const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(false)
 
   // ── Phase 4: ShadowContext ─────────────────────────────────────────────
   const [shadowStatus,  setShadowStatus]  = useState(null)   // null | string
@@ -2074,8 +2075,10 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
         ) : (
         <>
         {/* ══════════════════════════════════════════════════════════════════
-            MAIN FEED — full-height scrollable output area
+            FEED ROW — activity feed + right task sidebar
             ══════════════════════════════════════════════════════════════════ */}
+        <div className="lk-feed-row">
+
         <div className="lk-feed">
 
           {/* ── Single evolving task stream ───────────────────────────────── */}
@@ -2106,6 +2109,38 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
             onCancelPlan={() => setPlanApproval(null)}
           />
         </div>{/* end lk-feed */}
+
+        {/* ── Right task sidebar ─────────────────────────────────────────── */}
+        {conversation.length > 0 && (
+          <div className={`lk-task-sidebar${taskSidebarCollapsed ? ' lk-task-sidebar--collapsed' : ''}`}>
+            <button
+              className="lk-task-sidebar-toggle"
+              onClick={() => setTaskSidebarCollapsed(v => !v)}
+              title={taskSidebarCollapsed ? 'Expand task panel' : 'Collapse task panel'}
+              aria-label={taskSidebarCollapsed ? 'Expand task panel' : 'Collapse task panel'}
+            >
+              {taskSidebarCollapsed ? '‹' : '›'}
+            </button>
+            <div className="lk-task-sidebar-inner">
+              <div className="lk-task-sidebar-hd">TASK</div>
+              <div className="lk-task-sidebar-task">
+                {(() => {
+                  const firstUser = conversation.find(m => m.role === 'user')
+                  const text = typeof firstUser?.content === 'string' ? firstUser.content : ''
+                  return text.length > 300 ? `${text.slice(0, 297)}…` : text
+                })()}
+              </div>
+              {agentSession.isAgentRunning && agentSession.agentPhase && (
+                <div className="lk-task-sidebar-phase">
+                  <span className="lk-task-sidebar-phase-dot" />
+                  <span>{agentSession.agentPhase}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        </div>{/* end lk-feed-row */}
 
         {/* ── Long Request Mode — phase plan panel ──────────────────────────── */}
         {longRequestMode && lrmGeneratingPlan && (
