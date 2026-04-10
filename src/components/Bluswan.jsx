@@ -176,31 +176,9 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [dryRun,         setDryRun]         = useState(saved.dryRun         ?? false)
 
   // ── Theme + fine-tune ──────────────────────────────────────────────────
-  const [theme, setTheme] = useState(saved.theme || 'bluswan')
-  const DEFAULT_FT = { brightness: 100, contrast: 100, saturation: 100, highlight: 50, shadow: 50 }
-  const [fineTune, setFineTune] = useState({
-    brightness: saved.ftBrightness ?? 100,
-    contrast:   saved.ftContrast   ?? 100,
-    saturation: saved.ftSaturation ?? 100,
-    highlight:  saved.ftHighlight  ?? 50,
-    shadow:     saved.ftShadow     ?? 50,
-  })
-  const DEFAULT_HEADER_LAYOUT = useMemo(() => ({
-    headerHeight: 44,
-    titleSize: 11,
-    titleOffsetX: 0,
-    titleOffsetY: 0,
-    toggleOffsetX: 0,
-    toggleOffsetY: 0,
-  }), [])
-  const [headerLayout, setHeaderLayout] = useState({
-    headerHeight: saved.headerHeight ?? 44,
-    titleSize:    saved.titleSize    ?? 11,
-    titleOffsetX: saved.titleOffsetX ?? 0,
-    titleOffsetY: saved.titleOffsetY ?? 0,
-    toggleOffsetX:saved.toggleOffsetX ?? 0,
-    toggleOffsetY:saved.toggleOffsetY ?? 0,
-  })
+  const theme = 'bluswan'
+  const fineTune = { brightness: 130, contrast: 100, saturation: 125, highlight: 50, shadow: 50 }
+  const headerLayout = { headerHeight: 44, titleSize: 11, titleOffsetX: 0, titleOffsetY: 0, toggleOffsetX: 0, toggleOffsetY: 0 }
 
   // ── Input ──────────────────────────────────────────────────────────────
   const [prompt,           setPrompt]           = useState('')
@@ -339,22 +317,9 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   useEffect(() => { onSettingsChangedRef.current = onSettingsChanged }, [onSettingsChanged])
 
   // ── Persist settings ───────────────────────────────────────────────────
-  // fineTune is decomposed into primitives so React can compare by value,
-  // not by object reference (which would fire this effect on every render).
-  const { brightness, contrast, saturation, highlight, shadow } = fineTune
-  const {
-    headerHeight, titleSize, titleOffsetX, titleOffsetY,
-    toggleOffsetX, toggleOffsetY,
-  } = headerLayout
   useEffect(() => {
     const s = {
       repoOwner, repoName, baseBranch, githubToken,
-      theme,
-      ftBrightness: brightness, ftContrast: contrast,
-      ftSaturation: saturation, ftHighlight: highlight,
-      ftShadow: shadow,
-      headerHeight, titleSize, titleOffsetX, titleOffsetY,
-      toggleOffsetX, toggleOffsetY,
       creativity, enableThinking,
       webSearchApiKey,
       permissionMode,
@@ -364,9 +329,6 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
     // Notify App.jsx so it can debounce-save to Firestore (cloud persistence)
     onSettingsChangedRef.current?.(s)
   }, [repoOwner, repoName, baseBranch, githubToken,
-      theme, brightness, contrast, saturation, highlight, shadow,
-      headerHeight, titleSize, titleOffsetX, titleOffsetY,
-      toggleOffsetX, toggleOffsetY,
       creativity, enableThinking, webSearchApiKey, permissionMode,
       generateTests, doCreateBranch, doCreatePR, dryRun])
 
@@ -1708,12 +1670,12 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
 
   return (
     <div
-      className={`lk-root${theme !== 'graphite' ? ` lk-theme-${theme}` : ''}${theme === 'bluswan' && conversation.length > 0 ? ' lk-root--chatting' : ''}`}
+      className={`lk-root lk-theme-bluswan${conversation.length > 0 ? ' lk-root--chatting' : ''}`}
       style={{ filter: ftFilter }}
       onKeyDown={handleKeyDown}
     >
-      {/* ── Aurora WebGL background — BLUSWAN theme only, hidden after first message ── */}
-      {theme === 'bluswan' && conversation.length === 0 && (
+      {/* ── Aurora WebGL background — hidden after first message ── */}
+      {conversation.length === 0 && (
         <Aurora
           colorStops={['#071630', '#3b8ef0', '#112252']}
           amplitude={1.0}
@@ -1915,11 +1877,6 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
             doCreateBranch={doCreateBranch}   setDoCreateBranch={setDoCreateBranch}
             doCreatePR={doCreatePR}           setDoCreatePR={setDoCreatePR}
             dryRun={dryRun}                   setDryRun={setDryRun}
-            theme={theme}                   setTheme={setTheme}
-            fineTune={fineTune}             setFineTune={setFineTune}
-            DEFAULT_FT={DEFAULT_FT}
-            headerLayout={headerLayout}     setHeaderLayout={setHeaderLayout}
-            DEFAULT_HEADER_LAYOUT={DEFAULT_HEADER_LAYOUT}
             permissionMode={permissionMode} setPermissionMode={setPermissionMode}
             bluswanMdDraft={bluswanMdDraft}     setBluswanMdDraft={setBluswanMdDraft}
             onSaveBluswanMd={handleSaveBluswanMd}

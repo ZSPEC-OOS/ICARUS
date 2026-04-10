@@ -5,7 +5,8 @@ import { loadModels, saveModels, saveSearchKey } from './services/aiService'
 import {
   onAuthStateChange,
   signOutUser,
-  signInAnonymously,
+  signInWithEmail,
+  signUpWithEmail,
   loadUserSettings,
   saveUserSettings,
   loadModelDocs,
@@ -204,15 +205,27 @@ export default function App() {
     setPinUnlocked(false)
   }, [])
 
-  const handlePinUnlock = useCallback(async () => {
+  const handlePinUnlock = useCallback(async (pin) => {
     setPinUnlocked(true)
     try {
-      // Anonymous auth gives a stable UID so Firestore settings (including API keys)
-      // persist across PIN logins on the same device.
-      await signInAnonymously()
+      // Derive stable email/password from PIN so every device with the same PIN
+      // gets the same Firebase UID — enabling cross-device Firestore persistence.
+      const email    = `pin-${pin}@bluswan.local`
+      const password = `BLUSWAN_${pin}`
+      try {
+        await signInWithEmail(email, password)
+      } catch (err) {
+        const code = err.code || ''
+        if (['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(code)) {
+          // First time on any device — create the account
+          await signUpWithEmail(email, password)
+        } else {
+          throw err
+        }
+      }
       // onAuthStateChange will fire, load Firestore settings, then set authUser + settingsReady.
     } catch (err) {
-      console.warn('[Bluswan] Anonymous auth failed — using local-only mode:', err.message)
+      console.warn('[Bluswan] PIN auth failed — using local-only mode:', err.message)
       // Allow app to render without cloud settings
       setSettingsReady(true)
     }
