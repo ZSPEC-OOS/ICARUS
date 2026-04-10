@@ -50,7 +50,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   feedRef,
   conversation,
   agentIntent: _agentIntent,
-  agentTask: _agentTask,
+  agentTask,
   agentPhase: _agentPhase,
   filePlan = [],
   isAmplifying = false,
@@ -62,6 +62,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   onCancelPlan,
 }) {
   const streamBoxRef = useRef(null)
+  const rafRef       = useRef(null)
 
   // Auto-scroll to bottom on every render so new lines stay visible
   useEffect(() => {
@@ -70,16 +71,43 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   })
 
   // ── Derive box state from agent lifecycle ─────────────────────────────────
-  // 'processing' while the agent is running, 'done' on clean completion,
-  // 'error' if any error entry exists once the agent has stopped.
-  const hasError = !isAgentRunning &&
+  // Priority: processing > terminated > error > done
+  // 'terminated' = agent stopped via abort (agentTask.status === 'interrupted')
+  const wasTerminated = !isAgentRunning && agentTask?.status === 'interrupted'
+  const hasError = !isAgentRunning && !wasTerminated &&
     activityLog.some(e => e.type === 'error' || e.status === 'error')
-  const isDone = !isAgentRunning &&
+  const isDone = !isAgentRunning && !wasTerminated && !hasError &&
     activityLog.some(e => e.type === 'done')
-  const boxState = isAgentRunning ? 'processing' : hasError ? 'error' : isDone ? 'done' : null
+  const boxState = isAgentRunning
+    ? 'processing'
+    : wasTerminated ? 'terminated'
+    : hasError      ? 'error'
+    : isDone        ? 'done'
+    : null
 
-  // Extract the failure reason from the last error entry for display.
-  // Strip any leading icon characters so the message reads cleanly.
+  // ── JS-driven border rotation (universal — works on iOS Safari) ──────────
+  // CSS @property animation of custom properties inside conic-gradient is
+  // unreliable on older iOS Safari.  requestAnimationFrame sets --lk-spin-angle
+  // directly on the element, which works in every browser that supports
+  // conic-gradient (iOS Safari 12.2+, Chrome 69+, Firefox 83+).
+  useEffect(() => {
+    const el = streamBoxRef.current
+    if (boxState !== 'processing' || !el) {
+      cancelAnimationFrame(rafRef.current)
+      return
+    }
+    let angle = 0
+    const tick = () => {
+      angle = (angle + 1.4) % 360   // ~1 rotation per 1.5 s at 60 fps
+      el.style.setProperty('--lk-spin-angle', `${angle}deg`)
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [boxState])
+
+  // Extract the failure reason from the last error entry.
+  // Only shown for 'error' state — terminated state intentionally shows no reason.
   const errorReason = hasError
     ? (() => {
         const errEntries = activityLog.filter(e => e.type === 'error' || e.status === 'error')
