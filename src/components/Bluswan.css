@@ -6375,13 +6375,24 @@ kbd {
   to   { transform: rotate(360deg); }
 }
 
-/* ── Processing state: faint blue border anchors the spin arc ───────────── */
+/* ── Processing state: pulsing blue border glow (no extra DOM elements) ─── */
 .lk-developing-box-wrap--processing .lk-developing-box {
-  border: 1.5px solid rgba(116, 192, 252, 0.35);
-  box-shadow:
-    0 0 12px rgba(116, 192, 252, 0.18),
-    0 0 28px rgba(116, 192, 252, 0.08),
-    inset 0 0 8px rgba(116, 192, 252, 0.04);
+  border: 1.5px solid rgba(116, 192, 252, 0.45);
+  animation: lk-processing-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes lk-processing-glow {
+  0%, 100% {
+    box-shadow:
+      0 0  8px rgba(116, 192, 252, 0.18),
+      0 0 20px rgba(116, 192, 252, 0.07);
+  }
+  50% {
+    box-shadow:
+      0 0 18px rgba(116, 192, 252, 0.42),
+      0 0 36px rgba(116, 192, 252, 0.18),
+      inset 0 0 12px rgba(116, 192, 252, 0.06);
+  }
 }
 
 /* ── Static states: solid border + box-shadow glow ─────────────────────── */
