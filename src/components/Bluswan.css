@@ -6147,46 +6147,50 @@ kbd {
 }
 
 /* ── Processing: rotating blue arc ──────────────────────────────────────────
-   The multi-background shorthand paints the inner fill over padding-box,
-   leaving the 1.5px border region showing only the conic-gradient arc.      */
+   background shorthand rule: background-color (raw rgba) is only valid in the
+   FINAL layer.  Non-final layers only accept <bg-image>.  We wrap the inner
+   fill in linear-gradient() so it is a valid image and can carry padding-box
+   clip.  The conic-gradient in the final layer covers border-box, so the
+   1.5px transparent border region shows the spinning arc.                    */
 .lk-developing-box--processing {
   border: 1.5px solid transparent;
   background:
-    rgba(0, 0, 0, 0.08) padding-box,
+    linear-gradient(rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.10)) padding-box,
     conic-gradient(
       from var(--lk-spin-angle),
-      transparent          0deg,
-      transparent         50deg,
-      rgba(116,192,252,.12) 90deg,
-      rgba(116,192,252,.80) 150deg,
-      rgba(200,230,255,.95) 180deg,
-      rgba(116,192,252,.80) 210deg,
-      rgba(116,192,252,.12) 270deg,
-      transparent         310deg,
-      transparent         360deg
+      transparent           0deg,
+      transparent          50deg,
+      rgba(116,192,252,.15) 90deg,
+      rgba(116,192,252,.90) 150deg,
+      rgba(210,235,255,1.0) 180deg,
+      rgba(116,192,252,.90) 210deg,
+      rgba(116,192,252,.15) 270deg,
+      transparent          310deg,
+      transparent          360deg
     ) border-box;
   box-shadow:
-    0 0 14px rgba(116, 192, 252, 0.14),
-    inset 0 0  8px rgba(116, 192, 252, 0.04);
+    0 0 18px rgba(116, 192, 252, 0.22),
+    0 0 36px rgba(116, 192, 252, 0.10),
+    inset 0 0 10px rgba(116, 192, 252, 0.06);
   animation: lk-border-spin 2.6s linear infinite;
 }
 
 /* ── Complete: solid green glow ─────────────────────────────────────────── */
 .lk-developing-box--done {
-  border: 1.5px solid rgba(81, 207, 102, 0.48);
+  border: 1.5px solid rgba(81, 207, 102, 0.60);
   box-shadow:
-    0 0 14px rgba(81, 207, 102, 0.20),
-    0 0 28px rgba(81, 207, 102, 0.08),
-    inset 0 0  8px rgba(81, 207, 102, 0.04);
+    0 0 18px rgba(81, 207, 102, 0.30),
+    0 0 36px rgba(81, 207, 102, 0.14),
+    inset 0 0 12px rgba(81, 207, 102, 0.06);
 }
 
 /* ── Error: solid red glow ──────────────────────────────────────────────── */
 .lk-developing-box--error {
-  border: 1.5px solid rgba(255, 107, 107, 0.48);
+  border: 1.5px solid rgba(255, 107, 107, 0.60);
   box-shadow:
-    0 0 14px rgba(255, 107, 107, 0.20),
-    0 0 28px rgba(255, 107, 107, 0.08),
-    inset 0 0  8px rgba(255, 107, 107, 0.04);
+    0 0 18px rgba(255, 107, 107, 0.30),
+    0 0 36px rgba(255, 107, 107, 0.14),
+    inset 0 0 12px rgba(255, 107, 107, 0.06);
 }
 
 /* ── Failure reason block ───────────────────────────────────────────────── */
