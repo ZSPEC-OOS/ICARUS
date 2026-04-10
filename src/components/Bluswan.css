@@ -6525,6 +6525,35 @@ kbd {
 }
 
 /* ── Plan approval inline widget ─────────────────────────────────────────────── */
+/* ── Executed plan — persists in box during agent execution ─────────────── */
+.lk-stream-executed-plan {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-left: 2px solid rgba(116, 192, 252, 0.45);
+  background: rgba(116, 192, 252, 0.05);
+  border-radius: 0 6px 6px 0;
+}
+.lk-stream-executed-plan-hd {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(116, 192, 252, 0.70);
+  margin-bottom: 6px;
+}
+.lk-stream-executed-plan-body {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: rgba(176, 186, 208, 0.70);
+}
+.lk-stream-executed-plan-body p,
+.lk-stream-executed-plan-body h2,
+.lk-stream-executed-plan-body h3,
+.lk-stream-executed-plan-body h4 { margin: 2px 0; }
+.lk-stream-executed-plan-body ul { margin: 4px 0; padding-left: 16px; }
+.lk-stream-executed-plan-body li { margin: 1px 0; }
+
 .lk-stream-plan-approval {
   display: flex;
   flex-direction: column;

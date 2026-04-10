@@ -57,6 +57,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   amplifierDecisions = [],
   isPlanning = false,
   remediationStatus = null,
+  executedPlan = null,
   planApproval = null,
   onApprovePlan,
   onCancelPlan,
@@ -88,7 +89,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     filePlan.length > 0 ||
     isAmplifying || isPlanning || isGenerating || isPushing ||
     remediationStatus || (isAgentRunning && agentStreamText) ||
-    !!planApproval || wasTerminated || hasError
+    !!planApproval || !!executedPlan || wasTerminated || hasError
 
   const errorReason = hasError
     ? (() => {
@@ -139,6 +140,16 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
           <div className="lk-developing-box-center">
             <div className={['lk-developing-box-wrap', boxState && `lk-developing-box-wrap--${boxState}`].filter(Boolean).join(' ')}>
               <div className="lk-developing-box" ref={streamBoxRef}>
+
+                {/* Executed plan — shown at top of box once approved, persists during execution */}
+                {executedPlan?.summary && (
+                  <div className="lk-stream-executed-plan">
+                    <div className="lk-stream-executed-plan-hd">▶ Plan</div>
+                    <div className="lk-stream-executed-plan-body">
+                      {renderMarkdown(executedPlan.summary)}
+                    </div>
+                  </div>
+                )}
 
                 {/* Activity log — all entries as plain text lines */}
                 {activityLog.map(entry => {
