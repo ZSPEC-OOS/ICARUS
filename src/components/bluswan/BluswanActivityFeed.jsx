@@ -85,6 +85,13 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     : isDone        ? 'done'
     : null
 
+  const isDeveloping =
+    activityLog.length > 0 ||
+    amplifierDecisions.length > 0 ||
+    filePlan.length > 0 ||
+    isAmplifying || isPlanning || isGenerating || isPushing ||
+    remediationStatus || (isAgentRunning && agentStreamText)
+
   // ── Canvas glow border (RAF + Canvas 2D — guaranteed repaint on iOS Safari) ─
   // CSS custom-property animation inside conic-gradient is unreliable on iOS
   // WebKit.  Canvas drawImage/stroke calls always trigger a repaint, so we use
@@ -212,13 +219,6 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
         return last ? String(last.msg || '').replace(/^[✗⚠●]\s*/u, '').trim() : null
       })()
     : null
-
-  const isDeveloping =
-    activityLog.length > 0 ||
-    amplifierDecisions.length > 0 ||
-    filePlan.length > 0 ||
-    isAmplifying || isPlanning || isGenerating || isPushing ||
-    remediationStatus || (isAgentRunning && agentStreamText)
 
   return (
     <div className="lk-output lk-activity-output" style={{ display: 'flex', flexDirection: 'column' }}>
