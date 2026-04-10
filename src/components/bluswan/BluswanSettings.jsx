@@ -1,6 +1,6 @@
 import { memo, useState, useEffect, useRef } from 'react'
 import { clearApiKeys, saveModels, testModelConnection, testSearchConnection, loadSearchKey, saveSearchKey } from '../../services/aiService.js'
-import { getRepo } from '../../services/githubService.js'
+import { getRepo, initiateDeviceFlow, pollDeviceToken, getAuthenticatedUser } from '../../services/githubService.js'
 import { parseGitHubUrl } from '../../utils/codeUtils.js'
 import {
   loadFirebaseConfig,
@@ -19,8 +19,9 @@ import { loadEnhancerConfig, saveEnhancerConfig } from '../../services/enhancers
 // permission mode, and BLUSWAN.md editor.
 const BluswanSettings = memo(function BluswanSettings({
   // GitHub config — primary (target) repo
-  githubToken, setGithubToken,
-  repoOwner,   setRepoOwner,
+  githubToken,    setGithubToken,
+  githubClientId, setGithubClientId,
+  repoOwner,      setRepoOwner,
   repoName,    setRepoName,
   baseBranch,  setBaseBranch,
   hasGithub,
@@ -88,6 +89,62 @@ const BluswanSettings = memo(function BluswanSettings({
     setFbDraft('')
     setFbStatus(getFirebaseStatus())
     setFbError(null)
+  }
+
+  // ── GitHub Device OAuth Flow ───────────────────────────────────────────────
+  // phase: null | 'starting' | 'pending' | 'error'
+  const [ghFlowPhase,  setGhFlowPhase]  = useState(null)
+  const [ghFlowData,   setGhFlowData]   = useState(null)   // { user_code, verification_uri, device_code, interval }
+  const [ghFlowError,  setGhFlowError]  = useState(null)
+  const [ghConnected,  setGhConnected]  = useState(null)   // { login } from /user
+  const ghPollCancelRef = useRef(false)
+
+  // Load connected username when token arrives
+  useEffect(() => {
+    if (!githubToken) { setGhConnected(null); return }
+    getAuthenticatedUser(githubToken).then(u => setGhConnected(u)).catch(() => setGhConnected(null))
+  }, [githubToken])
+
+  async function handleGhConnect() {
+    if (!githubClientId?.trim()) { setGhFlowError('Enter your GitHub OAuth Client ID first'); return }
+    setGhFlowPhase('starting')
+    setGhFlowError(null)
+    ghPollCancelRef.current = false
+    try {
+      const flow = await initiateDeviceFlow(githubClientId.trim())
+      setGhFlowData(flow)
+      setGhFlowPhase('pending')
+      // Start polling in background
+      pollDeviceToken(githubClientId.trim(), flow.device_code, flow.interval)
+        .then(token => {
+          if (ghPollCancelRef.current) return
+          setGithubToken(token)
+          try { sessionStorage.setItem('bluswan:ghtoken', token) } catch {}
+          setGhFlowPhase(null)
+          setGhFlowData(null)
+        })
+        .catch(err => {
+          if (ghPollCancelRef.current) return
+          setGhFlowError(err.message)
+          setGhFlowPhase('error')
+        })
+    } catch (err) {
+      setGhFlowError(err.message)
+      setGhFlowPhase('error')
+    }
+  }
+
+  function handleGhCancel() {
+    ghPollCancelRef.current = true
+    setGhFlowPhase(null)
+    setGhFlowData(null)
+    setGhFlowError(null)
+  }
+
+  function handleGhDisconnect() {
+    setGithubToken('')
+    try { sessionStorage.removeItem('bluswan:ghtoken') } catch {}
+    setGhConnected(null)
   }
 
   // ── Model API key helper ────────────────────────────────────────────────────
@@ -493,6 +550,112 @@ const BluswanSettings = memo(function BluswanSettings({
         )}
       </div>
 
+      {/* ── GitHub Connection ─────────────────────────────────────────────── */}
+      <div className="lk-settings-section">
+        <div className="lk-settings-section-hd">
+          <span className="lk-settings-section-icon">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          </span>
+          GitHub
+          {githubToken && <span className="lk-settings-badge lk-settings-badge--ok">● connected{ghConnected ? ` as @${ghConnected.login}` : ''}</span>}
+        </div>
+        <div className="lk-settings-section-body">
+
+          {/* ── Connected state ── */}
+          {githubToken && (
+            <div className="lk-gh-connected">
+              <span className="lk-hint">
+                All your repositories are accessible. Use the repo picker in the top bar to switch projects — the selection persists across sessions.
+              </span>
+              <button className="lk-btn lk-btn--small lk-btn--warn" style={{ marginTop: '0.5rem' }} onClick={handleGhDisconnect}>
+                Disconnect GitHub
+              </button>
+            </div>
+          )}
+
+          {/* ── Not connected ── */}
+          {!githubToken && (
+            <>
+              {/* Device Flow section */}
+              <div className="lk-gh-oauth-wrap">
+                <div className="lk-gh-oauth-label">Connect with OAuth <span className="lk-hint-inline">(recommended — no expiry, all repos)</span></div>
+
+                {/* Phase: idle / error — show client ID + connect button */}
+                {(ghFlowPhase === null || ghFlowPhase === 'error') && (
+                  <>
+                    <input
+                      className="lk-input"
+                      placeholder="GitHub OAuth Client ID (e.g. Ov23liXXXXXXXXXX)"
+                      value={githubClientId || ''}
+                      onChange={e => setGithubClientId(e.target.value.trim())}
+                      autoComplete="off"
+                    />
+                    <span className="lk-hint">
+                      Create a free OAuth App at{' '}
+                      <a href="https://github.com/settings/developers" target="_blank" rel="noreferrer">
+                        github.com/settings/developers
+                      </a>{' '}
+                      → New OAuth App. Paste the Client ID above (no secret needed).
+                    </span>
+                    {ghFlowError && <div className="lk-settings-model-save-error">{ghFlowError}</div>}
+                    <button
+                      className="lk-btn lk-btn--small lk-btn--primary"
+                      style={{ marginTop: '0.25rem' }}
+                      disabled={!githubClientId?.trim()}
+                      onClick={handleGhConnect}
+                    >
+                      → Connect with GitHub
+                    </button>
+                  </>
+                )}
+
+                {/* Phase: starting */}
+                {ghFlowPhase === 'starting' && (
+                  <div className="lk-gh-flow-status">Starting authorization…</div>
+                )}
+
+                {/* Phase: pending — user must enter code at github.com/login/device */}
+                {ghFlowPhase === 'pending' && ghFlowData && (
+                  <div className="lk-gh-flow-pending">
+                    <div className="lk-gh-flow-step">
+                      <span className="lk-gh-flow-num">1</span>
+                      Open{' '}
+                      <a href="https://github.com/login/device" target="_blank" rel="noreferrer" className="lk-gh-flow-link">
+                        github.com/login/device ↗
+                      </a>
+                    </div>
+                    <div className="lk-gh-flow-step">
+                      <span className="lk-gh-flow-num">2</span>
+                      Enter this code:
+                      <button
+                        className="lk-gh-flow-code"
+                        title="Click to copy"
+                        onClick={() => navigator.clipboard?.writeText(ghFlowData.user_code).catch(() => {})}
+                      >
+                        {ghFlowData.user_code}
+                      </button>
+                      <span className="lk-hint-inline">click to copy</span>
+                    </div>
+                    <div className="lk-gh-flow-waiting">
+                      <span className="lk-gh-flow-spinner">◌</span> Waiting for authorization…
+                    </div>
+                    <button className="lk-btn lk-btn--small" style={{ marginTop: '0.5rem' }} onClick={handleGhCancel}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="lk-gh-divider">— or use a Personal Access Token —</div>
+
+              {/* PAT fallback */}
+              <input className="lk-input" type="password" placeholder="ghp_xxxxxxxxxxxx (needs repo scope)"
+                value={githubToken} onChange={e => setGithubToken(e.target.value)} autoComplete="off" />
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Quick setup — paste a GitHub URL to fill owner + repo */}
       <div className="lk-field lk-field--url">
         <label className="lk-label">Quick Setup</label>
@@ -508,15 +671,6 @@ const BluswanSettings = memo(function BluswanSettings({
       </div>
 
       <div className="lk-drawer-grid">
-        <div className="lk-field">
-          <label className="lk-label">GitHub Token (PAT)</label>
-          <input className="lk-input" type="password" placeholder="ghp_xxxxxxxxxxxx"
-            value={githubToken} onChange={e => setGithubToken(e.target.value)} autoComplete="off" />
-          <span className="lk-hint">Needs <code>repo</code> scope</span>
-          <button className="lk-btn lk-btn--small lk-btn--warn" onClick={() => { clearApiKeys(); setGithubToken('') }}>
-            Clear stored keys
-          </button>
-        </div>
         <div className="lk-field">
           <label className="lk-label">Owner</label>
           <input className="lk-input" placeholder="username or org"
