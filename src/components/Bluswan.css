@@ -6125,39 +6125,26 @@ kbd {
 }
 .lk-stream-line--error { color: var(--lk-danger); opacity: 0.75; }
 
-/* ── Spinning-border custom property (CSS Houdini) ───────────────────────────
-   Registers --lk-spin-angle so browsers can interpolate it as an <angle>,
-   which allows conic-gradient to animate smoothly.  Falls back to a static
-   accent-coloured border on browsers that don't support @property.           */
-@property --lk-spin-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
+/* ── Stream box state borders ────────────────────────────────────────────────
+   --lk-spin-angle is written directly by requestAnimationFrame in JS so the
+   conic-gradient arc animates on every browser including iOS Safari, which
+   does not support CSS-animated @property custom properties inside gradients.
+   No @keyframes animation is applied; JS drives the rotation instead.        */
 
-@keyframes lk-border-spin {
-  to { --lk-spin-angle: 360deg; }
-}
-
-/* Shared transition so state changes feel intentional, not jarring */
+/* Shared transition so done/error/terminated state snaps in cleanly */
 .lk-developing-box {
   transition:
-    box-shadow  0.45s ease,
-    border-color 0.40s ease;
+    box-shadow   0.40s ease,
+    border-color 0.35s ease;
 }
 
-/* ── Processing: rotating blue arc ──────────────────────────────────────────
-   background shorthand rule: background-color (raw rgba) is only valid in the
-   FINAL layer.  Non-final layers only accept <bg-image>.  We wrap the inner
-   fill in linear-gradient() so it is a valid image and can carry padding-box
-   clip.  The conic-gradient in the final layer covers border-box, so the
-   1.5px transparent border region shows the spinning arc.                    */
+/* ── Processing: JS-driven rotating blue arc ────────────────────────────── */
 .lk-developing-box--processing {
   border: 1.5px solid transparent;
   background:
     linear-gradient(rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.10)) padding-box,
     conic-gradient(
-      from var(--lk-spin-angle),
+      from var(--lk-spin-angle, 0deg),
       transparent           0deg,
       transparent          50deg,
       rgba(116,192,252,.15) 90deg,
@@ -6169,26 +6156,34 @@ kbd {
       transparent          360deg
     ) border-box;
   box-shadow:
-    0 0 18px rgba(116, 192, 252, 0.22),
+    0 0 18px rgba(116, 192, 252, 0.24),
     0 0 36px rgba(116, 192, 252, 0.10),
     inset 0 0 10px rgba(116, 192, 252, 0.06);
-  animation: lk-border-spin 2.6s linear infinite;
 }
 
 /* ── Complete: solid green glow ─────────────────────────────────────────── */
 .lk-developing-box--done {
   border: 1.5px solid rgba(81, 207, 102, 0.60);
   box-shadow:
-    0 0 18px rgba(81, 207, 102, 0.30),
+    0 0 18px rgba(81, 207, 102, 0.32),
     0 0 36px rgba(81, 207, 102, 0.14),
     inset 0 0 12px rgba(81, 207, 102, 0.06);
 }
 
-/* ── Error: solid red glow ──────────────────────────────────────────────── */
+/* ── Error: solid red glow (shows reason block) ─────────────────────────── */
 .lk-developing-box--error {
   border: 1.5px solid rgba(255, 107, 107, 0.60);
   box-shadow:
-    0 0 18px rgba(255, 107, 107, 0.30),
+    0 0 18px rgba(255, 107, 107, 0.32),
+    0 0 36px rgba(255, 107, 107, 0.14),
+    inset 0 0 12px rgba(255, 107, 107, 0.06);
+}
+
+/* ── Terminated: red glow without reason block ──────────────────────────── */
+.lk-developing-box--terminated {
+  border: 1.5px solid rgba(255, 107, 107, 0.60);
+  box-shadow:
+    0 0 18px rgba(255, 107, 107, 0.32),
     0 0 36px rgba(255, 107, 107, 0.14),
     inset 0 0 12px rgba(255, 107, 107, 0.06);
 }
