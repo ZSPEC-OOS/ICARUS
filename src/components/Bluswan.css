@@ -6666,3 +6666,250 @@ kbd {
   flex-direction: column;
   gap: 0.1rem;
 }
+
+/* ── Long Request Mode (LRM) ─────────────────────────────────────────────── */
+
+/* Toggle button in toolbar */
+.lk-toolbar-btn--lrm {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0 8px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--lk-text-muted);
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.lk-toolbar-btn--lrm:hover {
+  color: var(--lk-text-2);
+  border-color: var(--lk-border-soft);
+}
+.lk-toolbar-btn--lrm-on {
+  color: #4d9cff;
+  border-color: rgba(77,156,255,0.4);
+  background: rgba(77,156,255,0.08);
+}
+.lk-toolbar-btn--lrm-on:hover {
+  background: rgba(77,156,255,0.14);
+}
+
+/* Generating-plan status bar */
+.lk-lrm-generating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  font-size: 12px;
+  color: var(--lk-text-muted);
+  background: rgba(77,156,255,0.04);
+  border-top: 1px solid var(--lk-border-soft);
+}
+
+/* Phase plan container */
+.lk-phase-plan {
+  border-top: 1px solid var(--lk-border-soft);
+  background: var(--lk-surface);
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.lk-phase-plan-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--lk-border-soft);
+  position: sticky;
+  top: 0;
+  background: var(--lk-surface);
+  z-index: 1;
+}
+.lk-phase-plan-hd-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lk-phase-plan-icon {
+  font-size: 14px;
+  color: #4d9cff;
+}
+.lk-phase-plan-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--lk-text);
+  letter-spacing: 0.03em;
+}
+.lk-phase-plan-count {
+  font-size: 10px;
+  color: var(--lk-text-muted);
+  background: var(--lk-surface-2);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+.lk-phase-plan-cancel {
+  background: none;
+  border: none;
+  color: var(--lk-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.lk-phase-plan-cancel:hover { color: var(--lk-danger); }
+
+/* Phase cards */
+.lk-phase-plan-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.lk-phase-card {
+  border-bottom: 1px solid var(--lk-border-soft);
+}
+.lk-phase-card:last-child { border-bottom: none; }
+
+.lk-phase-card-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+.lk-phase-card-hd:hover { background: rgba(77,156,255,0.04); }
+
+.lk-phase-status-icon {
+  font-size: 13px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.lk-phase-status-icon--pending    { color: var(--lk-text-muted); }
+.lk-phase-status-icon--active     { color: #4d9cff; }
+.lk-phase-status-icon--verifying  { color: #facc15; }
+.lk-phase-status-icon--complete   { color: #4ade80; }
+.lk-phase-status-icon--blocked    { color: #f87171; }
+
+.lk-phase-num {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--lk-text-muted);
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.lk-phase-card--active  .lk-phase-num { color: #4d9cff; }
+.lk-phase-card--complete .lk-phase-num { color: #4ade80; }
+.lk-phase-card--blocked .lk-phase-num { color: #f87171; }
+
+.lk-phase-title-text {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lk-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lk-phase-card--pending .lk-phase-title-text { color: var(--lk-text-muted); }
+
+.lk-phase-status-label {
+  font-size: 10px;
+  color: var(--lk-text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lk-phase-card--active   .lk-phase-status-label { color: #4d9cff; }
+.lk-phase-card--complete .lk-phase-status-label { color: #4ade80; }
+.lk-phase-card--blocked  .lk-phase-status-label { color: #f87171; }
+
+.lk-phase-chevron {
+  font-size: 10px;
+  color: var(--lk-text-muted);
+  flex-shrink: 0;
+}
+
+/* Card expanded body */
+.lk-phase-card-body {
+  padding: 0 16px 12px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lk-phase-summary {
+  font-size: 12px;
+  color: var(--lk-text-2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.lk-phase-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.lk-phase-target-chip {
+  font-size: 10px;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  color: #4d9cff;
+  background: rgba(77,156,255,0.1);
+  border: 1px solid rgba(77,156,255,0.2);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+.lk-phase-cta {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.lk-phase-running {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #4d9cff;
+}
+
+.lk-phase-verify-wrap,
+.lk-phase-blocked-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lk-phase-verify-hint {
+  font-size: 11px;
+  color: var(--lk-text-muted);
+  margin: 0;
+}
+.lk-phase-blocked-msg {
+  font-size: 11px;
+  color: #f87171;
+  margin: 0;
+}
+.lk-phase-blocked-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* All done banner */
+.lk-phase-all-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4ade80;
+  background: rgba(74,222,128,0.06);
+  border-top: 1px solid rgba(74,222,128,0.2);
+}

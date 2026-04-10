@@ -53,6 +53,7 @@ import BluswanTerminal         from './bluswan/BluswanTerminal'
 import BluswanToolsPane        from './bluswan/BluswanToolsPane'
 import BluswanSettings         from './bluswan/BluswanSettings'
 import BluswanModularTools     from './bluswan/BluswanModularTools'
+import BluswanPhasePlan        from './bluswan/BluswanPhasePlan'
 import './Bluswan.css'
 
 // ─── Persistence ────────────────────────────────────────────────────────────
@@ -289,6 +290,11 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [sourceOpen,   setSourceOpen]   = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [history,      setHistory]      = useState(loadHistory)
+  // ── Long Request Mode (LRM) ───────────────────────────────────────────
+  const [longRequestMode,  setLongRequestMode]  = useState(false)
+  const [lrmPlan,          setLrmPlan]          = useState(null)   // null | phase plan object
+  const [lrmGeneratingPlan, setLrmGeneratingPlan] = useState(false)
+
   // ── Phase 4: ShadowContext ─────────────────────────────────────────────
   const [shadowStatus,  setShadowStatus]  = useState(null)   // null | string
 
@@ -1619,6 +1625,104 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
     }
   }, [models, activeModelId, conversation, setConversation, setTurnCount])
 
+  // ── Long Request Mode handlers ─────────────────────────────────────────
+  const PHASE_PLAN_SYSTEM = `You are a software engineering planner for the BLUSWAN AI coding assistant.
+The user has a complex request requiring multiple implementation steps.
+Break it into 2-6 ordered, logically atomic phases. Each phase should be independently committable.
+Return ONLY a valid JSON array — no markdown fences, no prose, no explanation before or after:
+[{"id":1,"title":"Short title (5-8 words)","summary":"What this phase accomplishes in 1-2 sentences.","targets":["src/path/to/file.js"],"instructions":"Complete implementation instructions for this phase only."}]`
+
+  const handleLrmGeneratePlan = useCallback(async (userMsg) => {
+    const model = models.find(m => m.id === activeModelId)
+    if (!model) { setError('Select a model before using Long Request Mode.'); return }
+    setLrmGeneratingPlan(true)
+    setError('')
+    try {
+      let raw = ''
+      await runPromptWithRetry(
+        model,
+        `Plan this task into phases:\n\n${userMsg}`,
+        [
+          { role: 'user',      content: PHASE_PLAN_SYSTEM },
+          { role: 'assistant', content: 'Here is the phase plan as a JSON array:\n[' },
+        ],
+        chunk => { raw = chunk },
+      )
+      const jsonStr = raw.includes('[') ? raw.slice(raw.indexOf('[')) : '[' + raw
+      const phases = JSON.parse(jsonStr.slice(0, jsonStr.lastIndexOf(']') + 1))
+      if (!Array.isArray(phases) || phases.length === 0) throw new Error('Empty phase plan')
+      setLrmPlan({
+        originalPrompt: userMsg,
+        phases,
+        currentIdx: 0,
+        statuses: {},
+        verifyError: null,
+      })
+    } catch (err) {
+      setError(`LRM plan generation failed: ${err.message}`)
+    } finally {
+      setLrmGeneratingPlan(false)
+    }
+  }, [models, activeModelId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLrmStart = useCallback(() => {
+    if (!lrmPlan) return
+    const phase = lrmPlan.phases[0]
+    setLrmPlan(p => ({ ...p, currentIdx: 0, statuses: { ...p.statuses, 0: 'active' } }))
+    handleGenerate(`[Phase 1: ${phase.title}]\n${phase.instructions}\n\nOriginal request: ${lrmPlan.originalPrompt}`)
+  }, [lrmPlan, handleGenerate])
+
+  const handleLrmProceed = useCallback(async (fromIdx) => {
+    if (!lrmPlan) return
+    const nextIdx = fromIdx + 1
+
+    // Simple verification: if GitHub connected, check that at least one target file exists
+    if (hasGithub && lrmPlan.phases[fromIdx]?.targets?.length > 0) {
+      setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'verifying' } }))
+      try {
+        const targets = lrmPlan.phases[fromIdx].targets
+        const { getFileContent } = await import('../services/githubService')
+        const checks = await Promise.allSettled(
+          targets.map(t => getFileContent(githubToken, repoOwner, repoName, t, baseBranch))
+        )
+        const anyFound = checks.some(c => c.status === 'fulfilled' && c.value !== null)
+        if (!anyFound) {
+          setLrmPlan(p => ({
+            ...p,
+            statuses: { ...p.statuses, [fromIdx]: 'blocked' },
+            verifyError: `Target files not found in ${repoOwner}/${repoName}. Commit changes first.`,
+          }))
+          return
+        }
+      } catch {
+        // Network/API error — allow manual override by falling through
+      }
+    }
+
+    // Mark current phase complete, advance
+    if (nextIdx >= lrmPlan.phases.length) {
+      setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'complete' } }))
+      return
+    }
+    const phase = lrmPlan.phases[nextIdx]
+    setLrmPlan(p => ({
+      ...p,
+      currentIdx: nextIdx,
+      statuses: { ...p.statuses, [fromIdx]: 'complete', [nextIdx]: 'active' },
+      verifyError: null,
+    }))
+    handleGenerate(`[Phase ${nextIdx + 1}: ${phase.title}]\n${phase.instructions}\n\nOriginal request: ${lrmPlan.originalPrompt}`)
+  }, [lrmPlan, hasGithub, githubToken, repoOwner, repoName, baseBranch, handleGenerate])
+
+  const handleLrmOverride = useCallback((idx) => {
+    setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [idx]: 'active' }, verifyError: null }))
+  }, [])
+
+  const handleLrmCancel = useCallback(() => {
+    setLrmPlan(null)
+    setLrmGeneratingPlan(false)
+  }, [])
+
   const handleSubmitPrompt = useCallback(() => {
     setHistoryOpen(false)
     setSettingsOpen(false)
@@ -1630,13 +1734,20 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
     const fullMsg = (userMsg + fileContext).trim()
     setPrompt('')
     setAttachedFiles([])
+
+    // Long Request Mode intercept — generate phase plan first
+    if (longRequestMode && !lrmPlan && !isConversationalPrompt(fullMsg)) {
+      handleLrmGeneratePlan(fullMsg)
+      return
+    }
+
     if (isConversationalPrompt(fullMsg)) {
       handleConversationalReply(fullMsg)
       return
     }
     if (shouldUseAgent) agentSession.run(fullMsg, conversation.slice(-10))
     else handleGenerate(fullMsg)
-  }, [prompt, attachedFiles, isConversationalPrompt, handleConversationalReply, shouldUseAgent, agentSession, conversation, handleGenerate])
+  }, [prompt, attachedFiles, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, agentSession, conversation, handleGenerate, handleLrmGeneratePlan])
 
   const handleKeyDown = useCallback((e) => {
     const submitByEnter = e.key === 'Enter' && !e.shiftKey && !e.isComposing
@@ -1972,6 +2083,23 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
           />
         </div>{/* end lk-feed */}
 
+        {/* ── Long Request Mode — phase plan panel ──────────────────────────── */}
+        {longRequestMode && lrmGeneratingPlan && (
+          <div className="lk-lrm-generating">
+            <span className="lk-gh-flow-spinner">◌</span> Analysing request and building phase plan…
+          </div>
+        )}
+        {longRequestMode && lrmPlan && (
+          <BluswanPhasePlan
+            plan={lrmPlan}
+            isGenerating={isGenerating}
+            onStart={handleLrmStart}
+            onProceed={handleLrmProceed}
+            onOverride={handleLrmOverride}
+            onCancel={handleLrmCancel}
+          />
+        )}
+
         <>{/* ══════════════════════════════════════════════════
             BOTTOM INPUT BAR — chat card layout
             ══════════════════════════════════════════════════════════════════ */}
@@ -2053,13 +2181,18 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
             {/* Toolbar */}
             <div className="lk-input-toolbar">
 
-              {/* Left: + attach button + folder icon */}
+              {/* Left: + attach button + folder icon + LRM toggle */}
               <div className="lk-input-toolbar-left">
                 <button
                   className="lk-toolbar-btn lk-toolbar-btn--plus"
                   title="Attach files or photos"
                   onClick={() => fileInputRef.current?.click()}
                 >+</button>
+                <button
+                  className={`lk-toolbar-btn lk-toolbar-btn--lrm${longRequestMode ? ' lk-toolbar-btn--lrm-on' : ''}`}
+                  title={longRequestMode ? 'Long Request Mode ON — click to disable' : 'Enable Long Request Mode (phased execution for complex tasks)'}
+                  onClick={() => { setLongRequestMode(v => !v); if (!longRequestMode) setLrmPlan(null) }}
+                >⇥ LRM</button>
                 {localDirHandle ? (
                   <div className="lk-local-badge lk-local-badge--compact">
                     <span className="lk-local-badge-icon" title={`Attached: ${localDirHandle.name}`}>
