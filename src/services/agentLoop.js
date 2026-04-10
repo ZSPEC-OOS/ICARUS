@@ -13,6 +13,8 @@ import { efficiencyMetricsService } from './efficiency/metricsService.js'
 import { packContextSections } from './enhancers/contextPacker.js'
 import { enforceQualityFloor } from './enhancers/qualityFloor.js'
 import { createModelRouter } from './orchestration/modelRouter.js'
+import { retrieveContext } from './enhancers/ragService.js'
+import { shadowContext } from './shadowContext.js'
 
 export function makeSessionDiary() {
   const filesRead = new Set()
@@ -157,9 +159,37 @@ export async function runAgentLoop({
   const executionTrace = { mutations: [], commandRuns: [] }
   let finalText = ''
 
-  const packedInput = packContextSections([
-    { heading: 'TASK', content: enhancerConfig.structuredPrompting.enabled ? enforceStructuredPrompt(task).promptText : task },
-  ])
+  // ── Proactive RAG injection ───────────────────────────────────────────────
+  // When RAG is enabled and the shadow index is ready, retrieve the top-K most
+  // relevant file chunks for the task and prepend them to the first user message.
+  // This gives the model grounded context before tool calls begin, reducing the
+  // number of turns needed to locate relevant files.
+  let ragContextBlock = ''
+  if (enhancerConfig.rag?.enabled && shadowContext?.isReady) {
+    try {
+      const ragResult = retrieveContext({
+        query: task,
+        shadowContext,
+        config: enhancerConfig.rag,
+      })
+      if (ragResult.contexts.length > 0) {
+        ragContextBlock = ragResult.promptContext
+        if (enhancerConfig.orchestration?.logDecisions) {
+          onEvent?.({ type: 'rag_inject', count: ragResult.contexts.length, totalCandidates: ragResult.totalCandidates })
+        }
+      }
+    } catch {
+      // RAG failures must never block the agent loop
+    }
+  }
+
+  const taskText = enhancerConfig.structuredPrompting.enabled ? enforceStructuredPrompt(task).promptText : task
+  const packedInput = ragContextBlock
+    ? packContextSections([
+        { heading: 'RELEVANT CONTEXT (auto-retrieved)', content: ragContextBlock },
+        { heading: 'TASK', content: taskText },
+      ])
+    : packContextSections([{ heading: 'TASK', content: taskText }])
 
   let messages = [
     ...(isAnthropic ? [] : [{ role: 'system', content: systemPrompt }]),

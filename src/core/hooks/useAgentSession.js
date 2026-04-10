@@ -281,6 +281,10 @@ export function useAgentSession({
             logActivity('agent', `≡ ensemble: [${(ev.modelsUsed || []).join(', ')}]`)
             break
 
+          case 'rag_inject':
+            logActivity('agent', `◎ RAG: injected ${ev.count} context chunk${ev.count !== 1 ? 's' : ''} (${ev.totalCandidates} candidates)`)
+            break
+
           case 'verification':
             setLastVerification(ev.verification || null)
             break
