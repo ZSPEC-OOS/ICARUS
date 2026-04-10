@@ -7,8 +7,9 @@
 // before storage, providing defense-in-depth beyond Firestore security rules.
 
 import { initializeApp, getApps } from 'firebase/app'
+import { KEYS } from '../shared/storageKeys.js'
 
-const FB_CONFIG_KEY = 'bluswan:firebase'
+const FB_CONFIG_KEY = KEYS.LS.FIREBASE_CONFIG
 
 // ── Hardcoded project config ──────────────────────────────────────────────────
 const DEFAULT_FIREBASE_CONFIG = {

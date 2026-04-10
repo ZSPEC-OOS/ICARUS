@@ -12,8 +12,9 @@ import {
   loadUserConversation,
   saveUserConversation,
 } from '../../services/firebaseService.js'
+import { KEYS } from '../../shared/storageKeys.js'
 
-const CONV_KEY = 'bluswan:conv'
+const CONV_KEY = KEYS.LS.CONV
 
 function loadConversation() {
   try { return JSON.parse(localStorage.getItem(CONV_KEY)) || [] } catch { return [] }

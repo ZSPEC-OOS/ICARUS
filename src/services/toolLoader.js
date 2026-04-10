@@ -10,8 +10,10 @@
 import * as builtins from '../tools/index.js'
 import { withToolContractValidation } from '../tools/index.js'
 import { normalizeToolName, schemaVersion } from '../tools/contracts.js'
+import { fnv1a32 } from '../utils/fnv.js'
+import { KEYS } from '../shared/storageKeys.js'
 
-const USER_TOOLS_KEY = 'bluswan:user-tools'   // localStorage key for installed tools
+const USER_TOOLS_KEY = KEYS.LS.USER_TOOLS
 
 // ── Validation ────────────────────────────────────────────────────────────────
 export function validateToolModule(mod) {
@@ -32,14 +34,9 @@ export function validateToolModule(mod) {
   return errors
 }
 
-// ── Checksum (simple FNV-1a 32-bit) ──────────────────────────────────────────
+// ── Checksum (FNV-1a 32-bit, hex string) ─────────────────────────────────────
 function checksum(str) {
-  let hash = 0x811c9dc5
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i)
-    hash = (hash * 0x01000193) >>> 0
-  }
-  return hash.toString(16)
+  return (fnv1a32(str) >>> 0).toString(16)
 }
 
 // ── Parse built-in modules ────────────────────────────────────────────────────

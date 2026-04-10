@@ -33,9 +33,10 @@ import {
   isOnboardingComplete,
   isSimpleMode,
 } from '../../services/bluswanSimpleMode.js'
+import { KEYS } from '../../shared/storageKeys.js'
 
-const ONBOARDING_KEY  = 'bluswan:onboarding'       // localStorage — persisted state
-const MANUAL_DONE_KEY = 'bluswan:onboarding:manual' // which manual steps user confirmed
+const ONBOARDING_KEY  = KEYS.LS.ONBOARDING        // localStorage — persisted state
+const MANUAL_DONE_KEY = KEYS.LS.ONBOARDING_MANUAL  // which manual steps user confirmed
 
 // ── State helpers ─────────────────────────────────────────────────────────────
 

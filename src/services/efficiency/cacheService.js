@@ -1,3 +1,5 @@
+import { fnv1a32 } from '../../utils/fnv.js'
+
 const DEFAULT_TTL_MS = 5 * 60 * 1000
 
 function stableSerialize(value) {
@@ -9,13 +11,7 @@ function stableSerialize(value) {
 }
 
 function hashValue(value = '') {
-  let h = 2166136261
-  const str = String(value)
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return (h >>> 0).toString(36)
+  return (fnv1a32(String(value)) >>> 0).toString(36)
 }
 
 function canonicalizePayload(payload) {

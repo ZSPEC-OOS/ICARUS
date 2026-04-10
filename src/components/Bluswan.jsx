@@ -53,13 +53,14 @@ import BluswanTerminal         from './bluswan/BluswanTerminal'
 import BluswanToolsPane        from './bluswan/BluswanToolsPane'
 import BluswanSettings         from './bluswan/BluswanSettings'
 import BluswanModularTools     from './bluswan/BluswanModularTools'
+import { KEYS } from '../shared/storageKeys.js'
 import './Bluswan.css'
 
 // ─── Persistence ────────────────────────────────────────────────────────────
-const SETTINGS_KEY    = 'bluswan:settings'
-const HISTORY_KEY     = 'bluswan:history'
-const GHTOKEN_SS_KEY  = 'bluswan:ghtoken'
-const GHTOKEN2_SS_KEY = 'bluswan:ghtoken2'
+const SETTINGS_KEY    = KEYS.LS.SETTINGS
+const HISTORY_KEY     = KEYS.LS.HISTORY
+const GHTOKEN_SS_KEY  = KEYS.SS.GH_TOKEN
+const GHTOKEN2_SS_KEY = KEYS.SS.GH_TOKEN_2
 
 function loadSettings() {
   try {
@@ -259,7 +260,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   // 'ask'    — confirm dialog before any GitHub write
   // 'manual' — user must click a second time (dry-run first, then confirm)
   const [permissionMode, setPermissionMode] = useState(
-    () => localStorage.getItem('bluswan:permMode') || 'ask'
+    () => localStorage.getItem(KEYS.LS.PERM_MODE) || 'ask'
   )
 
   // ── Agent mode ─────────────────────────────────────────────────────────────

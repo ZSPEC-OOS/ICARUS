@@ -28,8 +28,9 @@ import {
   getTraceById,
   traceOrchestrationDecision,
 } from './toolTraceStore.js'
+import { KEYS } from '../shared/storageKeys.js'
 
-const TRACE_KEY = 'bluswan:tool-traces:jsonl'
+const TRACE_KEY = KEYS.LS.TOOL_TRACES
 
 // ── beginToolTrace / endToolTrace / getTraceById lifecycle ────────────────────
 

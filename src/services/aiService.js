@@ -1,7 +1,9 @@
-const MODELS_KEY    = 'wrkflow:models'       // localStorage  — config only, NO api keys
-const KEYS_SS_KEY   = 'wrkflow:keys'         // sessionStorage — api keys (primary, clears on tab close)
-const KEYS_LS_KEY   = 'wrkflow:keysbak'      // localStorage  — api keys encrypted backup (iOS resilience)
-const SESSION_KEY_K = 'wrkflow:sk'           // sessionStorage — 32 random bytes, base64-encoded
+import { KEYS as STORAGE_KEYS } from '../shared/storageKeys.js'
+
+const MODELS_KEY    = STORAGE_KEYS.LS.AI_MODELS      // localStorage  — config only, NO api keys
+const KEYS_SS_KEY   = STORAGE_KEYS.SS.AI_KEYS         // sessionStorage — api keys (primary, clears on tab close)
+const KEYS_LS_KEY   = STORAGE_KEYS.LS.AI_KEYS_BACKUP  // localStorage  — api keys encrypted backup (iOS resilience)
+const SESSION_KEY_K = STORAGE_KEYS.SS.AI_SESSION_KEY  // sessionStorage — 32 random bytes, base64-encoded
 
 // ── AES-GCM encryption (SubtleCrypto) ────────────────────────────────────────
 // Ciphertext format: 'v2:' + base64(12-byte IV || AES-GCM ciphertext)
@@ -160,7 +162,7 @@ export async function saveModels(models) {
 }
 
 // ── Web-search API key (Tavily) ───────────────────────────────────────────────
-const SEARCH_KEY_SS = 'bluswan:searchkey'
+const SEARCH_KEY_SS = STORAGE_KEYS.SS.SEARCH_KEY
 
 export async function loadSearchKey() {
   try {
