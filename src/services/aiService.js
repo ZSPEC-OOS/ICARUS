@@ -330,6 +330,9 @@ function devProxyUrl(baseUrl) {
 }
 
 import { THINKING_BUDGET_TOKENS, STREAM_CHUNK_TIMEOUT_MS } from '../config/constants.js'
+import { createLogger } from '../utils/logger.js'
+
+const log = createLogger('AIService')
 
 // Per-chunk read timeout — prevents a stalled stream from hanging the agent loop
 // indefinitely.  If no data arrives within this window the stream is aborted.
@@ -417,7 +420,7 @@ async function readSSEStream(res, onChunk, extractDelta, signal) {
           onChunk?.(fullText)
         }
       } catch (e) {
-        console.warn('[BLUSWAN] readSSEStream: skipped malformed event —', e.message, '| data:', data?.slice(0, 80))
+        log.warn('readSSEStream: skipped malformed event', { error: e.message, data: data?.slice(0, 80) })
       }
     }
   }

@@ -9,7 +9,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { memoryGraphService as svc } from './memoryGraphService.js'
-import { MEMORY_MAX_NODES, MEMORY_MAX_EDGES } from '../config/constants.js'
+import { MEMORY_MAX_NODES, MEMORY_MAX_EDGES, MEMORY_VECTOR_DIM } from '../config/constants.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,4 +157,59 @@ test('querySemantic respects limit parameter', () => {
   }
   const results = svc.querySemantic({ query: 'authentication', limit: 3 })
   assert.ok(results.length <= 3)
+})
+
+// ── embedText quality (dual-hash + bigrams + stopword penalty) ────────────────
+// These tests exercise the embedding indirectly via querySemantic.
+// They verify that the improved embedText produces meaningfully better rankings
+// than a naive all-equal embedding would give us.
+
+test('querySemantic ranks exact-phrase match above unrelated content', () => {
+  resetService()
+  svc.upsertNode({ id: 'target', title: 'agent loop orchestration', summary: 'runAgentLoop controls agent execution', tags: ['agent', 'loop'] })
+  svc.upsertNode({ id: 'noise1', title: 'database migration', summary: 'alters postgres schema', tags: ['db'] })
+  svc.upsertNode({ id: 'noise2', title: 'user interface panel', summary: 'renders the sidebar', tags: ['ui'] })
+
+  const results = svc.querySemantic({ query: 'agent loop execution' })
+  assert.ok(results.length > 0, 'should return at least one result')
+  assert.equal(results[0].id, 'target', `expected target first, got ${results[0].id}`)
+})
+
+test('querySemantic bigram signal: "write_file" outscores unrelated entries', () => {
+  resetService()
+  svc.upsertNode({ id: 'file-writer', title: 'write_file tool',  summary: 'write file content to disk via executor', tags: ['write_file', 'tool'] })
+  svc.upsertNode({ id: 'auth-mod',   title: 'authentication',    summary: 'validates jwt tokens and sessions', tags: ['auth'] })
+
+  const results = svc.querySemantic({ query: 'write file disk' })
+  assert.ok(results.length > 0)
+  assert.equal(results[0].id, 'file-writer', `expected file-writer first, got ${results[0].id}`)
+})
+
+test('embedText: stop-word-heavy query still resolves correctly', () => {
+  // "the is and for" are all stop words; the query should still work
+  // by falling back to the non-stop-word token overlap score.
+  resetService()
+  svc.upsertNode({ id: 'useful',    title: 'memory graph service', summary: 'stores and queries semantic graph nodes', tags: ['memory'] })
+  svc.upsertNode({ id: 'unrelated', title: 'static css bundle',    summary: 'minified stylesheet for production', tags: ['css'] })
+
+  const results = svc.querySemantic({ query: 'the graph is for storing and querying nodes' })
+  // Despite heavy stop words the semantic tokens (graph, storing, querying, nodes) should win
+  assert.ok(results.length > 0)
+  assert.equal(results[0].id, 'useful', `expected useful first, got ${results[0].id}`)
+})
+
+test('embedding vector has correct dimensionality', () => {
+  resetService()
+  svc.upsertNode({ id: 'dim-test', title: 'dimensionality check', summary: 'test node', tags: [] })
+  const node = svc.nodes.get('dim-test')
+  assert.equal(node.embedding.length, MEMORY_VECTOR_DIM, `expected ${MEMORY_VECTOR_DIM} dims`)
+})
+
+test('embedding vector is L2-normalised (magnitude ≈ 1)', () => {
+  resetService()
+  svc.upsertNode({ id: 'norm-test', title: 'normalisation check', summary: 'authentication session token jwt', tags: ['auth'] })
+  const { embedding } = svc.nodes.get('norm-test')
+  const mag = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0))
+  // Allow ±0.01 floating-point tolerance
+  assert.ok(Math.abs(mag - 1.0) < 0.01, `expected magnitude ≈ 1, got ${mag.toFixed(4)}`)
 })

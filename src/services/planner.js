@@ -8,6 +8,9 @@
 import { runPrompt } from './aiService.js'
 import { PLAN_MAX_FILES as MAX_PLAN_FILES } from '../config/constants.js'
 import { memoryGraphService } from './memoryGraphService.js'
+import { createLogger } from '../utils/logger.js'
+
+const log = createLogger('Planner')
 import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
 import { retrieveContext } from './enhancers/ragService.js'
 import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
@@ -130,7 +133,7 @@ export async function buildFilePlan(task, fileIndex, conventions, model, signal,
     const passed = run.context?.verification?.passed
     if (passed && Array.isArray(planOutput) && planOutput.length) return planOutput
   } catch (e) {
-    console.warn('[Planner] failed:', e.message)
+    log.warn('failed', e.message)
   } finally {
     setTraceLoopState(null)
   }
