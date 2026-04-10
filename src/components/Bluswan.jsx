@@ -1811,13 +1811,15 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
       style={{ filter: ftFilter }}
       onKeyDown={handleKeyDown}
     >
-      {/* ── Aurora WebGL background — always visible ── */}
-      <Aurora
-        colorStops={['#071630', '#3b8ef0', '#112252']}
-        amplitude={1.0}
-        blend={0.5}
-        speed={1.0}
-      />
+      {/* ── Aurora WebGL background — hidden after first message ── */}
+      {conversation.length === 0 && (
+        <Aurora
+          colorStops={['#071630', '#3b8ef0', '#112252']}
+          amplitude={1.0}
+          blend={0.5}
+          speed={1.0}
+        />
+      )}
 
       {/* ── Invisible sandbox iframe ──────────────────────────────────────── */}
       <iframe ref={sandboxRef} className="lk-sandbox-iframe" sandbox="allow-scripts allow-same-origin" title="BLUSWAN sandbox" aria-hidden="true" />
