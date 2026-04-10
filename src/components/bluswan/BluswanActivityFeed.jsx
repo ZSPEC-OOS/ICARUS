@@ -75,7 +75,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     activityLog.some(e => e.type === 'error' || e.status === 'error')
   const isDone = !isAgentRunning && !wasTerminated && !hasError &&
     activityLog.some(e => e.type === 'done')
-  const boxState = isAgentRunning
+  const boxState = (isAgentRunning || isGenerating || isPushing)
     ? 'processing'
     : wasTerminated ? 'terminated'
     : hasError      ? 'error'
