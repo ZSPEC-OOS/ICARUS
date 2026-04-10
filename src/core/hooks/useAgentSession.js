@@ -156,6 +156,7 @@ export function useAgentSession({
       signal:      ctrl.signal,
       conversationHistory,
       onEvent: (ev) => {
+        if (ctrl.signal.aborted) return
         switch (ev.type) {
           case 'turn': {
             // Archive any streamed narration from the previous turn
