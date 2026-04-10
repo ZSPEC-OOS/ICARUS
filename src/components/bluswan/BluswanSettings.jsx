@@ -1,6 +1,6 @@
 import { memo, useState, useEffect, useRef } from 'react'
 import { clearApiKeys, saveModels, testModelConnection, testSearchConnection, loadSearchKey, saveSearchKey } from '../../services/aiService.js'
-import { getRepo, initiateDeviceFlow, pollDeviceToken, getAuthenticatedUser } from '../../services/githubService.js'
+import { getRepo, getAuthenticatedUser } from '../../services/githubService.js'
 import { parseGitHubUrl } from '../../utils/codeUtils.js'
 import {
   loadFirebaseConfig,
@@ -91,55 +91,14 @@ const BluswanSettings = memo(function BluswanSettings({
     setFbError(null)
   }
 
-  // ── GitHub Device OAuth Flow ───────────────────────────────────────────────
-  // phase: null | 'starting' | 'pending' | 'error'
-  const [ghFlowPhase,  setGhFlowPhase]  = useState(null)
-  const [ghFlowData,   setGhFlowData]   = useState(null)   // { user_code, verification_uri, device_code, interval }
-  const [ghFlowError,  setGhFlowError]  = useState(null)
-  const [ghConnected,  setGhConnected]  = useState(null)   // { login } from /user
-  const ghPollCancelRef = useRef(false)
+  // ── GitHub connection state ────────────────────────────────────────────────
+  const [ghConnected, setGhConnected] = useState(null)  // { login } from /user
 
-  // Load connected username when token arrives
+  // Load connected username when token is present
   useEffect(() => {
     if (!githubToken) { setGhConnected(null); return }
     getAuthenticatedUser(githubToken).then(u => setGhConnected(u)).catch(() => setGhConnected(null))
   }, [githubToken])
-
-  async function handleGhConnect() {
-    if (!githubClientId?.trim()) { setGhFlowError('Enter your GitHub OAuth Client ID first'); return }
-    setGhFlowPhase('starting')
-    setGhFlowError(null)
-    ghPollCancelRef.current = false
-    try {
-      const flow = await initiateDeviceFlow(githubClientId.trim())
-      setGhFlowData(flow)
-      setGhFlowPhase('pending')
-      // Start polling in background
-      pollDeviceToken(githubClientId.trim(), flow.device_code, flow.interval)
-        .then(token => {
-          if (ghPollCancelRef.current) return
-          setGithubToken(token)
-          try { sessionStorage.setItem('bluswan:ghtoken', token) } catch {}
-          setGhFlowPhase(null)
-          setGhFlowData(null)
-        })
-        .catch(err => {
-          if (ghPollCancelRef.current) return
-          setGhFlowError(err.message)
-          setGhFlowPhase('error')
-        })
-    } catch (err) {
-      setGhFlowError(err.message)
-      setGhFlowPhase('error')
-    }
-  }
-
-  function handleGhCancel() {
-    ghPollCancelRef.current = true
-    setGhFlowPhase(null)
-    setGhFlowData(null)
-    setGhFlowError(null)
-  }
 
   function handleGhDisconnect() {
     setGithubToken('')
@@ -561,96 +520,34 @@ const BluswanSettings = memo(function BluswanSettings({
         </div>
         <div className="lk-settings-section-body">
 
-          {/* ── Connected state ── */}
-          {githubToken && (
+          {/* ── Connected ── */}
+          {githubToken ? (
             <div className="lk-gh-connected">
               <span className="lk-hint">
-                All your repositories are accessible. Use the repo picker in the top bar to switch projects — the selection persists across sessions.
+                Connected. Use the repo picker in the top bar to switch between any of your repositories — the selection persists across sessions.
               </span>
               <button className="lk-btn lk-btn--small lk-btn--warn" style={{ marginTop: '0.5rem' }} onClick={handleGhDisconnect}>
                 Disconnect GitHub
               </button>
             </div>
-          )}
-
-          {/* ── Not connected ── */}
-          {!githubToken && (
+          ) : (
+            /* ── Not connected ── */
             <>
-              {/* Device Flow section */}
-              <div className="lk-gh-oauth-wrap">
-                <div className="lk-gh-oauth-label">Connect with OAuth <span className="lk-hint-inline">(recommended — no expiry, all repos)</span></div>
-
-                {/* Phase: idle / error — show client ID + connect button */}
-                {(ghFlowPhase === null || ghFlowPhase === 'error') && (
-                  <>
-                    <input
-                      className="lk-input"
-                      placeholder="GitHub OAuth Client ID (e.g. Ov23liXXXXXXXXXX)"
-                      value={githubClientId || ''}
-                      onChange={e => setGithubClientId(e.target.value.trim())}
-                      autoComplete="off"
-                    />
-                    <span className="lk-hint">
-                      Create a free OAuth App at{' '}
-                      <a href="https://github.com/settings/developers" target="_blank" rel="noreferrer">
-                        github.com/settings/developers
-                      </a>{' '}
-                      → New OAuth App. Paste the Client ID above (no secret needed).
-                    </span>
-                    {ghFlowError && <div className="lk-settings-model-save-error">{ghFlowError}</div>}
-                    <button
-                      className="lk-btn lk-btn--small lk-btn--primary"
-                      style={{ marginTop: '0.25rem' }}
-                      disabled={!githubClientId?.trim()}
-                      onClick={handleGhConnect}
-                    >
-                      → Connect with GitHub
-                    </button>
-                  </>
-                )}
-
-                {/* Phase: starting */}
-                {ghFlowPhase === 'starting' && (
-                  <div className="lk-gh-flow-status">Starting authorization…</div>
-                )}
-
-                {/* Phase: pending — user must enter code at github.com/login/device */}
-                {ghFlowPhase === 'pending' && ghFlowData && (
-                  <div className="lk-gh-flow-pending">
-                    <div className="lk-gh-flow-step">
-                      <span className="lk-gh-flow-num">1</span>
-                      Open{' '}
-                      <a href="https://github.com/login/device" target="_blank" rel="noreferrer" className="lk-gh-flow-link">
-                        github.com/login/device ↗
-                      </a>
-                    </div>
-                    <div className="lk-gh-flow-step">
-                      <span className="lk-gh-flow-num">2</span>
-                      Enter this code:
-                      <button
-                        className="lk-gh-flow-code"
-                        title="Click to copy"
-                        onClick={() => navigator.clipboard?.writeText(ghFlowData.user_code).catch(() => {})}
-                      >
-                        {ghFlowData.user_code}
-                      </button>
-                      <span className="lk-hint-inline">click to copy</span>
-                    </div>
-                    <div className="lk-gh-flow-waiting">
-                      <span className="lk-gh-flow-spinner">◌</span> Waiting for authorization…
-                    </div>
-                    <button className="lk-btn lk-btn--small" style={{ marginTop: '0.5rem' }} onClick={handleGhCancel}>
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="lk-gh-divider">— or use a Personal Access Token —</div>
-
-              {/* PAT fallback */}
-              <input className="lk-input" type="password" placeholder="ghp_xxxxxxxxxxxx (needs repo scope)"
-                value={githubToken} onChange={e => setGithubToken(e.target.value)} autoComplete="off" />
+              <span className="lk-hint">
+                Create a Personal Access Token at{' '}
+                <a href="https://github.com/settings/tokens/new?scopes=repo&description=BLUSWAN" target="_blank" rel="noreferrer">
+                  github.com/settings/tokens
+                </a>
+                {' '}— select <strong>repo</strong> scope, set no expiry. Paste it below. The token is encrypted and saved to your account so you only need to do this once.
+              </span>
+              <input
+                className="lk-input"
+                type="password"
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                value={githubToken}
+                onChange={e => setGithubToken(e.target.value)}
+                autoComplete="off"
+              />
             </>
           )}
         </div>
