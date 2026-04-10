@@ -189,7 +189,6 @@ const BluswanSettings = memo(function BluswanSettings({
     setSavingModels(s => ({ ...s, [m.id]: true }))
     try {
       const uid = getCurrentUser()?.uid
-      if (!uid) throw new Error('Not authenticated — sign in to save')
       await saveModelDoc(uid, m)
       // Collapse the panel — model is now committed to Firebase
       setCollapsedModels(c => new Set([...c, m.id]))
