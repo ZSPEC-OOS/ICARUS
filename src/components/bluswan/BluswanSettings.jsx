@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useRef } from 'react'
 import { clearApiKeys, saveModels, testModelConnection, testSearchConnection, loadSearchKey, saveSearchKey } from '../../services/aiService.js'
 import { getRepo, getAuthenticatedUser } from '../../services/githubService.js'
 import { parseGitHubUrl } from '../../utils/codeUtils.js'
+import { KEYS } from '../../shared/storageKeys.js'
 import {
   loadFirebaseConfig,
   saveFirebaseConfig,
@@ -58,7 +59,7 @@ const BluswanSettings = memo(function BluswanSettings({
   // Auth
   onLogout, userEmail,
 }) {
-  const GHTOKEN_SS_KEY = 'bluswan:ghtoken'
+  const GHTOKEN_SS_KEY = KEYS.SS.GH_TOKEN
 
   // ── Firebase state ──────────────────────────────────────────────────────────
   const [fbDraft, setFbDraft]   = useState(() => {
@@ -102,7 +103,7 @@ const BluswanSettings = memo(function BluswanSettings({
 
   function handleGhDisconnect() {
     setGithubToken('')
-    try { sessionStorage.removeItem('bluswan:ghtoken') } catch {}
+    try { sessionStorage.removeItem(KEYS.SS.GH_TOKEN) } catch {}
     setGhConnected(null)
   }
 

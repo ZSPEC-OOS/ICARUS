@@ -44,7 +44,6 @@ export function makeSessionDiary() {
 const EDIT_FAILURE_REMINDER =
   '[REMINDER] edit_file requires exact whitespace in old_str. Use grep to find the exact text, or read_file with start_line/end_line. The diagnostic above shows the nearest matching lines.'
 
-const LOOP_WINDOW = AGENT_LOOP_WINDOW
 const CACHEABLE_TOOLS = new Set(['analyze_codebase', 'read_file', 'read_many_files', 'list_directory', 'search_files', 'grep'])
 const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'delete_file', 'revert_file'])
 
@@ -404,8 +403,8 @@ export async function runAgentLoop({
 
           const sig = toolSignature(response.toolCalls)
           recentSigs.push(sig)
-          if (recentSigs.length > LOOP_WINDOW) recentSigs.shift()
-          if (recentSigs.length === LOOP_WINDOW && recentSigs.every(s => s === sig)) {
+          if (recentSigs.length > AGENT_LOOP_WINDOW) recentSigs.shift()
+          if (recentSigs.length === AGENT_LOOP_WINDOW && recentSigs.every(s => s === sig)) {
             recentSigs.length = 0
             messages.push({ role: 'user', content: '⚠ You appear to be repeating the same tool calls. Try a different approach.' })
             onEvent({ type: 'text_delta', delta: '\n[Loop detected — injecting recovery prompt]\n' })

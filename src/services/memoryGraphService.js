@@ -1,39 +1,22 @@
 import { MEMORY_VECTOR_DIM, MEMORY_MAX_INGEST_CHARS, MEMORY_MAX_NODES, MEMORY_MAX_EDGES } from '../config/constants.js'
 import { createLogger } from '../utils/logger.js'
+import { fnv1a32, fnv1a32Alt } from '../utils/fnv.js'
+import { nowIso } from '../utils/time.js'
+import { KEYS } from '../shared/storageKeys.js'
 
 const log = createLogger('MemoryGraph')
 
-const STORAGE_KEY = 'bluswan:memory-graph:v2'
+const STORAGE_KEY = KEYS.LS.MEMORY_GRAPH
 const VECTOR_DIM = MEMORY_VECTOR_DIM
 const MAX_FILE_INGEST_CHARS = MEMORY_MAX_INGEST_CHARS
-
-function nowIso() {
-  return new Date().toISOString()
-}
 
 function tokenize(text = '') {
   return String(text).toLowerCase().replace(/[^a-z0-9_\-/\.\s]/g, ' ').split(/\s+/).filter(Boolean)
 }
 
-function stableHash(token) {
-  let h = 2166136261
-  for (let i = 0; i < token.length; i++) {
-    h ^= token.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return Math.abs(h)
-}
-
-// Second independent FNV-1a seed used to compute a distinct hash per token,
-// reducing the collision rate when projecting into VECTOR_DIM buckets.
-function stableHash2(token) {
-  let h = 0x84222325
-  for (let i = 0; i < token.length; i++) {
-    h ^= token.charCodeAt(i)
-    h = Math.imul(h, 0x45d9f3b)
-  }
-  return Math.abs(h)
-}
+// Thin wrappers that preserve the Math.abs behaviour used throughout this file.
+function stableHash(token)  { return Math.abs(fnv1a32(token)) }
+function stableHash2(token) { return Math.abs(fnv1a32Alt(token)) }
 
 // High-frequency tokens that carry little discriminative signal.
 // Weighted at 0.1× so they don't dominate the embedding.

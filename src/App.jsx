@@ -11,6 +11,7 @@ import {
   saveUserSettings,
   loadModelDocs,
 } from './services/firebaseService'
+import { KEYS } from './shared/storageKeys.js'
 
 // Populate localStorage + sessionStorage from cloud settings
 // Called after login so that Bluswan's loadSettings() reads the cloud values on
@@ -23,14 +24,14 @@ async function injectCloudSettings(settings) {
             permissionMode, _v, _ts, ...rest } = settings
 
     // Non-secret settings -> localStorage (same key Bluswan uses)
-    localStorage.setItem('bluswan:settings', JSON.stringify(rest))
+    localStorage.setItem(KEYS.LS.SETTINGS, JSON.stringify(rest))
 
     // permissionMode has its own key in localStorage
-    if (permissionMode) localStorage.setItem('bluswan:permMode', permissionMode)
+    if (permissionMode) localStorage.setItem(KEYS.LS.PERM_MODE, permissionMode)
 
     // GitHub tokens -> sessionStorage as plaintext (matching Bluswan's read path)
-    if (githubToken !== undefined) sessionStorage.setItem('bluswan:ghtoken', githubToken || '')
-    if (repo2Token !== undefined) sessionStorage.setItem('bluswan:ghtoken2', repo2Token || '')
+    if (githubToken !== undefined) sessionStorage.setItem(KEYS.SS.GH_TOKEN, githubToken || '')
+    if (repo2Token !== undefined) sessionStorage.setItem(KEYS.SS.GH_TOKEN_2, repo2Token || '')
 
     // Search key must be stored via saveSearchKey() because loadSearchKey() decrypts it
     if (webSearchApiKey !== undefined) await saveSearchKey(webSearchApiKey || '')
@@ -194,11 +195,11 @@ export default function App() {
     await signOutUser().catch(() => {})
     // Clear sensitive local session data
     try {
-      sessionStorage.removeItem('bluswan:ghtoken')
-      sessionStorage.removeItem('bluswan:ghtoken2')
-      sessionStorage.removeItem('bluswan:searchkey')
-      sessionStorage.removeItem('wrkflow:keys')
-      sessionStorage.removeItem('wrkflow:sk')
+      sessionStorage.removeItem(KEYS.SS.GH_TOKEN)
+      sessionStorage.removeItem(KEYS.SS.GH_TOKEN_2)
+      sessionStorage.removeItem(KEYS.SS.SEARCH_KEY)
+      sessionStorage.removeItem(KEYS.SS.AI_KEYS)
+      sessionStorage.removeItem(KEYS.SS.AI_SESSION_KEY)
     } catch {}
     pendingSettingsRef.current = {}
     setModels([])

@@ -5,6 +5,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createModelRouter } from './modelRouter.js'
+import { KEYS } from '../../shared/storageKeys.js'
 
 // ── localStorage mock ─────────────────────────────────────────────────────────
 
@@ -106,9 +107,8 @@ test('route prefers persisted fallback model over primary on next call', () => {
 test('route ignores expired fallback preferences (>24h old)', () => {
   clearLocalStorage()
   // Manually write a pref with an old timestamp
-  const FALLBACK_PREFS_KEY = 'bluswan:router:fallback-prefs'
   const oldAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
-  localStorage.setItem(FALLBACK_PREFS_KEY, JSON.stringify({
+  localStorage.setItem(KEYS.LS.ROUTER_FALLBACKS, JSON.stringify({
     debugger: { modelId: 'model-b', at: oldAt }
   }))
 

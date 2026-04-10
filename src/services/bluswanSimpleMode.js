@@ -29,11 +29,13 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { KEYS } from '../shared/storageKeys.js'
+
 // ── Simple Mode toggle ────────────────────────────────────────────────────────
 // Stored in localStorage so it persists across reloads.
 // DEFAULT IS ON — plain English is the out-of-the-box experience.
 // Only users who explicitly switch to Expert Mode will see technical language.
-const SIMPLE_MODE_KEY = 'bluswan:simpleMode'
+const SIMPLE_MODE_KEY = KEYS.LS.SIMPLE_MODE
 
 export function isSimpleMode() {
   try {

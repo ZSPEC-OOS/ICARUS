@@ -8,12 +8,13 @@
 //   cost_aware  — prefer cheapest model that can handle the task complexity
 
 import { classifyTask } from './taskClassifier.js'
+import { KEYS } from '../../shared/storageKeys.js'
 
 // ── Fallback preference persistence ──────────────────────────────────────────
 // When a fallback model succeeds after the primary fails, that preference is
 // stored in localStorage so the next session can skip the failing primary.
 // Entries expire after FALLBACK_PREF_MAX_AGE_MS to let temporary outages heal.
-const FALLBACK_PREFS_KEY     = 'bluswan:router:fallback-prefs'
+const FALLBACK_PREFS_KEY     = KEYS.LS.ROUTER_FALLBACKS
 const FALLBACK_PREF_MAX_AGE_MS = 24 * 60 * 60 * 1000   // 1 day
 
 function _loadFallbackPrefs() {

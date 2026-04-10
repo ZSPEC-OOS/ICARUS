@@ -1,15 +1,13 @@
 import { schemaVersion } from '../tools/contracts.js'
 import { MAX_TRACE_LINES, TRACE_MAX_AGE_DAYS } from '../config/constants.js'
 import { createLogger } from '../utils/logger.js'
+import { nowIso } from '../utils/time.js'
+import { KEYS } from '../shared/storageKeys.js'
 
 const log = createLogger('ToolTraceStore')
 
-const TRACE_STORAGE_KEY = 'bluswan:tool-traces:jsonl'
+const TRACE_STORAGE_KEY = KEYS.LS.TOOL_TRACES
 let activeLoopState = null
-
-function nowIso() {
-  return new Date().toISOString()
-}
 
 function makeId() {
   return `trace_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
