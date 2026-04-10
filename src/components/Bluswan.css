@@ -778,6 +778,7 @@ html, body, #root {
   display: flex;
   flex-direction: row;
   overflow: hidden;
+  position: relative;
 }
 
 /* ── Feed: scrollable content area between topbar and input-bar ─── */
@@ -791,16 +792,20 @@ html, body, #root {
   position: relative;
 }
 
-/* ── Right task sidebar ───────────────────────────────────────────── */
+/* ── Right task sidebar — absolute overlay, never affects feed width ─ */
 .lk-task-sidebar {
-  flex-shrink: 0;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: 220px;
   display: flex;
   flex-direction: row;
   border-left: 1px solid var(--lk-border);
-  background: rgba(7, 9, 22, 0.82);
+  background: rgba(7, 9, 22, 0.92);
   overflow: hidden;
   transition: width 0.2s ease;
+  z-index: 5;
 }
 
 .lk-task-sidebar--collapsed {

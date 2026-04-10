@@ -1,6 +1,7 @@
 import { memo, useRef, useEffect } from 'react'
+import BluswanPhasePlan from './BluswanPhasePlan'
 
-// ─── Inline markdown (for chat bubbles and stream text) ───────────────────────
+// ─── Inline markdown (for stream text and summaries) ─────────────────────────
 function renderInlineMarkdown(text) {
   const parts = String(text || '').split(/(`[^`]+`|\*\*[^*]+\*\*)/g)
   return parts.map((part, idx) => {
@@ -47,6 +48,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   agentStreamText,
   isGenerating,
   isPushing,
+  pushStep,
   feedRef,
   conversation,
   agentIntent: _agentIntent,
@@ -61,6 +63,12 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   planApproval = null,
   onApprovePlan,
   onCancelPlan,
+  lrmGeneratingPlan = false,
+  lrmPlan = null,
+  onLrmStart,
+  onLrmProceed,
+  onLrmOverride,
+  onLrmCancel,
 }) {
   const streamBoxRef = useRef(null)
 
@@ -89,7 +97,8 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     filePlan.length > 0 ||
     isAmplifying || isPlanning || isGenerating || isPushing ||
     remediationStatus || (isAgentRunning && agentStreamText) ||
-    !!planApproval || !!executedPlan || wasTerminated || hasError
+    !!planApproval || !!executedPlan || wasTerminated || hasError ||
+    lrmGeneratingPlan || !!lrmPlan
 
   const errorReason = hasError
     ? (() => {
@@ -108,33 +117,6 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     <div className="lk-output lk-activity-output" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="lk-activity-feed" ref={feedRef}>
 
-        {/* ── Chat history ──────────────────────────────────────────────── */}
-        {conversation?.length > 0 && (
-          <div className="lk-chat-history">
-            {(() => {
-              let userCount = 0
-              return conversation.map((msg, i) => {
-                // Skip last assistant msg if it will appear as summary inside the box
-                if (summaryMsg && msg.role === 'assistant' && i === conversation.length - 1) return null
-                if (msg.role === 'user') userCount++
-                const label = msg.role === 'user'
-                  ? (userCount === 1 ? 'Task:' : `Edit ${userCount - 1}:`)
-                  : 'BLUSWAN'
-                return (
-                  <div key={i} className={`lk-chat-msg lk-chat-msg--${msg.role}`}>
-                    <span className="lk-chat-label">{label}</span>
-                    <div className="lk-chat-bubble lk-chat-bubble--markdown">
-                      {typeof msg.content === 'string'
-                        ? renderMarkdown(msg.content.slice(0, 4000) + (msg.content.length > 4000 ? '…' : ''))
-                        : '[content]'}
-                    </div>
-                  </div>
-                )
-              })
-            })()}
-          </div>
-        )}
-
         {/* ── Single developing stream box ───────────────────────────────── */}
         {isDeveloping && (
           <div className="lk-developing-box-center">
@@ -148,6 +130,14 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                     <div className="lk-stream-executed-plan-body">
                       {renderMarkdown(executedPlan.summary)}
                     </div>
+                  </div>
+                )}
+
+                {/* LRM: generating plan status */}
+                {lrmGeneratingPlan && (
+                  <div className="lk-stream-line lk-stream-line--live">
+                    <span className="lk-gh-flow-spinner" style={{marginRight:'6px'}}>◌</span>
+                    Analysing request and building phase plan…
                   </div>
                 )}
 
@@ -180,7 +170,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                 {isPlanning      && <div className="lk-stream-line lk-stream-line--live">Planning across repo</div>}
                 {remediationStatus && <div className="lk-stream-line lk-stream-line--live">{remediationStatus}</div>}
                 {isGenerating    && <div className="lk-stream-line lk-stream-line--live">Generating</div>}
-                {isPushing       && <div className="lk-stream-line lk-stream-line--live">Pushing</div>}
+                {isPushing       && <div className="lk-stream-line lk-stream-line--live">{pushStep || 'Pushing'}</div>}
 
                 {/* File plan */}
                 {filePlan.map(entry => {
@@ -243,6 +233,18 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
 
               </div>
             </div>
+
+            {/* LRM phase plan — rendered below the stream box, inside the center wrapper */}
+            {lrmPlan && (
+              <BluswanPhasePlan
+                plan={lrmPlan}
+                isGenerating={isGenerating}
+                onStart={onLrmStart}
+                onProceed={onLrmProceed}
+                onOverride={onLrmOverride}
+                onCancel={onLrmCancel}
+              />
+            )}
           </div>
         )}
 

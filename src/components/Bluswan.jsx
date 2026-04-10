@@ -53,7 +53,6 @@ import BluswanTerminal         from './bluswan/BluswanTerminal'
 import BluswanToolsPane        from './bluswan/BluswanToolsPane'
 import BluswanSettings         from './bluswan/BluswanSettings'
 import BluswanModularTools     from './bluswan/BluswanModularTools'
-import BluswanPhasePlan        from './bluswan/BluswanPhasePlan'
 import './Bluswan.css'
 
 // ─── Persistence ────────────────────────────────────────────────────────────
@@ -2088,6 +2087,7 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
             agentStreamText={agentSession.agentStreamText}
             isGenerating={isGenerating}
             isPushing={isPushing}
+            pushStep={pushStep}
             feedRef={activityFeedRef}
             conversation={conversation}
             agentIntent={agentSession.agentIntent}
@@ -2107,6 +2107,12 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
               agentSession.run(t, conversation.slice(-10), { forceBuildMode: true, skipAgentStart: true })
             }}
             onCancelPlan={() => setPlanApproval(null)}
+            lrmGeneratingPlan={longRequestMode && lrmGeneratingPlan}
+            lrmPlan={longRequestMode ? lrmPlan : null}
+            onLrmStart={handleLrmStart}
+            onLrmProceed={handleLrmProceed}
+            onLrmOverride={handleLrmOverride}
+            onLrmCancel={handleLrmCancel}
           />
         </div>{/* end lk-feed */}
 
@@ -2142,23 +2148,6 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
 
         </div>{/* end lk-feed-row */}
 
-        {/* ── Long Request Mode — phase plan panel ──────────────────────────── */}
-        {longRequestMode && lrmGeneratingPlan && (
-          <div className="lk-lrm-generating">
-            <span className="lk-gh-flow-spinner">◌</span> Analysing request and building phase plan…
-          </div>
-        )}
-        {longRequestMode && lrmPlan && (
-          <BluswanPhasePlan
-            plan={lrmPlan}
-            isGenerating={isGenerating}
-            onStart={handleLrmStart}
-            onProceed={handleLrmProceed}
-            onOverride={handleLrmOverride}
-            onCancel={handleLrmCancel}
-          />
-        )}
-
         <>{/* ══════════════════════════════════════════════════
             BOTTOM INPUT BAR — chat card layout
             ══════════════════════════════════════════════════════════════════ */}
@@ -2169,9 +2158,6 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
 
           {/* Status messages above the card */}
           {error && <div className="lk-error" role="alert">{error}</div>}
-          {isPushing && pushStep && (
-            <div className="lk-push-status"><span className="lk-spinner" /> {pushStep}</div>
-          )}
           {prResult && (
             <a className="lk-pr-badge" href={prResult.url} target="_blank" rel="noopener noreferrer">
               <span className="lk-pr-icon">↗</span>
