@@ -1969,7 +1969,7 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
                               className={`lk-repo-picker-item${repoOwner === r.owner.login && repoName === r.name ? ' lk-repo-picker-item--active' : ''}`}
                               onClick={() => handlePickRepo(r)}
                             >
-                              <span className="lk-repo-picker-item-name">{r.full_name}</span>
+                              <span className="lk-repo-picker-item-name">{r.name}</span>
                               <span className="lk-repo-picker-item-branch">{r.default_branch}</span>
                             </button>
                           ))

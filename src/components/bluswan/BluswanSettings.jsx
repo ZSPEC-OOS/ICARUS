@@ -545,7 +545,7 @@ const BluswanSettings = memo(function BluswanSettings({
                 type="password"
                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                 value={githubToken}
-                onChange={e => setGithubToken(e.target.value)}
+                onChange={e => setGithubToken(e.target.value.trim())}
                 autoComplete="off"
               />
             </>
