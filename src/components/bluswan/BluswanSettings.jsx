@@ -8,6 +8,8 @@ import {
   initFirebase,
   clearFirebaseConfig,
   getFirebaseStatus,
+  getCurrentUser,
+  saveModelDoc,
 } from '../../services/firebaseService.js'
 import { loadEnhancerConfig, saveEnhancerConfig } from '../../services/enhancers/config.js'
 
@@ -51,6 +53,10 @@ const BluswanSettings = memo(function BluswanSettings({
 
   // AI models (API keys)
   models, setModels,
+
+  // Model Firebase persistence
+  savedModelIds,  // array of model IDs already saved to Firestore (start collapsed)
+  onModelSaved,   // callback(modelId) — notify parent when a model is saved
 
   // Web search
   webSearchApiKey, setWebSearchApiKey,
@@ -96,6 +102,15 @@ const BluswanSettings = memo(function BluswanSettings({
   const [newModelName,          setNewModelName]          = useState('')
   const [newModelUseCompTokens, setNewModelUseCompTokens] = useState(false)
   const [searchTestResult, setSearchTestResult] = useState(null)  // { testing, ok, error, ms }
+
+  // ── Per-model collapse / save state ────────────────────────────────────────
+  // Models whose IDs are in this set show only their name (collapsed). They
+  // expand on click and can be saved again to commit edits back to Firebase.
+  const [collapsedModels, setCollapsedModels] = useState(
+    () => new Set(savedModelIds || [])
+  )
+  const [savingModels, setSavingModels] = useState({})  // { [id]: boolean }
+  const [saveErrors,   setSaveErrors]   = useState({})  // { [id]: string | null }
 
   // ── Agent capability toggles ─────────────────────────────────────────────
   const [deepReasoningEnabled, setDeepReasoningEnabled] = useState(
@@ -154,6 +169,38 @@ const BluswanSettings = memo(function BluswanSettings({
     setTestResults(r => ({ ...r, [m.id]: { testing: false, ...result } }))
   }
 
+  // ── Save model to Firebase ─────────────────────────────────────────────────
+  async function handleSaveModel(m) {
+    // Validate all three required fields before writing to Firestore
+    if (!m.apiKey?.trim()) {
+      setSaveErrors(e => ({ ...e, [m.id]: 'API Key is required' }))
+      return
+    }
+    if (!m.baseUrl?.trim()) {
+      setSaveErrors(e => ({ ...e, [m.id]: 'Base URL is required' }))
+      return
+    }
+    if (!m.modelId?.trim()) {
+      setSaveErrors(e => ({ ...e, [m.id]: 'Model ID is required' }))
+      return
+    }
+
+    setSaveErrors(e => ({ ...e, [m.id]: null }))
+    setSavingModels(s => ({ ...s, [m.id]: true }))
+    try {
+      const uid = getCurrentUser()?.uid
+      if (!uid) throw new Error('Not authenticated — sign in to save')
+      await saveModelDoc(uid, m)
+      // Collapse the panel — model is now committed to Firebase
+      setCollapsedModels(c => new Set([...c, m.id]))
+      onModelSaved?.(m.id)
+    } catch (err) {
+      setSaveErrors(e => ({ ...e, [m.id]: err.message }))
+    } finally {
+      setSavingModels(s => ({ ...s, [m.id]: false }))
+    }
+  }
+
   return (
     <div className="lk-drawer lk-drawer--settings">
 
@@ -178,65 +225,98 @@ const BluswanSettings = memo(function BluswanSettings({
             Keys are encrypted and saved to your account — restored automatically when you sign in on any device.
           </span>
 
-          {(models || []).map(m => (
-            <div key={m.id} className="lk-settings-model-row">
-              <div className="lk-settings-model-row-hd">
-                {m.id.startsWith('custom-') ? (
-                  <input
-                    className="lk-input lk-settings-model-name-input"
-                    placeholder="Model name"
-                    value={m.name || ''}
-                    onChange={e => updateModelField(m.id, 'name', e.target.value)}
-                  />
-                ) : (
-                  <span className="lk-settings-model-name">{m.name}</span>
-                )}
-                <button className="lk-settings-model-remove" onClick={() => removeModel(m.id)} title="Remove model">×</button>
-              </div>
-              <input
-                className="lk-input"
-                type="password"
-                placeholder={`API key for ${m.name || 'this model'}`}
-                value={m.apiKey || ''}
-                onChange={e => updateModelKey(m.id, e.target.value)}
-                autoComplete="off"
-              />
-              {m.id.startsWith('custom-') && (
-                <>
-                  <input className="lk-input" placeholder="Model ID (e.g. gpt-4o)" value={m.modelId || ''}
-                    onChange={e => updateModelField(m.id, 'modelId', e.target.value)} />
-                  <input className="lk-input" placeholder="Base URL" value={m.baseUrl || ''}
-                    onChange={e => updateModelField(m.id, 'baseUrl', e.target.value)} />
-                </>
-              )}
-              {!m.id.startsWith('custom-') && <span className="lk-hint">{m.baseUrl}</span>}
+          {(models || []).map(m => {
+            const isCollapsed = collapsedModels.has(m.id)
 
-              {/* Test connection */}
-              <div className="lk-settings-model-test">
-                <button
-                  className="lk-btn lk-btn--small"
-                  disabled={!m.apiKey || testResults[m.id]?.testing}
-                  onClick={() => handleTestConnection(m)}
+            // ── Collapsed / saved view ──────────────────────────────────────
+            if (isCollapsed) {
+              return (
+                <div
+                  key={m.id}
+                  className="lk-settings-model-row--saved"
+                  onClick={() => setCollapsedModels(c => { const n = new Set(c); n.delete(m.id); return n })}
+                  title="Click to edit"
                 >
-                  {testResults[m.id]?.testing ? '…Testing' : 'Test Connection'}
-                </button>
-                {testResults[m.id] && !testResults[m.id].testing && (
+                  <span className="lk-settings-model-name">{m.name}</span>
+                  <span className="lk-settings-badge lk-settings-badge--ok">● saved</span>
+                  <span className="lk-settings-collapse-arrow" style={{ marginLeft: 'auto' }}>▸</span>
+                </div>
+              )
+            }
+
+            // ── Expanded / editing view ─────────────────────────────────────
+            return (
+              <div key={m.id} className="lk-settings-model-row">
+                {/* Header row — Save (top-right) is diagonally opposite Test Connection (bottom-left) */}
+                <div className="lk-settings-model-row-hd">
+                  {m.id.startsWith('custom-') ? (
+                    <input
+                      className="lk-input lk-settings-model-name-input"
+                      placeholder="Model name"
+                      value={m.name || ''}
+                      onChange={e => updateModelField(m.id, 'name', e.target.value)}
+                    />
+                  ) : (
+                    <span className="lk-settings-model-name">{m.name}</span>
+                  )}
+                  <div className="lk-settings-model-row-actions">
+                    <button
+                      className="lk-btn lk-btn--small lk-btn--primary"
+                      disabled={savingModels[m.id]}
+                      onClick={() => handleSaveModel(m)}
+                    >
+                      {savingModels[m.id] ? 'Saving…' : 'Save'}
+                    </button>
+                    <button className="lk-settings-model-remove" onClick={() => removeModel(m.id)} title="Remove model">×</button>
+                  </div>
+                </div>
+                <input
+                  className="lk-input"
+                  type="password"
+                  placeholder={`API key for ${m.name || 'this model'}`}
+                  value={m.apiKey || ''}
+                  onChange={e => updateModelKey(m.id, e.target.value)}
+                  autoComplete="off"
+                />
+                {m.id.startsWith('custom-') && (
                   <>
-                    <span className={`lk-settings-test-result lk-settings-test-result--${testResults[m.id].ok ? 'ok' : 'fail'}`}>
-                      {testResults[m.id].ok
-                        ? `● Connected (${testResults[m.id].ms}ms)`
-                        : `✗ ${testResults[m.id].error}`}
-                    </span>
-                    {testResults[m.id].ok && testResults[m.id].warning && (
-                      <span className="lk-settings-test-result lk-settings-test-result--warn">
-                        ⚠ {testResults[m.id].warning}
-                      </span>
-                    )}
+                    <input className="lk-input" placeholder="Model ID (e.g. gpt-4o)" value={m.modelId || ''}
+                      onChange={e => updateModelField(m.id, 'modelId', e.target.value)} />
+                    <input className="lk-input" placeholder="Base URL" value={m.baseUrl || ''}
+                      onChange={e => updateModelField(m.id, 'baseUrl', e.target.value)} />
                   </>
                 )}
+                {!m.id.startsWith('custom-') && <span className="lk-hint">{m.baseUrl}</span>}
+                {saveErrors[m.id] && (
+                  <div className="lk-settings-model-save-error">{saveErrors[m.id]}</div>
+                )}
+                {/* Test connection — bottom-left (diagonally opposite Save at top-right) */}
+                <div className="lk-settings-model-test">
+                  <button
+                    className="lk-btn lk-btn--small"
+                    disabled={!m.apiKey || testResults[m.id]?.testing}
+                    onClick={() => handleTestConnection(m)}
+                  >
+                    {testResults[m.id]?.testing ? '…Testing' : 'Test Connection'}
+                  </button>
+                  {testResults[m.id] && !testResults[m.id].testing && (
+                    <>
+                      <span className={`lk-settings-test-result lk-settings-test-result--${testResults[m.id].ok ? 'ok' : 'fail'}`}>
+                        {testResults[m.id].ok
+                          ? `● Connected (${testResults[m.id].ms}ms)`
+                          : `✗ ${testResults[m.id].error}`}
+                      </span>
+                      {testResults[m.id].ok && testResults[m.id].warning && (
+                        <span className="lk-settings-test-result lk-settings-test-result--warn">
+                          ⚠ {testResults[m.id].warning}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {/* Add Model */}
           {addModelOpen ? (

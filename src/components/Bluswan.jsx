@@ -162,7 +162,7 @@ function buildFileSystemPrompt(path, existingContent, lang, repoOwner, repoName,
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-export default function Bluswan({ onClose, models, setModels, selectedModelId, onModelChange, onSettingsChanged, onLogout, userEmail }) {
+export default function Bluswan({ onClose, models, setModels, selectedModelId, onModelChange, onSettingsChanged, onLogout, userEmail, savedModelIds, onModelSaved }) {
   const saved = loadSettings()
 
   // ── Config ─────────────────────────────────────────────────────────────
@@ -1924,6 +1924,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
             isSavingBluswanMd={isSavingBluswanMd}
             models={models}                setModels={setModels}
             onLogout={onLogout}            userEmail={userEmail}
+            savedModelIds={savedModelIds}  onModelSaved={onModelSaved}
           />
         )}
 

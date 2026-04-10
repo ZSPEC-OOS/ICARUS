@@ -3740,6 +3740,44 @@ kbd {
   border-bottom: none;
 }
 
+/* Collapsed / saved model row — shows only name + badge, expands on click */
+.lk-settings-model-row--saved {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--lk-accent) 5%, var(--lk-surface));
+  border: 1px solid color-mix(in srgb, var(--lk-accent) 14%, transparent);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.lk-settings-model-row--saved:hover {
+  background: color-mix(in srgb, var(--lk-accent) 10%, var(--lk-surface));
+}
+
+/* Right-side header actions group — Save button + × remove button */
+.lk-settings-model-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* Let the name input fill available space and shrink cleanly */
+.lk-settings-model-row-hd .lk-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Validation / Firebase error shown below the field inputs */
+.lk-settings-model-save-error {
+  font-size: 11px;
+  color: #f87171;
+  padding: 0.1rem 0;
+}
+
 .lk-settings-model-row-hd {
   display: flex;
   align-items: center;
