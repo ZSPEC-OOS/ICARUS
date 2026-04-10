@@ -48,7 +48,6 @@ export function useAgentSession({
   onPlanDone,        // (task, summary) => void — called when plan mode agent finishes
   onAgentStart,       // (task) => void — fires immediately when agent begins (add user bubble)
   onAgentComplete,    // (task, text) => void — fires on every done (add assistant bubble)
-  localDirHandle,     // FileSystemDirectoryHandle | null — local folder instead of GitHub
   availableModels,    // object[] — full model list for orchestration router
 }) {
   const [isAgentRunning,  setIsAgentRunning]  = useState(false)
@@ -71,7 +70,7 @@ export function useAgentSession({
   const runningRef      = useRef(false)   // guard against concurrent runs
   const pendingToolsRef = useRef(new Map()) // Map<toolId, activityId> for matching tool_start/done
 
-  const run = useCallback(async (task, conversationHistory = [], { forceBuildMode = false, skipAgentStart = false } = {}) => {
+  const run = useCallback(async (task, conversationHistory = [], { forceBuildMode = false, skipAgentStart = false, branchOverride = null } = {}) => {
     if (!task?.trim()) { onSetError?.('Enter a task for the agent.'); return }
     if (!modelConfig)        { onSetError?.('Select a model.'); return }
     if (!modelConfig.apiKey) { onSetError?.(`No API key for "${modelConfig.name}". Open Admin Panel.`); return }
@@ -106,11 +105,10 @@ export function useAgentSession({
       token:           githubConfig.token,
       owner:           githubConfig.owner,
       repo:            githubConfig.repo,
-      branch:          githubConfig.branch,
+      branch:          branchOverride || githubConfig.branch,
       sourceRepoConfig,
       webSearchApiKey: webSearchApiKey || '',
       bridgeAvailable: !!bridgeAvailable,
-      localDirHandle:  localDirHandle || null,
       onFileWrite: (path, action) => {
         setAgentFiles(prev => prev.includes(path) ? prev : [...prev, path])
         onFileWrite?.(path, action)
