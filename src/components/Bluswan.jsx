@@ -205,6 +205,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const planMode = true
   // planApproval: pending plan awaiting user approve/reject/modify
   const [planApproval,    setPlanApproval]    = useState(null) // null | { task, summary }
+  const [executedPlan,    setExecutedPlan]    = useState(null) // plan kept visible during execution
   // localDirHandle: File System Access API handle for a locally attached repo folder
   const [localDirHandle,  setLocalDirHandle]  = useState(null)
   // webSearchApiKey: Tavily API key for agent web_search tool
@@ -1125,6 +1126,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
     setAmplifierDecisions([])
     setRemediationStatus(null)
     setPlanApproval(null)
+    setExecutedPlan(null)
     setLastBranchName('')
     setAttachedFiles([])
     setActiveTab('code')
@@ -2093,9 +2095,11 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
             amplifierDecisions={amplifierDecisions}
             isPlanning={isPlanning}
             remediationStatus={remediationStatus}
+            executedPlan={executedPlan}
             planApproval={planApproval}
             onApprovePlan={() => {
               const t = planApproval.task
+              setExecutedPlan(planApproval)
               setPlanApproval(null)
               agentSession.run(t, conversation.slice(-10), { forceBuildMode: true })
             }}
