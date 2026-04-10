@@ -1950,7 +1950,7 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
         {/* ── Mobile-only drawer nav (hidden on desktop via CSS) ──────────── */}
         <div className="lk-sidebar-mobile-nav">
           <div className="lk-sidebar-nav-brand">
-            <img src="/NEWLOGO-header.png" alt="BLUSWAN" className="lk-bluswan-logo lk-bluswan-logo--drawer" />
+            <img src="/BLUSWAN-logo-transparent.png" alt="BLUSWAN" className="lk-bluswan-logo lk-bluswan-logo--drawer" />
             <button className="lk-sidebar-btn lk-sidebar-btn--new"
               onClick={() => { handleReset(); setMobileDrawerOpen(false) }} title="New session">＋</button>
           </div>
@@ -2007,12 +2007,12 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
           {/* Mobile: hamburger + centered title (hidden on desktop via CSS) */}
           <button className="lk-hamburger" onClick={() => setMobileDrawerOpen(v => !v)} aria-label="Open navigation">≡</button>
           <span className="lk-topbar-mobile-title">
-            <img src="/LOGOloadingheader.PNG" alt="BLUSWAN" className="lk-bluswan-logo" />
+            <img src="/BLUSWAN-logo-transparent.png" alt="BLUSWAN" className="lk-bluswan-logo" />
           </span>
           <>
 
               <img
-                src="/LOGOloadingheader.PNG"
+                src="/BLUSWAN-logo-transparent.png"
                 alt="BLUSWAN"
                 className="lk-bluswan-topbar-logo"
               />

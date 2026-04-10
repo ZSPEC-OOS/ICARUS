@@ -54,7 +54,7 @@ function Splash({ msg = 'Loading...' }) {
       flexDirection: 'column',
       gap: '1.25rem',
     }}>
-      <img src="/LOGOloadingheader.PNG" alt="BLUSWAN" style={{ height: '44px', width: 'auto', opacity: 0.9 }} />
+      <img src="/BLUSWAN-logo-transparent.png" alt="BLUSWAN" style={{ height: '44px', width: 'auto' }} />
       <span style={{ color: '#3d5a7a', fontSize: '0.82rem', letterSpacing: '0.04em' }}>{msg}</span>
     </div>
   )

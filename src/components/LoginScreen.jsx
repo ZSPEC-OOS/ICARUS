@@ -48,7 +48,7 @@ export default function LoginScreen({ onUnlock }) {
         {/* ── Full-width logo banner ── */}
         <div style={{ background: '#020810', borderBottom: '1px solid rgba(77,156,255,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 32px' }}>
           <img
-            src="/NEWLOGO-header.png"
+            src="/BLUSWAN-logo-transparent.png"
             alt="BLUSWAN"
             style={{ maxWidth: '100%', maxHeight: '80px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
           />
