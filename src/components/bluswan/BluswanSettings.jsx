@@ -553,31 +553,7 @@ const BluswanSettings = memo(function BluswanSettings({
         </div>
       </div>
 
-      {/* Quick setup — paste a GitHub URL to fill owner + repo */}
-      <div className="lk-field lk-field--url">
-        <label className="lk-label">Quick Setup</label>
-        <input
-          className="lk-input"
-          placeholder="Paste GitHub URL — github.com/owner/repo"
-          onChange={e => {
-            const parsed = parseGitHubUrl(e.target.value)
-            if (parsed) { setRepoOwner(parsed.owner); setRepoName(parsed.repo) }
-          }}
-        />
-        <span className="lk-hint">Auto-fills Owner and Repository below</span>
-      </div>
-
       <div className="lk-drawer-grid">
-        <div className="lk-field">
-          <label className="lk-label">Owner</label>
-          <input className="lk-input" placeholder="username or org"
-            value={repoOwner} onChange={e => setRepoOwner(e.target.value.trim())} />
-        </div>
-        <div className="lk-field">
-          <label className="lk-label">Repository</label>
-          <input className="lk-input" placeholder="my-repo"
-            value={repoName} onChange={e => setRepoName(e.target.value.trim())} />
-        </div>
         <div className="lk-field">
           <label className="lk-label">Base Branch</label>
           <div className="lk-branch-row">
