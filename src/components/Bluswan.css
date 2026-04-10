@@ -414,19 +414,19 @@ html, body, #root {
 
 /* ── BLUSWAN: logo images — banner JPG, no border-radius */
 .lk-bluswan-logo {
-  height: 26px;
+  height: 32px;
   width: auto;
   display: block;
   flex-shrink: 0;
   object-fit: contain;
 }
 .lk-bluswan-logo--drawer {
-  height: 22px;
+  height: 28px;
 }
 
 /* Desktop topbar logo — fixed size, hidden on mobile */
 .lk-bluswan-topbar-logo {
-  height: 26px;
+  height: 32px;
   width: auto;
   display: block;
   flex-shrink: 0;

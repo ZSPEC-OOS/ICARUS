@@ -50,7 +50,7 @@ export default function LoginScreen({ onUnlock }) {
           <img
             src="/NEWLOGO-header.png"
             alt="BLUSWAN"
-            style={{ maxWidth: '100%', maxHeight: '56px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
+            style={{ maxWidth: '100%', maxHeight: '80px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
           />
         </div>
 
