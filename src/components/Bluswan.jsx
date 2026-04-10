@@ -2189,7 +2189,7 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
                   onClick={() => fileInputRef.current?.click()}
                 >+</button>
                 <button
-                  className={`lk-toolbar-btn lk-toolbar-btn--lrm${longRequestMode ? ' lk-toolbar-btn--lrm-on' : ''}`}
+                  className={`lk-toolbar-btn--lrm${longRequestMode ? ' lk-toolbar-btn--lrm-on' : ''}`}
                   title={longRequestMode ? 'Long Request Mode ON — click to disable' : 'Enable Long Request Mode (phased execution for complex tasks)'}
                   onClick={() => { setLongRequestMode(v => !v); if (!longRequestMode) setLrmPlan(null) }}
                 >⇥ LRM</button>

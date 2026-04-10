@@ -6671,30 +6671,40 @@ kbd {
 
 /* Toggle button in toolbar */
 .lk-toolbar-btn--lrm {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: auto;
+  padding: 0 9px;
   height: 28px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
   border-radius: 6px;
+  border: 1px solid var(--lk-border);
+  background: transparent;
   color: var(--lk-text-muted);
-  border: 1px solid transparent;
-  background: none;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
-  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 .lk-toolbar-btn--lrm:hover {
   color: var(--lk-text-2);
-  border-color: var(--lk-border-soft);
+  border-color: var(--lk-accent);
+  background: var(--lk-accent-dim);
 }
 .lk-toolbar-btn--lrm-on {
   color: #4d9cff;
-  border-color: rgba(77,156,255,0.4);
-  background: rgba(77,156,255,0.08);
+  border-color: rgba(77,156,255,0.5);
+  background: rgba(77,156,255,0.1);
 }
 .lk-toolbar-btn--lrm-on:hover {
-  background: rgba(77,156,255,0.14);
+  background: rgba(77,156,255,0.18);
 }
 
 /* Generating-plan status bar */
