@@ -2104,7 +2104,7 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
               const t = planApproval.task
               setExecutedPlan(planApproval)
               setPlanApproval(null)
-              agentSession.run(t, conversation.slice(-10), { forceBuildMode: true })
+              agentSession.run(t, conversation.slice(-10), { forceBuildMode: true, skipAgentStart: true })
             }}
             onCancelPlan={() => setPlanApproval(null)}
           />
