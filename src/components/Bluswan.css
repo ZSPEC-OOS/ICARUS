@@ -3686,6 +3686,21 @@ kbd {
   background: color-mix(in srgb, var(--lk-accent) 10%, var(--lk-surface));
 }
 
+/* Web Search collapsible header — flex row so Save sits at top-right */
+.lk-settings-ws-hd {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.lk-settings-ws-toggle {
+  flex: 1;
+  width: auto;      /* override the 100% from lk-settings-section-hd--btn */
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .lk-settings-add-custom {
   display: flex;
   gap: 6px;

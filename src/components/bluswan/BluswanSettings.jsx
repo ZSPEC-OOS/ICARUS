@@ -10,6 +10,7 @@ import {
   getFirebaseStatus,
   getCurrentUser,
   saveModelDoc,
+  saveWebSearchKeyDoc,
 } from '../../services/firebaseService.js'
 import { loadEnhancerConfig, saveEnhancerConfig } from '../../services/enhancers/config.js'
 
@@ -103,6 +104,11 @@ const BluswanSettings = memo(function BluswanSettings({
   const [newModelUseCompTokens, setNewModelUseCompTokens] = useState(false)
   const [searchTestResult, setSearchTestResult] = useState(null)  // { testing, ok, error, ms }
 
+  // ── Web Search collapse / save state ───────────────────────────────────────
+  // Start collapsed when a key is already loaded (restored from Firebase/local).
+  const [wsCollapsed, setWsCollapsed] = useState(() => !!webSearchApiKey)
+  const [wsSaving,    setWsSaving]    = useState(false)
+
   // ── Per-model collapse / save state ────────────────────────────────────────
   // Models whose IDs are in this set show only their name (collapsed). They
   // expand on click and can be saved again to commit edits back to Firebase.
@@ -152,6 +158,15 @@ const BluswanSettings = memo(function BluswanSettings({
     setSearchTestResult({ testing: true })
     const result = await testSearchConnection(webSearchApiKey)
     setSearchTestResult({ testing: false, ...result })
+  }
+
+  function handleSaveWebSearch() {
+    if (!webSearchApiKey?.trim()) return
+    setWsSaving(true)
+    const uid = getCurrentUser()?.uid
+    saveWebSearchKeyDoc(uid, webSearchApiKey)  // fire-and-forget, swallows errors
+    setWsCollapsed(true)
+    setWsSaving(false)
   }
 
   function removeModel(id) {
@@ -353,45 +368,71 @@ const BluswanSettings = memo(function BluswanSettings({
 
       {/* ── Web Search ────────────────────────────────────────────────────── */}
       <div className="lk-settings-section">
-        <div className="lk-settings-section-hd">
-          <span className="lk-settings-section-icon">🔍</span>
-          Web Search
-        </div>
-        <div className="lk-settings-section-body">
-          <span className="lk-hint">
-            Enables the <code>web_search</code> agent tool. Get a free key at{' '}
-            <a href="https://app.tavily.com" target="_blank" rel="noreferrer">app.tavily.com</a>
-            {' '}(1,000 free searches/month). Saved to your account and restored on next sign-in.
-          </span>
-          <input
-            className="lk-input"
-            type="password"
-            placeholder="Tavily API key (tvly-…)"
-            value={webSearchApiKey || ''}
-            onChange={e => {
-              setWebSearchApiKey(e.target.value)
-              saveSearchKey(e.target.value)
-              setSearchTestResult(null)
-            }}
-            autoComplete="off"
-          />
-          <div className="lk-settings-model-test">
-            <button
-              className="lk-btn lk-btn--small"
-              disabled={!webSearchApiKey || searchTestResult?.testing}
-              onClick={handleTestSearch}
-            >
-              {searchTestResult?.testing ? '…Testing' : 'Test Connection'}
-            </button>
-            {searchTestResult && !searchTestResult.testing && (
-              <span className={`lk-settings-test-result lk-settings-test-result--${searchTestResult.ok ? 'ok' : 'fail'}`}>
-                {searchTestResult.ok
-                  ? `● Connected (${searchTestResult.ms}ms)`
-                  : `✗ ${searchTestResult.error}`}
-              </span>
+        {/* Header: collapse toggle (left) + Save button at top-right (opposite bottom-left Test Connection) */}
+        <div className="lk-settings-ws-hd">
+          <button
+            className="lk-settings-section-hd--btn lk-settings-ws-toggle"
+            onClick={() => setWsCollapsed(c => !c)}
+          >
+            <span className="lk-settings-section-icon">🔍</span>
+            Web Search
+            {wsCollapsed && webSearchApiKey && (
+              <span className="lk-settings-badge lk-settings-badge--ok">● connected</span>
             )}
-          </div>
+            <span className="lk-settings-collapse-arrow" style={{ marginLeft: 'auto' }}>
+              {wsCollapsed ? '▸' : '▾'}
+            </span>
+          </button>
+          {!wsCollapsed && (
+            <button
+              className="lk-btn lk-btn--small lk-btn--primary"
+              style={{ flexShrink: 0 }}
+              disabled={wsSaving || !webSearchApiKey?.trim()}
+              onClick={handleSaveWebSearch}
+            >
+              {wsSaving ? 'Saving…' : 'Save'}
+            </button>
+          )}
         </div>
+
+        {!wsCollapsed && (
+          <div className="lk-settings-section-body">
+            <span className="lk-hint">
+              Enables the <code>web_search</code> agent tool. Get a free key at{' '}
+              <a href="https://app.tavily.com" target="_blank" rel="noreferrer">app.tavily.com</a>
+              {' '}(1,000 free searches/month). Saved to your account and restored on next sign-in.
+            </span>
+            <input
+              className="lk-input"
+              type="password"
+              placeholder="Tavily API key (tvly-…)"
+              value={webSearchApiKey || ''}
+              onChange={e => {
+                setWebSearchApiKey(e.target.value)
+                saveSearchKey(e.target.value)
+                setSearchTestResult(null)
+              }}
+              autoComplete="off"
+            />
+            {/* Test Connection — bottom-left (diagonally opposite Save at top-right) */}
+            <div className="lk-settings-model-test">
+              <button
+                className="lk-btn lk-btn--small"
+                disabled={!webSearchApiKey || searchTestResult?.testing}
+                onClick={handleTestSearch}
+              >
+                {searchTestResult?.testing ? '…Testing' : 'Test Connection'}
+              </button>
+              {searchTestResult && !searchTestResult.testing && (
+                <span className={`lk-settings-test-result lk-settings-test-result--${searchTestResult.ok ? 'ok' : 'fail'}`}>
+                  {searchTestResult.ok
+                    ? `● Connected (${searchTestResult.ms}ms)`
+                    : `✗ ${searchTestResult.error}`}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Firebase ──────────────────────────────────────────────────────── */}

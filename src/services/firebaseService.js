@@ -325,6 +325,21 @@ export async function loadUserConversation(uid) {
 // This collection is the authoritative cross-device store for model configuration;
 // on app load it is read after auth and takes priority over the settings-blob models.
 
+export async function saveWebSearchKeyDoc(uid, apiKey) {
+  if (!uid) return
+  try {
+    const db = await getFirestore()
+    const { doc, setDoc } = await import('firebase/firestore')
+    await setDoc(
+      doc(db, 'users', uid, 'data', 'settings'),
+      { webSearchApiKey: apiKey ? xorCipher(apiKey, uid) : '', _ts: Date.now() },
+      { merge: true },
+    )
+  } catch (err) {
+    console.warn('[Bluswan] saveWebSearchKeyDoc failed:', err.message)
+  }
+}
+
 export async function saveModelDoc(uid, model) {
   if (!uid || !model?.id) return
   try {
