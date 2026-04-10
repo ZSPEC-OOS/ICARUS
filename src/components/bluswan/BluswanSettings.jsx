@@ -38,14 +38,6 @@ const BluswanSettings = memo(function BluswanSettings({
   doCreatePR,     setDoCreatePR,
   dryRun,         setDryRun,
 
-  // Theme
-  theme, setTheme,
-
-  // Fine-tune
-  fineTune, setFineTune, DEFAULT_FT,
-  // Header layout controls
-  headerLayout, setHeaderLayout, DEFAULT_HEADER_LAYOUT,
-
   // Permission mode
   permissionMode, setPermissionMode,
 
@@ -588,96 +580,6 @@ const BluswanSettings = memo(function BluswanSettings({
             />
           </div>
           <span className="lk-hint">0 = precise &amp; deterministic · 50 = balanced · 100 = creative &amp; varied</span>
-        </div>
-      </div>
-
-      {/* Theme picker */}
-      <div className="lk-theme-section">
-        <div className="lk-theme-label">Theme</div>
-        <div className="lk-theme-swatches">
-          {[
-            { id: 'bluswan',  name: 'BLUSWAN', bg: '#030b18', accent: '#3b8ef0' },
-            { id: 'graphite', name: 'Graphite', bg: '#1a1b1e', accent: '#74c0fc' },
-            { id: 'claude',   name: 'Claude',   bg: '#1a1a1a', accent: '#da7756' },
-            { id: 'midnight', name: 'Midnight', bg: '#0b0f1a', accent: '#38bdf8' },
-            { id: 'obsidian', name: 'Obsidian', bg: '#07091A', accent: '#7B82D8' },
-            { id: 'forest',   name: 'Forest',   bg: '#0d1f17', accent: '#34d399' },
-            { id: 'spectrum', name: 'Spectrum', bg: '#09081a', accent: '#ff4da3' },
-            { id: 'phoenix',  name: 'Phoenix',  bg: '#0e0804', accent: '#ff6a00' },
-          ].map(t => (
-            <button
-              key={t.id}
-              className={`lk-theme-swatch${theme === t.id ? ' lk-theme-swatch--active' : ''}`}
-              onClick={() => setTheme(t.id)}
-              title={t.name}
-            >
-              <div className="lk-theme-dot" style={{ background: t.bg }}>
-                <div className="lk-theme-dot-inner" style={{ background: t.accent }} />
-              </div>
-              <span className="lk-theme-name">{t.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Fine-tune sliders */}
-      <div className="lk-finetune-section">
-        <div className="lk-finetune-label">Fine-Tune</div>
-        <div className="lk-finetune-grid">
-          {[
-            { key: 'brightness', label: 'Bright',    min: 50,  max: 150, def: 100 },
-            { key: 'contrast',   label: 'Contrast',  min: 60,  max: 140, def: 100 },
-            { key: 'saturation', label: 'Saturate',  min: 20,  max: 180, def: 100 },
-            { key: 'highlight',  label: 'Highlight', min: 0,   max: 100, def: 50  },
-            { key: 'shadow',     label: 'Shadow',    min: 0,   max: 100, def: 50  },
-          ].map(({ key, label, min, max }) => (
-            <div key={key} className="lk-finetune-row">
-              <div className="lk-finetune-row-label">
-                <span className="lk-finetune-name">{label}</span>
-                <span className="lk-finetune-val">{fineTune[key]}</span>
-              </div>
-              <input
-                type="range" className="lk-slider"
-                min={min} max={max}
-                value={fineTune[key]}
-                onChange={e => setFineTune(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-              />
-            </div>
-          ))}
-          <button className="lk-finetune-reset" onClick={() => setFineTune(DEFAULT_FT)}>
-            ↺ Reset to defaults
-          </button>
-        </div>
-      </div>
-
-      {/* Header layout sliders */}
-      <div className="lk-finetune-section">
-        <div className="lk-finetune-label">Header Layout</div>
-        <div className="lk-finetune-grid">
-          {[
-            { key: 'headerHeight', label: 'Header Height', min: 36, max: 96 },
-            { key: 'titleSize', label: 'Title Size', min: 9, max: 28 },
-            { key: 'titleOffsetX', label: 'Title X', min: -120, max: 120 },
-            { key: 'titleOffsetY', label: 'Title Y', min: -40, max: 40 },
-            { key: 'toggleOffsetX', label: 'Plan/Code X', min: -160, max: 160 },
-            { key: 'toggleOffsetY', label: 'Plan/Code Y', min: -40, max: 40 },
-          ].map(({ key, label, min, max }) => (
-            <div key={key} className="lk-finetune-row">
-              <div className="lk-finetune-row-label">
-                <span className="lk-finetune-name">{label}</span>
-                <span className="lk-finetune-val">{headerLayout[key]}</span>
-              </div>
-              <input
-                type="range" className="lk-slider"
-                min={min} max={max}
-                value={headerLayout[key]}
-                onChange={e => setHeaderLayout(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-              />
-            </div>
-          ))}
-          <button className="lk-finetune-reset" onClick={() => setHeaderLayout(DEFAULT_HEADER_LAYOUT)}>
-            ↺ Reset header layout
-          </button>
         </div>
       </div>
 
