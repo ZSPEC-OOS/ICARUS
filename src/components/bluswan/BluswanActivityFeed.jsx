@@ -62,7 +62,6 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   onCancelPlan,
 }) {
   const streamBoxRef = useRef(null)
-  const canvasRef    = useRef(null)
 
   // Auto-scroll to bottom on every render so new lines stay visible
   useEffect(() => {
@@ -91,124 +90,6 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     filePlan.length > 0 ||
     isAmplifying || isPlanning || isGenerating || isPushing ||
     remediationStatus || (isAgentRunning && agentStreamText)
-
-  // ── Canvas glow border (RAF + Canvas 2D — guaranteed repaint on iOS Safari) ─
-  // CSS custom-property animation inside conic-gradient is unreliable on iOS
-  // WebKit.  Canvas drawImage/stroke calls always trigger a repaint, so we use
-  // the same pattern as the Aurora background: a requestAnimationFrame loop
-  // that redraws the border on every frame using the Canvas 2D API.
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const dpr    = window.devicePixelRatio || 1
-    const parent = canvas.parentElement
-    if (!parent) return
-
-    // Size canvas to match its parent (the wrap div = same size as the box)
-    const rect = parent.getBoundingClientRect()
-    const w    = rect.width  || 680
-    const h    = rect.height || 320
-    canvas.width        = Math.round(w * dpr)
-    canvas.height       = Math.round(h * dpr)
-    canvas.style.width  = `${w}px`
-    canvas.style.height = `${h}px`
-
-    const ctx = canvas.getContext('2d')
-    const R   = 10    // border-radius matching .lk-developing-box
-    const LW  = 1.5
-
-    // Trace the rounded-rect border path in CSS px (DPR scale applied per-frame)
-    const drawPath = () => {
-      const o = LW / 2
-      ctx.beginPath()
-      ctx.moveTo(R + o, o)
-      ctx.arcTo(w - o, o,     w - o, h - o, R)
-      ctx.arcTo(w - o, h - o, o,     h - o, R)
-      ctx.arcTo(o,     h - o, o,     o,     R)
-      ctx.arcTo(o,     o,     w - o, o,     R)
-      ctx.closePath()
-    }
-
-    // Approximate perimeter of the rounded rect
-    const perim = 2 * (w - 2 * R) + 2 * (h - 2 * R) + 2 * Math.PI * R
-
-    let rafId  = null
-    let offset = 0
-    let prevTs = null
-
-    const frame = (ts) => {
-      if (prevTs === null) prevTs = ts
-      const dt = Math.min(ts - prevTs, 50)   // cap to avoid jumps after tab switch
-      prevTs = ts
-
-      // Reset transform each frame (setProperty approach was unreliable on WebKit)
-      ctx.resetTransform()
-      ctx.scale(dpr, dpr)
-      ctx.clearRect(0, 0, w, h)
-      ctx.setLineDash([])
-      ctx.shadowBlur = 0
-
-      if (!boxState) return   // no active state — just keep canvas clear
-
-      if (boxState === 'processing') {
-        // Advance arc ~1.8 s per full lap
-        offset += (perim / 1800) * dt
-
-        // Dim track: full border ring at very low opacity
-        drawPath()
-        ctx.lineWidth   = LW
-        ctx.strokeStyle = 'rgba(116,192,252,0.08)'
-        ctx.stroke()
-
-        // Comet tail: ~28 % of perimeter, bright blue
-        const tail = Math.min(perim * 0.28, 130)
-        const gap  = perim - tail
-        drawPath()
-        ctx.lineWidth      = LW
-        ctx.strokeStyle    = 'rgba(116,192,252,0.80)'
-        ctx.setLineDash([tail, gap])
-        ctx.lineDashOffset = -(offset % perim)
-        ctx.shadowBlur     = 12
-        ctx.shadowColor    = 'rgba(116,192,252,0.55)'
-        ctx.stroke()
-
-        // Comet head: short bright-white tip at the leading edge
-        const head = tail * 0.20
-        drawPath()
-        ctx.lineWidth      = LW + 0.5
-        ctx.strokeStyle    = 'rgba(220,245,255,0.95)'
-        ctx.setLineDash([head, perim - head])
-        ctx.lineDashOffset = -((offset + tail * 0.82) % perim)
-        ctx.shadowBlur     = 10
-        ctx.shadowColor    = 'rgba(200,235,255,0.75)'
-        ctx.stroke()
-
-        ctx.setLineDash([])
-        ctx.shadowBlur = 0
-        rafId = requestAnimationFrame(frame)
-
-      } else {
-        // Static glow — draw once, no further RAF
-        const [borderColor, glowColor] = boxState === 'done'
-          ? ['rgba(81,207,102,0.60)',  'rgba(81,207,102,0.50)']
-          : ['rgba(255,107,107,0.60)', 'rgba(255,107,107,0.50)']
-        drawPath()
-        ctx.lineWidth   = LW
-        ctx.strokeStyle = borderColor
-        ctx.shadowBlur  = 16
-        ctx.shadowColor = glowColor
-        ctx.stroke()
-        ctx.shadowBlur  = 0
-      }
-    }
-
-    rafId = requestAnimationFrame(frame)
-    return () => {
-      cancelAnimationFrame(rafId)
-      try { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height) } catch (_) {}
-    }
-  }, [boxState, isDeveloping])
 
   // Extract the failure reason from the last error entry.
   // Only shown for 'error' state — terminated state intentionally shows no reason.
@@ -242,9 +123,13 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
 
         {/* ── Single developing stream box ───────────────────────────────── */}
         {isDeveloping && (
-          <div className="lk-developing-box-wrap">
-            {/* Canvas draws the border glow via RAF — guaranteed repaint on iOS Safari */}
-            <canvas ref={canvasRef} className="lk-glow-canvas" aria-hidden="true" />
+          <div className={['lk-developing-box-wrap', boxState && `lk-developing-box-wrap--${boxState}`].filter(Boolean).join(' ')}>
+            {/* Spinning arc: CSS transform:rotate() — hardware-accelerated on iOS */}
+            {boxState === 'processing' && (
+              <div className="lk-spin-clip" aria-hidden="true">
+                <div className="lk-spin-gradient" />
+              </div>
+            )}
             <div className="lk-developing-box" ref={streamBoxRef}>
 
             {/* Activity log — all entries as plain text lines */}
