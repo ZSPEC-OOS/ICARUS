@@ -69,6 +69,25 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     if (el) el.scrollTop = el.scrollHeight
   })
 
+  // ── Derive box state from agent lifecycle ─────────────────────────────────
+  // 'processing' while the agent is running, 'done' on clean completion,
+  // 'error' if any error entry exists once the agent has stopped.
+  const hasError = !isAgentRunning &&
+    activityLog.some(e => e.type === 'error' || e.status === 'error')
+  const isDone = !isAgentRunning &&
+    activityLog.some(e => e.type === 'done')
+  const boxState = isAgentRunning ? 'processing' : hasError ? 'error' : isDone ? 'done' : null
+
+  // Extract the failure reason from the last error entry for display.
+  // Strip any leading icon characters so the message reads cleanly.
+  const errorReason = hasError
+    ? (() => {
+        const errEntries = activityLog.filter(e => e.type === 'error' || e.status === 'error')
+        const last = errEntries[errEntries.length - 1]
+        return last ? String(last.msg || '').replace(/^[✗⚠●]\s*/u, '').trim() : null
+      })()
+    : null
+
   const isDeveloping =
     activityLog.length > 0 ||
     amplifierDecisions.length > 0 ||
@@ -98,7 +117,10 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
 
         {/* ── Single developing stream box ───────────────────────────────── */}
         {isDeveloping && (
-          <div className="lk-developing-box" ref={streamBoxRef}>
+          <div
+            className={['lk-developing-box', boxState && `lk-developing-box--${boxState}`].filter(Boolean).join(' ')}
+            ref={streamBoxRef}
+          >
 
             {/* Activity log — all entries as plain text lines */}
             {activityLog.map(entry => {
@@ -157,6 +179,14 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
               <div className="lk-stream-line lk-stream-line--current">
                 {renderInlineMarkdown(agentStreamText)}
                 <span className="lk-stream-cursor">▋</span>
+              </div>
+            )}
+
+            {/* Failure reason — always shown when box is in error state */}
+            {boxState === 'error' && errorReason && (
+              <div className="lk-stream-error-reason">
+                <span className="lk-stream-error-icon">✗</span>
+                {errorReason}
               </div>
             )}
 

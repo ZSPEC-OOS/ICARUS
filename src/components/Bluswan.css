@@ -6125,6 +6125,94 @@ kbd {
 }
 .lk-stream-line--error { color: var(--lk-danger); opacity: 0.75; }
 
+/* ── Spinning-border custom property (CSS Houdini) ───────────────────────────
+   Registers --lk-spin-angle so browsers can interpolate it as an <angle>,
+   which allows conic-gradient to animate smoothly.  Falls back to a static
+   accent-coloured border on browsers that don't support @property.           */
+@property --lk-spin-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes lk-border-spin {
+  to { --lk-spin-angle: 360deg; }
+}
+
+/* Shared transition so state changes feel intentional, not jarring */
+.lk-developing-box {
+  transition:
+    box-shadow  0.45s ease,
+    border-color 0.40s ease;
+}
+
+/* ── Processing: rotating blue arc ──────────────────────────────────────────
+   The multi-background shorthand paints the inner fill over padding-box,
+   leaving the 1.5px border region showing only the conic-gradient arc.      */
+.lk-developing-box--processing {
+  border: 1.5px solid transparent;
+  background:
+    rgba(0, 0, 0, 0.08) padding-box,
+    conic-gradient(
+      from var(--lk-spin-angle),
+      transparent          0deg,
+      transparent         50deg,
+      rgba(116,192,252,.12) 90deg,
+      rgba(116,192,252,.80) 150deg,
+      rgba(200,230,255,.95) 180deg,
+      rgba(116,192,252,.80) 210deg,
+      rgba(116,192,252,.12) 270deg,
+      transparent         310deg,
+      transparent         360deg
+    ) border-box;
+  box-shadow:
+    0 0 14px rgba(116, 192, 252, 0.14),
+    inset 0 0  8px rgba(116, 192, 252, 0.04);
+  animation: lk-border-spin 2.6s linear infinite;
+}
+
+/* ── Complete: solid green glow ─────────────────────────────────────────── */
+.lk-developing-box--done {
+  border: 1.5px solid rgba(81, 207, 102, 0.48);
+  box-shadow:
+    0 0 14px rgba(81, 207, 102, 0.20),
+    0 0 28px rgba(81, 207, 102, 0.08),
+    inset 0 0  8px rgba(81, 207, 102, 0.04);
+}
+
+/* ── Error: solid red glow ──────────────────────────────────────────────── */
+.lk-developing-box--error {
+  border: 1.5px solid rgba(255, 107, 107, 0.48);
+  box-shadow:
+    0 0 14px rgba(255, 107, 107, 0.20),
+    0 0 28px rgba(255, 107, 107, 0.08),
+    inset 0 0  8px rgba(255, 107, 107, 0.04);
+}
+
+/* ── Failure reason block ───────────────────────────────────────────────── */
+.lk-stream-error-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 107, 107, 0.28);
+  background: rgba(255, 107, 107, 0.07);
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(255, 145, 145, 0.90);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lk-stream-error-icon {
+  flex-shrink: 0;
+  color: var(--lk-danger);
+  font-size: 11px;
+  margin-top: 1px;
+}
+
 /* Live stream text panel */
 .lk-stream-panel {
   display: flex;
