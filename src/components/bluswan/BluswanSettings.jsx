@@ -36,8 +36,6 @@ const BluswanSettings = memo(function BluswanSettings({
   enableThinking, setEnableThinking,
 
   // Push options
-  doCreateBranch, setDoCreateBranch,
-  doCreatePR,     setDoCreatePR,
   dryRun,         setDryRun,
 
   // Permission mode
@@ -584,8 +582,6 @@ const BluswanSettings = memo(function BluswanSettings({
 
       <div className="lk-drawer-toggles">
         <label className="lk-toggle"><input type="checkbox" checked={generateTests} onChange={e => setGenerateTests(e.target.checked)} /><span>Generate test file alongside code</span></label>
-        <label className="lk-toggle"><input type="checkbox" checked={doCreateBranch} onChange={e => setDoCreateBranch(e.target.checked)} /><span>Auto-create branch (<code>bluswan/…</code>)</span></label>
-        <label className="lk-toggle"><input type="checkbox" checked={doCreatePR} onChange={e => setDoCreatePR(e.target.checked)} /><span>Auto-create pull request</span></label>
         <label className="lk-toggle lk-toggle--warn"><input type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} /><span>Dry run — preview only, no commits</span></label>
         <label className="lk-toggle"><input type="checkbox" checked={enableThinking} onChange={e => setEnableThinking(e.target.checked)} /><span>Extended thinking <span className="lk-hint-inline">(Claude only — deeper reasoning, slower)</span></span></label>
         <label className="lk-toggle"><input type="checkbox" checked={deepReasoningEnabled} onChange={handleDeepReasoningToggle} /><span>Deep reasoning pipeline <span className="lk-hint-inline">(structured plan → RAG retrieval → critique loop)</span></span></label>
