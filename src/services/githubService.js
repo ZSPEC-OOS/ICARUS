@@ -8,7 +8,7 @@ async function ghFetch(token, path, options = {}) {
   const res = await fetch(`${GH_API}${path}`, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${token?.trim()}`,
       'Accept': 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
       'Content-Type': 'application/json',
