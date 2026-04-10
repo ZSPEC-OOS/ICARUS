@@ -771,14 +771,117 @@ html, body, #root {
    FEED + INPUT BAR  — Claude Code-style main content area
    ════════════════════════════════════════════════════════════════════ */
 
+/* ── Feed row: horizontal container for feed + right task sidebar ── */
+.lk-feed-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
 /* ── Feed: scrollable content area between topbar and input-bar ─── */
 .lk-feed {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
+}
+
+/* ── Right task sidebar ───────────────────────────────────────────── */
+.lk-task-sidebar {
+  flex-shrink: 0;
+  width: 220px;
+  display: flex;
+  flex-direction: row;
+  border-left: 1px solid var(--lk-border);
+  background: rgba(7, 9, 22, 0.82);
+  overflow: hidden;
+  transition: width 0.2s ease;
+}
+
+.lk-task-sidebar--collapsed {
+  width: 26px;
+}
+
+/* Toggle strip — visible in both states */
+.lk-task-sidebar-toggle {
+  flex-shrink: 0;
+  width: 26px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--lk-border);
+  color: var(--lk-text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.14s, background 0.14s;
+  writing-mode: horizontal-tb;
+}
+
+.lk-task-sidebar-toggle:hover {
+  color: var(--lk-accent);
+  background: rgba(77, 156, 255, 0.06);
+}
+
+/* Content area — hidden when collapsed */
+.lk-task-sidebar-inner {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lk-task-sidebar--collapsed .lk-task-sidebar-inner {
+  display: none;
+}
+
+/* "TASK" label */
+.lk-task-sidebar-hd {
+  font-size: 0.56rem;
+  font-family: monospace;
+  letter-spacing: 0.12em;
+  color: var(--lk-text-muted);
+  text-transform: uppercase;
+}
+
+/* Task text */
+.lk-task-sidebar-task {
+  font-size: 0.74rem;
+  color: var(--lk-text-2);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* Phase indicator (shown while agent is running) */
+.lk-task-sidebar-phase {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.62rem;
+  font-family: monospace;
+  color: var(--lk-text-muted);
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.lk-task-sidebar-phase-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--lk-accent);
+  flex-shrink: 0;
+  animation: lk-pulse 1.5s ease-in-out infinite;
 }
 
 /* ── Status strip at top of feed (plan panel, amplifier, remediation) */
