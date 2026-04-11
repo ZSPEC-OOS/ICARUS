@@ -166,6 +166,10 @@ export function toolToLogMessage(name, input = {}) {
     case 'grep':                return `Grepping for \`${(input.pattern || '').slice(0, 40)}\`…`
     case 'run_command':         return `Running: ${(input.cmd || '').slice(0, 60)}…`
     case 'lint_file':           return `Linting ${input.path || 'file'}…`
+    case 'multi_edit_file':     return `Applying ${input.edits?.length ?? 'multiple'} edits to ${input.path || 'file'}…`
+    case 'search_replace_many': return `Replacing "${(input.pattern || '').slice(0, 30)}" across ${input.path_glob || 'all files'}…`
+    case 'move_file':           return `Moving ${input.from || 'file'} → ${input.to || 'destination'}…`
+    case 'apply_patch':         return `Applying patch to ${input.path || 'file'}…`
     case 'get_diff':            return input.path ? `Diffing ${input.path}…` : `Reviewing branch diff (${input.base || 'main'}...${input.head || 'HEAD'})…`
     case 'type_check':          return input.path ? `Type-checking ${input.path}…` : 'Running TypeScript type check…'
     case 'run_tests':           return input.path ? `Running tests in ${input.path}…` : 'Running test suite…'

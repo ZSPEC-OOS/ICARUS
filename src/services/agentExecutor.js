@@ -154,6 +154,73 @@ function attemptJsonRepair(raw) {
   return next
 }
 
+// ── Phase 2 helpers ───────────────────────────────────────────────────────────
+
+// Convert a glob pattern to a RegExp (supports **, *, ?, {a,b}).
+function globToRegex(glob) {
+  const src = glob
+    .replace(/[.+^${}()|[\]\\]/g, (c) => (c === '{' || c === '}' ? c : `\\${c}`))
+    .replace(/\{([^}]+)\}/g, (_, g) => `(?:${g.split(',').map(s => s.replace(/[.+^$[\]\\]/g, '\\$&')).join('|')})`)
+    .replace(/\*\*/g, '\x00')  // placeholder
+    .replace(/\*/g,   '[^/]*')
+    .replace(/\?/g,   '[^/]')
+    .replace(/\x00/g, '.*')
+  return new RegExp(`^${src}$`)
+}
+
+// Parse a unified diff into an array of hunks.
+// Each hunk: { oldStart, lines: ['+'/'-'/' ' prefixed strings] }
+function parsePatchHunks(patch) {
+  const hunks = []
+  let current = null
+  for (const line of patch.split('\n')) {
+    const m = line.match(/@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@/)
+    if (m) {
+      current = { oldStart: Number(m[1]) - 1, lines: [] }  // 0-indexed
+      hunks.push(current)
+      continue
+    }
+    if (current && (line[0] === '+' || line[0] === '-' || line[0] === ' ')) {
+      current.lines.push(line)
+    }
+  }
+  return hunks
+}
+
+// Apply parsed hunks to file lines array (in-place reverse order to preserve positions).
+// Returns { ok, content, error }.
+function applyHunks(fileContent, hunks) {
+  if (hunks.length === 0) return { ok: false, error: 'No valid @@ hunks found in patch.' }
+  const result = fileContent.split('\n')
+
+  for (const hunk of [...hunks].reverse()) {
+    // Build "expected old" (context + removed) and "replacement" (context + added)
+    const oldLines = hunk.lines.filter(l => l[0] !== '+').map(l => l.slice(1))
+    const newLines = hunk.lines.filter(l => l[0] !== '-').map(l => l.slice(1))
+
+    // Locate old content near hinted position (fuzz ±10 lines)
+    let foundAt = -1
+    const lo = Math.max(0, hunk.oldStart - 10)
+    const hi = Math.min(result.length - oldLines.length, hunk.oldStart + 10)
+
+    for (let pos = lo; pos <= hi; pos++) {
+      if (oldLines.every((l, i) => result[pos + i] === l)) { foundAt = pos; break }
+    }
+    // Second pass: trim-normalised match
+    if (foundAt === -1) {
+      for (let pos = 0; pos <= result.length - oldLines.length; pos++) {
+        if (oldLines.every((l, i) => result[pos + i]?.trimEnd() === l.trimEnd())) { foundAt = pos; break }
+      }
+    }
+    if (foundAt === -1) {
+      const ctx = oldLines.slice(0, 3).join('\n')
+      return { ok: false, error: `Hunk at line ${hunk.oldStart + 1} could not be applied — context not found:\n${ctx}\n\nUse edit_file for manual patching.` }
+    }
+    result.splice(foundAt, oldLines.length, ...newLines)
+  }
+  return { ok: true, content: result.join('\n') }
+}
+
 function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive') {
   const normalizedSize = ['small', 'medium', 'large', 'huge'].includes(expectedOutputSize)
     ? expectedOutputSize
@@ -701,6 +768,174 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
         const finalText = result?.finalText || textChunks.join('') || '(no result)'
         return `[Sub-agent: ${label}]\n\n${finalText}`
+      }
+
+      // ── multi_edit_file ────────────────────────────────────────────────
+      // Applies N edits to a single file in one read → patch → write cycle.
+      case 'multi_edit_file': {
+        const edits = input.edits || []
+        if (edits.length === 0) return 'multi_edit_file: edits array is empty.'
+
+        const file = await getFileContent(token, owner, repo, input.path, branch)
+        if (!file?.content) return `File not found: ${input.path}`
+        let current = decodeBase64(file.content)
+        const fileSha = file.sha
+        const applied = []
+        const failed  = []
+
+        for (let i = 0; i < edits.length; i++) {
+          const { old_str, new_str } = edits[i]
+          if (!current.includes(old_str)) {
+            // Try indent-normalised match
+            const normContent = current.split('\n').map(l => l.trimStart()).join('\n')
+            const normOld     = old_str.split('\n').map(l => l.trimStart()).join('\n')
+            if (normContent.includes(normOld)) {
+              failed.push(`Edit ${i + 1}: matched only after stripping indentation — use exact whitespace from read_file.`)
+            } else {
+              const similar = findSimilarLines(current, old_str)
+              failed.push(`Edit ${i + 1}: old_str not found.${similar ? `\nClosest match:\n${similar}` : ''}`)
+            }
+          } else {
+            current = current.replace(old_str, new_str)
+            applied.push(i + 1)
+          }
+        }
+
+        if (failed.length > 0) {
+          const summary = applied.length
+            ? `Applied ${applied.length}/${edits.length} edits, then stopped — fix errors before retrying:\n${failed.join('\n')}`
+            : `No edits applied:\n${failed.join('\n')}`
+          return summary
+        }
+
+        const msg = input.message || `refactor(${input.path.split('/').pop()}): apply ${edits.length} edits`
+        await createOrUpdateFile(token, owner, repo, input.path, current, msg, branch, fileSha)
+        onFileWrite?.(input.path, 'edit')
+        return `multi_edit_file: applied ${edits.length} edit(s) to ${input.path} ✓`
+      }
+
+      // ── search_replace_many ────────────────────────────────────────────
+      // Bulk find-and-replace across all (or glob-filtered) indexed files.
+      case 'search_replace_many': {
+        if (!shadowContext.isReady)
+          return 'Codebase index not ready — try again once indexing completes.'
+
+        const { pattern, replacement, path_glob, literal, dry_run, message: userMsg } = input
+        if (!pattern) return 'search_replace_many: pattern is required.'
+
+        // Build regex
+        let re
+        try {
+          re = literal ? null : new RegExp(pattern, 'g')
+        } catch (e) {
+          return `search_replace_many: invalid regex — ${e.message}. Set literal: true for plain string search.`
+        }
+
+        // Candidate files: grep index for matches, then optionally filter by glob
+        let candidates = shadowContext.grepContent(literal ? pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : pattern, null, '') || []
+        candidates = [...new Set(candidates.map(r => r.path))]
+
+        if (path_glob) {
+          const globRe = globToRegex(path_glob)
+          candidates = candidates.filter(p => globRe.test(p))
+        }
+
+        if (candidates.length === 0) return `No files contain a match for: ${pattern}`
+
+        if (dry_run) {
+          return `Dry run — ${candidates.length} file(s) would be changed:\n${candidates.join('\n')}`
+        }
+
+        const changed = [], errors = []
+        for (const filePath of candidates) {
+          try {
+            const file = await getFileContent(token, owner, repo, filePath, branch)
+            if (!file?.content) { errors.push(`${filePath}: not found`); continue }
+            const original = decodeBase64(file.content)
+            const updated  = literal
+              ? original.split(pattern).join(replacement)
+              : original.replace(re, replacement)
+            if (updated === original) continue  // index hit but content already changed
+            const msg = userMsg
+              ? `${userMsg}: ${filePath.split('/').pop()}`
+              : buildCommitMsg('edit', filePath, null)
+            await createOrUpdateFile(token, owner, repo, filePath, updated, msg, branch, file.sha)
+            onFileWrite?.(filePath, 'edit')
+            changed.push(filePath)
+          } catch (err) {
+            errors.push(`${filePath}: ${err.message}`)
+          }
+        }
+
+        const lines = [`search_replace_many: ${changed.length} file(s) changed.`]
+        if (changed.length)  lines.push(`Changed:\n${changed.map(p => `  ${p}`).join('\n')}`)
+        if (errors.length)   lines.push(`Errors:\n${errors.map(e => `  ${e}`).join('\n')}`)
+        return lines.join('\n')
+      }
+
+      // ── move_file ──────────────────────────────────────────────────────
+      // Copies content to a new path, deletes old path, surfaces import refs.
+      case 'move_file': {
+        if (!input.from?.trim() || !input.to?.trim()) return 'move_file: from and to are required.'
+        if (input.from === input.to) return 'move_file: from and to are the same path.'
+
+        const file = await getFileContent(token, owner, repo, input.from, branch)
+        if (!file?.content) return `File not found: ${input.from}`
+        const content = decodeBase64(file.content)
+
+        // Write to new path
+        const existingDest = await getFileContent(token, owner, repo, input.to, branch)
+        const writeMsg = input.message || `refactor: move ${input.from.split('/').pop()} → ${input.to.split('/').pop()}`
+        await createOrUpdateFile(token, owner, repo, input.to, content, writeMsg, branch, existingDest?.sha || null)
+        onFileWrite?.(input.to, 'write')
+
+        // Delete old path
+        await deleteFile(token, owner, repo, input.from, file.sha, `chore: remove ${input.from} (moved to ${input.to})`, branch)
+        onFileWrite?.(input.from, 'delete')
+
+        // Surface import references for the caller to update
+        const lines = [`Moved: ${input.from} → ${input.to} ✓`]
+        const doImports = input.update_imports !== false
+        if (doImports && shadowContext.isReady) {
+          const oldName  = input.from.replace(/\.[^/.]+$/, '')   // strip extension
+          const baseName = oldName.split('/').pop()
+          const refs = shadowContext.grepContent(baseName, null, '') || []
+          const importingFiles = [...new Set(
+            refs
+              .filter(r => r.path !== input.from && r.text.match(/import|require/))
+              .map(r => r.path)
+          )]
+          if (importingFiles.length > 0) {
+            lines.push(`\n${importingFiles.length} file(s) may need import updates (old path: ${input.from}):\n${importingFiles.map(p => `  ${p}`).join('\n')}`)
+            lines.push(`\nRun search_replace_many to update them, e.g.:\n  pattern: "${baseName}", replacement: "${input.to.replace(/\.[^/.]+$/, '').split('/').pop()}"`)
+          } else {
+            lines.push('No import references found that need updating.')
+          }
+        }
+        return lines.join('\n')
+      }
+
+      // ── apply_patch ────────────────────────────────────────────────────
+      // Applies a unified diff to a file with fuzzy hunk matching (±10 lines).
+      case 'apply_patch': {
+        if (!input.patch?.trim()) return 'apply_patch: patch is required.'
+
+        const file = await getFileContent(token, owner, repo, input.path, branch)
+        if (!file?.content) return `File not found: ${input.path}`
+        const original = decodeBase64(file.content)
+
+        const hunks = parsePatchHunks(input.patch)
+        const result = applyHunks(original, hunks)
+
+        if (!result.ok) return `apply_patch failed: ${result.error}`
+
+        const msg = input.message || buildCommitMsg('edit', input.path, null)
+        await createOrUpdateFile(token, owner, repo, input.path, result.content, msg, branch, file.sha)
+        onFileWrite?.(input.path, 'edit')
+
+        const oldCount = hunks.reduce((n, h) => n + h.lines.filter(l => l[0] === '-').length, 0)
+        const newCount = hunks.reduce((n, h) => n + h.lines.filter(l => l[0] === '+').length, 0)
+        return `apply_patch: ${input.path} — ${hunks.length} hunk(s) applied, -${oldCount} +${newCount} lines ✓`
       }
 
       // ── get_diff ───────────────────────────────────────────────────────

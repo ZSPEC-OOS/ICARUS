@@ -347,6 +347,75 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ── Phase 2: Precision editing ───────────────────────────────────────────────
+  {
+    name: 'multi_edit_file',
+    description: 'Apply multiple find-and-replace edits to a single file in one atomic commit. Reads the file once, applies all edits sequentially, then writes back. Preferred over multiple edit_file calls when changing several non-contiguous sections of the same file, since it avoids re-read overhead and eliminates the risk of edit collisions.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path:    { type: 'string', description: 'File path relative to repo root' },
+        edits:   {
+          type: 'array',
+          description: 'Ordered list of edits to apply. Applied sequentially — each edit operates on the result of the previous one.',
+          items: {
+            type: 'object',
+            properties: {
+              old_str: { type: 'string', description: 'Exact text to find (must be unique in the file at the time this edit runs)' },
+              new_str: { type: 'string', description: 'Replacement text' },
+            },
+            required: ['old_str', 'new_str'],
+          },
+        },
+        message: { type: 'string', description: 'Commit message (optional)' },
+      },
+      required: ['path', 'edits'],
+    },
+  },
+  {
+    name: 'search_replace_many',
+    description: 'Find and replace a pattern across multiple files in the repository. Use this for bulk refactors: renaming a symbol, changing an API call, migrating an import path. Returns a summary of changed files. Pass dry_run: true to preview matches without writing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pattern:     { type: 'string',  description: 'Search pattern — treated as a regex by default. Escape special chars or set literal: true for plain string search.' },
+        replacement: { type: 'string',  description: 'Replacement text. Regex capture groups ($1, $2…) are supported unless literal: true.' },
+        path_glob:   { type: 'string',  description: 'Optional glob pattern to restrict which files are searched, e.g. "src/**/*.ts" or "**/*.css"' },
+        literal:     { type: 'boolean', description: 'If true, treat pattern as a literal string (no regex). Default: false.' },
+        dry_run:     { type: 'boolean', description: 'If true, return the list of files that would be changed without modifying anything. Default: false.' },
+        message:     { type: 'string',  description: 'Commit message prefix used for each changed file (optional)' },
+      },
+      required: ['pattern', 'replacement'],
+    },
+  },
+  {
+    name: 'move_file',
+    description: 'Move or rename a file within the repository: copies content to the new path, deletes the old path, and returns a list of files that likely import the old path so you can update them with search_replace_many.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        from:           { type: 'string',  description: 'Current file path relative to repo root, e.g. src/utils/old.js' },
+        to:             { type: 'string',  description: 'New file path relative to repo root, e.g. src/utils/new.js'     },
+        update_imports: { type: 'boolean', description: 'If true (default), scan the codebase and list files that reference the old path so you can update them.' },
+        message:        { type: 'string',  description: 'Commit message (optional)' },
+      },
+      required: ['from', 'to'],
+    },
+  },
+  {
+    name: 'apply_patch',
+    description: 'Apply a unified diff patch to a file. Parses standard `@@ -l,s +l,s @@` hunk headers and applies context-matched additions and deletions. Useful when reasoning in diff form or applying an externally generated patch. Falls back gracefully: on hunk mismatch it reports the failing hunk with context so you can retry with edit_file.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path:    { type: 'string', description: 'File path relative to repo root' },
+        patch:   { type: 'string', description: 'Unified diff text (the @@ hunks, with optional --- +++ header)' },
+        message: { type: 'string', description: 'Commit message (optional)' },
+      },
+      required: ['path', 'patch'],
+    },
+  },
+
   // ── Phase 1: Self-verification loop ─────────────────────────────────────────
   {
     name: 'get_diff',
@@ -420,6 +489,10 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
     `Use glob to find files by name pattern (e.g. src/**/*.jsx) — faster than list_directory for targeted discovery.`,
     `Use grep to search file contents by regex — far faster than opening files one by one.`,
     `Use read_many_files to read several files in one call.`,
+    `Use multi_edit_file when making several changes to the same file — one read, one commit, no collision risk.`,
+    !planMode ? `Use search_replace_many for bulk renames/refactors across multiple files (symbol rename, import migration, etc.).` : null,
+    !planMode ? `Use move_file to rename/relocate a file — it handles copy+delete and surfaces import references to update.` : null,
+    !planMode ? `Use apply_patch when you have a unified diff — more expressive than edit_file for multi-hunk changes.` : null,
     `Use lint_file after editing JS/TS files to catch errors before moving on.`,
     !planMode ? `Use type_check to catch TypeScript type errors across the project after making changes.` : null,
     !planMode ? `Use run_tests to verify your changes pass the test suite before finishing.` : null,
