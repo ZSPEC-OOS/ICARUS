@@ -310,46 +310,8 @@ export function useWorkspaceState({
   const hasGithub      = !!(githubToken && repoOwner && repoName)
   const shouldUseAgent = hasGithub
 
-  const persistSessionToHistory = useCallback((messages = conversation) => {
-    if (!Array.isArray(messages) || messages.length === 0) return false
-    const promptSummary = buildHistoryPromptFromConversation(messages)
-    if (!promptSummary) return false
-    const entry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      prompt: promptSummary,
-      filePath: planRef.current[0]?.path || filePlan[0]?.path || '',
-      timestamp: new Date().toISOString(),
-      conversation: messages.slice(-20),
-    }
-    setHistory(prev => {
-      const updated = [entry, ...prev].slice(0, 60)
-      saveHistory(updated)
-      return updated
-    })
-    return true
-  }, [conversation, filePlan])
-
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => { loadSearchKey().then(setWebSearchApiKey).catch(() => {}) }, [])
-
-  // Migrate previously persisted conversation into Task History on load.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEYS.LS.CONV)
-      if (!raw) return
-      const cached = JSON.parse(raw)
-      if (Array.isArray(cached) && cached.length > 0) persistSessionToHistory(cached)
-      localStorage.removeItem(KEYS.LS.CONV)
-    } catch {}
-  }, [persistSessionToHistory])
-
-  // Archive current in-progress chat before refresh/navigation.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const onBeforeUnload = () => { persistSessionToHistory(conversation) }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [conversation, persistSessionToHistory])
 
   useEffect(() => { onSettingsChangedRef.current = onSettingsChanged }, [onSettingsChanged])
 
@@ -409,6 +371,46 @@ export function useWorkspaceState({
   const { conversation, setConversation, turnCount, setTurnCount, reset: resetConversation } = useConversation()
   const { bridgeAvailable, callExecBridge, callExecBridgeStream } = useExecBridge()
   const { activityLog, activityRef, logActivity, updateActivity, clearActivity } = useActivityLog(activityFeedRef)
+
+  // persistSessionToHistory must be defined AFTER useConversation() so that
+  // `conversation` is in scope (not in the Temporal Dead Zone).
+  const persistSessionToHistory = useCallback((messages = conversation) => {
+    if (!Array.isArray(messages) || messages.length === 0) return false
+    const promptSummary = buildHistoryPromptFromConversation(messages)
+    if (!promptSummary) return false
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      prompt: promptSummary,
+      filePath: planRef.current[0]?.path || filePlan[0]?.path || '',
+      timestamp: new Date().toISOString(),
+      conversation: messages.slice(-20),
+    }
+    setHistory(prev => {
+      const updated = [entry, ...prev].slice(0, 60)
+      saveHistory(updated)
+      return updated
+    })
+    return true
+  }, [conversation, filePlan])
+
+  // Migrate previously persisted conversation into Task History on load.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(KEYS.LS.CONV)
+      if (!raw) return
+      const cached = JSON.parse(raw)
+      if (Array.isArray(cached) && cached.length > 0) persistSessionToHistory(cached)
+      localStorage.removeItem(KEYS.LS.CONV)
+    } catch {}
+  }, [persistSessionToHistory])
+
+  // Archive current in-progress chat before refresh/navigation.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onBeforeUnload = () => { persistSessionToHistory(conversation) }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [conversation, persistSessionToHistory])
 
   const activeModel   = models?.find(m => m.id === activeModelId) ?? models?.[0]
 
