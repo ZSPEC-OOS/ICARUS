@@ -199,16 +199,17 @@ export function scanMutations(mutations = []) {
 
   for (const mutation of mutations) {
     // Only scan content that was actually written (skip deletes and unchanged)
-    const content = mutation.afterContent
-    if (!content || mutation.action === 'delete') continue
+    const content = mutation?.afterContent
+    const filePath = mutation?.path || ''
+    if (!content || mutation?.action === 'delete') continue
 
     allIssues.push(
-      ...scanLines(content, SECRET_RULES, mutation.path),
-      ...scanLines(content, VULN_RULES,   mutation.path),
+      ...scanLines(content, SECRET_RULES, filePath),
+      ...scanLines(content, VULN_RULES,   filePath),
     )
 
     // New-dependency check: only when package.json was modified
-    if (mutation.path.endsWith('package.json') && mutation.beforeContent) {
+    if (filePath.endsWith('package.json') && mutation?.beforeContent) {
       allIssues.push(...scanNewDependencies(mutation.beforeContent, content))
     }
   }
