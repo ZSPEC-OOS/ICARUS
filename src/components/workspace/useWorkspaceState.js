@@ -814,8 +814,265 @@ export function useWorkspaceState({
     setActivePhase, resetConversation, emitStreamEvent, orderFilePlan, clearActivity,
   ]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── handleRefine / handleRetryFile ───────────────────────────────────────
+  const handleRefine = useCallback(() => {
+    if (refinementPrompt.trim() && !isGenerating) handleGenerate(refinementPrompt, true)
+  }, [refinementPrompt, isGenerating, handleGenerate])
+
+  const handleRetryFile = useCallback(async (fileIndex) => {
+    if (isGenerating) return
+    const entry = planRef.current[fileIndex]
+    if (!entry) return
+    const model = models?.find(m => m.id === activeModelId)
+    if (!model?.apiKey) { setError('Select a model with an API key.'); return }
+    setIsGenerating(true)
+    updatePlanEntry(fileIndex, { status: 'generating', error: undefined })
+    const retryId = logActivity('generate', `↺ Retrying ${entry.path}`)
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      const lang = detectLanguage(entry.path, '')
+      const bluswanMd = shadowContext.getBluswanMd()
+      let retryContextFiles = []
+      try {
+        retryContextFiles = await shadowContext.getContextContent(`${prompt || entry.purpose || entry.path} ${entry.path}`, CONTEXT_FILES_LIMIT)
+        retryContextFiles = retryContextFiles.filter(f => f.path !== entry.path)
+      } catch {}
+      const sys      = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, bluswanMd, retryContextFiles)
+      const fileTask = `${prompt || 'Regenerate this file.'}\n\nFor this file: ${entry.path} — ${entry.purpose}`
+      const mode     = entry.existingContent !== null ? 'patch' : 'replace'
+      let streaming  = ''
+      const raw = await runPromptWithRetry(model, fileTask, [
+        { role: 'user', content: sys }, { role: 'assistant', content: 'Understood. I will output only the code.' },
+      ], (partial) => {
+        streaming = mode === 'patch' && entry.existingContent ? partial : extractCode(partial)
+        updatePlanEntry(fileIndex, { code: streaming })
+      }, ctrl.signal)
+      let finalCode = extractCode(raw)
+      if (mode === 'patch' && entry.existingContent) {
+        const { result, edits } = applyEditBlocks(entry.existingContent, raw)
+        if (edits.length > 0) finalCode = result
+      }
+      finalCode = await autoRemediate(finalCode, lang, model, ctrl.signal, entry.path, entry.purpose)
+      const newDiff = computeLineDiff(entry.existingContent || null, finalCode, entry.path)
+      updatePlanEntry(fileIndex, { code: finalCode, diffText: newDiff, status: 'done', error: undefined })
+      updateActivity(retryId, { status: 'done', msg: `↺ ${entry.path} — retry succeeded`, detail: `${finalCode.split('\n').length} lines` })
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        updatePlanEntry(fileIndex, { status: 'error', error: err.message })
+        updateActivity(retryId, { status: 'error', msg: `↺ ${entry.path} — retry failed: ${err.message}` })
+        setError(`Retry failed: ${err.message}`)
+      }
+    } finally { setIsGenerating(false) }
+  }, [isGenerating, models, activeModelId, repoOwner, repoName, prompt, autoRemediate, updatePlanEntry, logActivity, updateActivity]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── BLUSWAN.md + post-push tests ──────────────────────────────────────────
+  const handleSaveBluswanMd = useCallback(async () => {
+    if (!hasGithub) { setError('GitHub required to save BLUSWAN.md.'); return }
+    setIsSavingBluswanMd(true)
+    try {
+      const existing = await getFileContent(githubToken, repoOwner, repoName, 'BLUSWAN.md', baseBranch)
+      await createOrUpdateFile(githubToken, repoOwner, repoName, 'BLUSWAN.md', bluswanMdDraft, 'docs: update BLUSWAN.md project instructions', baseBranch, existing?.sha || null)
+      shadowContext.bluswanMd = bluswanMdDraft
+      logActivity('done', '✓ BLUSWAN.md saved to repo')
+    } catch (e) { setError(`Failed to save BLUSWAN.md: ${e.message}`) }
+    finally { setIsSavingBluswanMd(false) }
+  }, [hasGithub, githubToken, repoOwner, repoName, baseBranch, bluswanMdDraft, logActivity])
+
+  const handleRunProjectTests = useCallback(async () => {
+    if (!bridgeAvailable) return
+    setIsRunningPostPushTests(true)
+    logActivity('test', '⊛ Running project tests…')
+    let out = ''
+    await callExecBridgeStream('npm test -- --watchAll=false --passWithNoTests', undefined, (chunk) => { out += chunk }, 120000)
+    setIsRunningPostPushTests(false)
+    const passed = out.includes('Tests:') && !out.includes('failed')
+    logActivity('test', passed ? '⊛ Tests passed' : '⊛ Tests failed — see output', out.slice(-300))
+    setActiveTab('code')
+  }, [bridgeAvailable, callExecBridgeStream, logActivity])
+
+  // ── Reset / abort ─────────────────────────────────────────────────────────
+  const handleReset = useCallback(() => {
+    resetConversation(); clearActivity(); setFilePlan([]); setActiveFileIndex(0)
+    setIsPlanning(false); planRef.current = []; setRefinementPrompt(''); setSandboxOutput([])
+    setPrResult(null); setGitStatus(null); setPrompt(''); setError(''); setAmplifierDecisions([])
+    setRemediationStatus(null); setPlanApproval(null); setExecutedPlan(null)
+    setLastBranchName(''); setAttachedFiles([]); setActiveTab('code')
+  }, [resetConversation, clearActivity])
+
+  const handleAbort = useCallback(() => {
+    abortRef.current?.abort()
+    agentSession.abort()
+    setIsGenerating(false); setIsGenTests(false); setIsPushing(false); setPushStep('')
+  }, [agentSession])
+
+  // ── Repo picker ───────────────────────────────────────────────────────────
+  const loadRepos = useCallback(async () => {
+    if (!githubToken) return
+    setRepoPickerLoading(true); setRepoPickerError(null)
+    try {
+      const repos = await listUserRepos(githubToken)
+      setUserRepos(repos)
+      if (repos.length === 0) setRepoPickerError('No repositories returned. Check token scopes (needs repo).')
+    } catch (err) { setRepoPickerError(err.message || 'Failed to load repositories') }
+    finally { setRepoPickerLoading(false) }
+  }, [githubToken])
+
+  const openRepoPicker = useCallback(async () => {
+    setRepoPickerOpen(true); setRepoPickerSearch('')
+    if (userRepos.length > 0) return
+    await loadRepos()
+  }, [userRepos.length, loadRepos])
+
+  const handlePickRepo = useCallback((repo) => {
+    setRepoOwner(repo.owner.login); setRepoName(repo.name)
+    setBaseBranch(repo.default_branch || 'main'); setRepoPickerOpen(false); setLastBranchName('')
+  }, [])
+
+  const handleReindex = useCallback(async () => {
+    if (!hasGithub) return
+    setShadowStatus('reindexing…')
+    try { await shadowContext.reindex(); setShadowStatus(shadowContext.statusSummary()) }
+    catch { setShadowStatus('reindex failed') }
+  }, [hasGithub])
+
+  // ── GitHub Actions ────────────────────────────────────────────────────────
+  const loadWorkflows = useCallback(async () => {
+    if (!hasGithub) return
+    try { const res = await listWorkflows(githubToken, repoOwner, repoName); setWorkflows(res?.workflows || []) }
+    catch { setWorkflows([]) }
+  }, [hasGithub, githubToken, repoOwner, repoName])
+
+  const triggerWorkflow = useCallback(async () => {
+    if (!hasGithub) return
+    const wf = workflows.find(w => w.events?.includes('workflow_dispatch')) || workflows[0]
+    if (!wf) return
+    setIsPollingCI(true)
+    const id = logActivity('ci', `⊙ Triggering workflow ${wf.name || wf.path}`)
+    try {
+      const dispatch = await dispatchWorkflow(githubToken, repoOwner, repoName, wf.id, baseBranch)
+      if (!dispatch) { updateActivity(id, { status: 'error', msg: `⊙ Failed to trigger ${wf.name || wf.path}` }); return }
+      updateActivity(id, { status: 'done', msg: `⊙ Workflow triggered: ${wf.name || wf.path}` })
+      for (let i = 0; i < 18; i++) {
+        await new Promise(r => setTimeout(r, 5000))
+        const runs = await getWorkflowRuns(githubToken, repoOwner, repoName, baseBranch, 5, wf.id)
+        const run  = runs?.workflow_runs?.find(r => r.workflow_id === wf.id)
+        if (run && run.status !== 'queued' && run.status !== 'in_progress') {
+          setWorkflowRuns([run])
+          updateActivity(id, { status: run.conclusion === 'success' ? 'done' : 'error', msg: `⊙ Workflow ${run.name} ${run.conclusion || run.status}`, detail: run.html_url })
+          break
+        }
+      }
+    } catch (e) { updateActivity(id, { status: 'error', msg: `⊙ Workflow trigger failed: ${e.message}` }) }
+    finally { setIsPollingCI(false) }
+  }, [hasGithub, workflows, githubToken, repoOwner, repoName, baseBranch, logActivity, updateActivity])
+
+  // ── handlePush ────────────────────────────────────────────────────────────
+  const confirmAction = useCallback((description) => {
+    if (permissionMode === 'auto') return true
+    if (permissionMode === 'ask') return window.confirm(`BLUSWAN permission request\n\n${description}\n\nProceed?`)
+    return window.confirm(`BLUSWAN — manual mode\n\n${description}\n\nThis action writes to GitHub. Confirm to continue.`)
+  }, [permissionMode])
+
+  const handlePush = useCallback(async () => {
+    const filesToPush = filePlan.filter(e => e.code?.trim())
+    if (filesToPush.length === 0) { setError('Generate code first.'); return }
+    if (!githubToken) { setError('GitHub token required — open Settings.'); setSettingsOpen(true); return }
+    if (!repoOwner || !repoName) { setError('Repo owner and name required — open Settings.'); setSettingsOpen(true); return }
+    const promptSummary = (history[0]?.prompt || prompt || 'BLUSWAN generated code').slice(0, 80)
+    if (!dryRun && !confirmAction(`Push ${filesToPush.length} file${filesToPush.length !== 1 ? 's' : ''} to ${repoOwner}/${repoName} on a new branch, then open a PR`)) return
+    setError(''); setIsPushing(true); setPrResult(null); setActiveTab('code')
+    const steps = []
+    const log = (msg, ok = true) => { steps.push({ msg, ok }); setGitStatus([...steps]) }
+    logActivity('push', `⬆ Pushing ${filesToPush.length} file${filesToPush.length !== 1 ? 's' : ''} to GitHub`)
+    try {
+      setPushStep('Verifying repository…')
+      const repoId = logActivity('push', `⬆ Verifying ${repoOwner}/${repoName}`)
+      const repo   = await getRepo(githubToken, repoOwner, repoName)
+      log(`✓ ${repoOwner}/${repoName} — ${repo.private ? 'private' : 'public'}`)
+      updateActivity(repoId, { status: 'done', msg: `⬆ ${repoOwner}/${repoName}` })
+      setPushStep(`Fetching branch "${baseBranch}"…`)
+      const branchId  = logActivity('push', `⬆ Resolving branch "${baseBranch}"`)
+      const branchData = await getBranch(githubToken, repoOwner, repoName, baseBranch)
+      const baseSha   = branchData.commit.sha
+      log(`✓ Base "${baseBranch}" → ${baseSha.slice(0, 7)}`)
+      updateActivity(branchId, { status: 'done', msg: `⬆ "${baseBranch}" @ ${baseSha.slice(0, 7)}` })
+      const targetBranch = generateBranchName(promptSummary)
+      setPushStep(`Creating branch "${targetBranch}"…`)
+      const newBrId = logActivity('push', `⬆ Creating branch "${targetBranch}"`)
+      if (!dryRun) await createBranch(githubToken, repoOwner, repoName, targetBranch, baseSha)
+      log(`${dryRun ? '○' : '✓'} Branch "${targetBranch}"${dryRun ? ' (dry run)' : ''}`)
+      updateActivity(newBrId, { status: 'done', msg: `⬆ Branch "${targetBranch}" ready${dryRun ? ' (dry run)' : ''}` })
+      setLastBranchName(targetBranch)
+      const modelName = models?.find(m => m.id === activeModelId)?.name || 'Unknown'
+      async function pushWithRetry(path, code, commitMsg, branch, initialSha) {
+        let sha = initialSha
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try { await createOrUpdateFile(githubToken, repoOwner, repoName, path, code, commitMsg, branch, sha); return }
+          catch (err) {
+            if (err.status === 409 && attempt < 2) { const fresh = await getFileContent(githubToken, repoOwner, repoName, path, branch); sha = fresh?.sha || null }
+            else throw err
+          }
+        }
+      }
+      for (const entry of filesToPush) {
+        setPushStep(`Pushing "${entry.path}"…`)
+        const fileId    = logActivity('push', `⬆ ${entry.path}`)
+        const existing  = await getFileContent(githubToken, repoOwner, repoName, entry.path, targetBranch)
+        const existingSha = existing?.sha || entry._sha || null
+        const action    = existingSha ? 'update' : 'add'
+        const commitMsg = `feat(bluswan): ${action} ${entry.path}\n\nGenerated by BLUSWAN: "${promptSummary}"`
+        if (!dryRun) await pushWithRetry(entry.path, entry.code, commitMsg, targetBranch, existingSha)
+        log(`${dryRun ? '○' : '✓'} ${dryRun ? '[dry run] ' : ''}${action === 'update' ? 'Updated' : 'Created'} ${entry.path}`)
+        updateActivity(fileId, { status: 'done', msg: `⬆ ${action === 'update' ? 'Updated' : 'Created'} ${entry.path}${dryRun ? ' (dry run)' : ''}` })
+        if (entry.testCode) {
+          const tp = testFilePath(entry.path)
+          setPushStep(`Pushing tests "${tp}"…`)
+          const testPushId = logActivity('push', `⬆ ${tp}`)
+          const existingTest = await getFileContent(githubToken, repoOwner, repoName, tp, targetBranch)
+          if (!dryRun) await pushWithRetry(tp, entry.testCode, `test(bluswan): add tests for ${entry.path}`, targetBranch, existingTest?.sha || null)
+          log(`${dryRun ? '○' : '✓'} ${dryRun ? '[dry run] ' : ''}Tests: ${tp}`)
+          updateActivity(testPushId, { status: 'done', msg: `⬆ Tests: ${tp}${dryRun ? ' (dry run)' : ''}` })
+        }
+      }
+      setPushStep('Creating pull request…')
+      const prId    = logActivity('push', '⬆ Creating pull request…')
+      const fileList = filesToPush.map(e => `- \`${e.path}\`${e.purpose ? ` — ${e.purpose}` : ''}`).join('\n')
+      const prBody  = [`## BLUSWAN AI Generated Code`, ``, `**Prompt:** ${promptSummary}`, `**Model:** ${modelName}`, `**Files changed (${filesToPush.length}):**`, fileList, turnCount > 1 ? `**Refinement turns:** ${turnCount}` : '', ``, `---`, `*Generated by BLUSWAN — WolfKrow AI Coding Assistant*`].filter(Boolean).join('\n')
+      let pr = null
+      if (!dryRun) pr = await createPullRequest(githubToken, repoOwner, repoName, `BLUSWAN: ${promptSummary}`, targetBranch, baseBranch, prBody)
+      const prUrl = pr?.html_url || `https://github.com/${repoOwner}/${repoName}/compare/${targetBranch}`
+      setPrResult({ url: prUrl, number: pr?.number })
+      log(`${dryRun ? '○' : '✓'} PR ${dryRun ? 'preview' : 'created'}: ${prUrl}`)
+      updateActivity(prId, { status: 'done', msg: `⬆ PR${pr?.number ? ` #${pr.number}` : ''} ${dryRun ? 'preview' : 'created'}`, detail: prUrl })
+      log('── Complete ──')
+      logActivity('done', `✓ Push complete — ${filesToPush.length} file${filesToPush.length !== 1 ? 's' : ''}`)
+      if (!dryRun && hasGithub) {
+        const ciId = logActivity('ci', '⊙ Waiting for CI…')
+        await new Promise(r => setTimeout(r, 4000))
+        try {
+          const runsData = await getWorkflowRuns(githubToken, repoOwner, repoName, targetBranch, 1)
+          const run = runsData?.workflow_runs?.[0]
+          if (run) {
+            updateActivity(ciId, { msg: `⊙ CI: ${run.name} — ${run.status}` })
+            let pollRun = run
+            for (let p = 0; p < 30 && pollRun.status !== 'completed'; p++) {
+              await new Promise(r => setTimeout(r, 10000))
+              const refreshed = await getWorkflowRun(githubToken, repoOwner, repoName, pollRun.id)
+              if (refreshed) pollRun = refreshed
+              updateActivity(ciId, { msg: `⊙ CI: ${pollRun.name} — ${pollRun.status}` })
+            }
+            const ciOk = pollRun.conclusion === 'success'
+            updateActivity(ciId, { status: ciOk ? 'done' : 'error', msg: `⊙ CI: ${pollRun.name} — ${pollRun.conclusion || pollRun.status}`, detail: pollRun.html_url })
+          } else { updateActivity(ciId, { status: 'skip', msg: '⊙ CI: no workflow runs found' }) }
+        } catch { updateActivity(ciId, { status: 'skip', msg: '⊙ CI: monitoring unavailable' }) }
+      }
+    } catch (err) { log(`✗ ${err.message}`, false); logActivity('error', `✗ Push failed: ${err.message}`); setError(`Push failed: ${err.message}`) }
+    finally { setIsPushing(false); setPushStep('') }
+  }, [filePlan, githubToken, repoOwner, repoName, baseBranch, dryRun, history, prompt, models, activeModelId, turnCount, hasGithub, confirmAction, logActivity, updateActivity]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Handlers (continued) ──────────────────────────────────────────────────
-  // (added in p3/usestate-handlers, p3/usestate-lrm-return)
+  // (added in p3/usestate-lrm-return)
 
   return {}
 }
