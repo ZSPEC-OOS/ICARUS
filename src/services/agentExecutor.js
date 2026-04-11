@@ -40,6 +40,9 @@ import { validateToolInput, validateToolOutput, schemaVersion } from '../tools/c
 import { beginToolTrace, endToolTrace, replayTrace, setTraceLoopState } from './toolTraceStore.js'
 import { runAgentLoop } from './agentLoop.js'
 import { AGENT_TOOLS } from './agentTools.js'
+import { validatePatch } from './patchValidator.js'
+import { codeIntelligence } from './codeIntelligence.js'
+import { runTDDLoop } from './tddLoop.js'
 
 // ── Exec bridge call ──────────────────────────────────────────────────────────
 async function execBridge(cmd, cwd) {
@@ -367,31 +370,34 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         return `Written: ${input.path} (${input.content.split('\n').length} lines)`
       }
 
-      // ── edit_file (with Aider-style similar-lines diagnostic on failure) ─
+      // ── edit_file (pre-write patch validation + Aider-style diagnostics) ──
       case 'edit_file': {
         const file = await getFileContent(token, owner, repo, input.path, branch)
         if (!file?.content) return `File not found: ${input.path}`
         const current = decodeBase64(file.content)
         const fileSha = file.sha
 
-        if (!current.includes(input.old_str)) {
-          const normCurrent = current.split('\n').map(l => l.trimStart()).join('\n')
-          const normOld     = input.old_str.split('\n').map(l => l.trimStart()).join('\n')
-          if (!normCurrent.includes(normOld)) {
-            const similar = findSimilarLines(current, input.old_str)
-            const hint = similar
-              ? `\n\nMost similar lines found in ${input.path}:\n${similar}\n\nCopy the exact text including all whitespace.`
-              : `\n\nUse grep or read_file to confirm the exact text before retrying.`
-            return `edit_file failed: old_str not found in ${input.path}.${hint}`
-          }
-          return `edit_file failed: old_str matched only after stripping indentation in ${input.path}. Use read_file (with start_line/end_line) to copy the exact whitespace.`
+        // ── Pre-write validation (Phase 1: patchValidator) ─────────────────
+        // Validates old_str presence, indentation alignment, and post-edit
+        // syntax balance before touching the GitHub API.
+        const validation = validatePatch(input.path, input.old_str, input.new_str, current)
+        if (!validation.valid) {
+          const detail =
+            validation.suggestion
+              ? `\n\nCorrected old_str (use this exactly, indentation preserved):\n${validation.suggestion}`
+              : validation.nearestMatch
+              ? `\n\n${validation.nearestMatch}\n\nCopy the exact text including all whitespace.`
+              : `\n\nUse grep or read_file (with start_line/end_line) to confirm the exact text.`
+          return `edit_file failed: ${validation.reason}${detail}`
         }
+        // ───────────────────────────────────────────────────────────────────
 
         const updated = current.replace(input.old_str, input.new_str)
         const msg = buildCommitMsg('edit', input.path, input.message)
         await createOrUpdateFile(token, owner, repo, input.path, updated, msg, branch, fileSha)
         onFileWrite?.(input.path, 'edit')
-        return `Edited: ${input.path}`
+        const syntaxNote = validation.syntaxWarning ? `\n⚠ ${validation.syntaxWarning}` : ''
+        return `Edited: ${input.path}${syntaxNote}`
       }
 
       // ── delete_file ────────────────────────────────────────────────────
@@ -1361,6 +1367,53 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         } catch (err) {
           return `Screenshot taken but upload failed: ${err.message}\nPlaywright: ${pwStdout.slice(0, 300)}`
         }
+      }
+
+      // ── find_symbol (Phase 1: code intelligence) ───────────────────────
+      case 'find_symbol': {
+        const mode     = input.mode || 'definition'
+        const symName  = String(input.name || '').trim()
+        if (!symName) return 'find_symbol requires a non-empty name.'
+        if (!codeIntelligence.isReady) {
+          return `Code intelligence index not ready (${codeIntelligence.fileCount()} files indexed). The index builds automatically on the next agent loop start.`
+        }
+        return codeIntelligence.formatResult(mode, symName)
+      }
+
+      // ── find_usages (Phase 1: code intelligence) ───────────────────────
+      case 'find_usages': {
+        const symName = String(input.name || '').trim()
+        if (!symName) return 'find_usages requires a non-empty name.'
+        if (!codeIntelligence.isReady) {
+          return `Code intelligence index not ready. The index builds automatically on the next agent loop start.`
+        }
+        return codeIntelligence.formatResult('usages', symName)
+      }
+
+      // ── run_tdd_loop (Phase 1: TDD loop) ───────────────────────────────
+      case 'run_tdd_loop': {
+        if (!bridgeAvailable) {
+          return 'run_tdd_loop requires the exec bridge (npm run dev). The exec bridge is currently offline.'
+        }
+        const result = await runTDDLoop({
+          spec:           String(input.spec || ''),
+          testCmd:        String(input.test_cmd || 'npm test'),
+          testFilePath:   input.test_file_path || null,
+          implFilePath:   input.impl_file_path || null,
+          executeTool:    rawExecuteTool,
+          maxIterations:  input.max_iterations || undefined,
+          onEvent:        (ev) => { /* TDD events flow through outer executeTool trace */ },
+        })
+        const statusEmoji = result.status === 'green' ? '✅' : result.status === 'red' ? '❌' : '⚠'
+        return [
+          `${statusEmoji} TDD loop finished: ${result.status.toUpperCase()}`,
+          `Iterations: ${result.iterations}`,
+          `Pass rate: ${Math.round(result.passRate * 100)}%`,
+          result.filesChanged.length ? `Files changed: ${result.filesChanged.join(', ')}` : '',
+          '',
+          'Last test output (tail):',
+          result.lastOutput.slice(-600),
+        ].filter(Boolean).join('\n')
       }
 
       default:

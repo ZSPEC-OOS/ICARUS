@@ -63,3 +63,19 @@ export const STYLE_EXAMPLES_LIMIT     = 3         // codebase style excerpts inj
 export const STYLE_EXCERPT_LINES      = 20        // lines per style excerpt
 export const THINKING_BUDGET_TOKENS   = 8000      // Anthropic extended-thinking token budget
 export const DEFAULT_TEMPERATURE      = 0.7       // default generation temperature
+
+// ── Task Decomposer (Phase 1) ─────────────────────────────────────────────────
+export const DECOMPOSE_COMPLEXITY_THRESHOLD = 4   // min complexity score to trigger decomposition
+export const DECOMPOSE_MAX_SUBTASKS         = 5   // max subtasks per decomposition
+
+// ── Code Intelligence (Phase 1) ───────────────────────────────────────────────
+export const CODE_INTEL_MAX_SYMBOLS_PER_FILE = 200 // max symbols extracted per file
+export const CODE_INTEL_CALL_GRAPH_DEPTH     = 3   // max call graph traversal depth
+
+// ── Patch Validator (Phase 1) ─────────────────────────────────────────────────
+export const PATCH_VALIDATOR_FUZZY_THRESHOLD    = 0.65 // min line similarity to flag nearest match
+export const PATCH_VALIDATOR_MAX_CONTEXT_LINES  = 8    // context lines shown in match excerpts
+
+// ── TDD Loop (Phase 1) ────────────────────────────────────────────────────────
+export const TDD_MAX_ITERATIONS  = 5              // max fix cycles before declaring red
+export const TDD_TEST_TIMEOUT_MS = 60_000         // per-run test command timeout (ms)
