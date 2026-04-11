@@ -177,6 +177,8 @@ export function toolToLogMessage(name, input = {}) {
     case 'check_ci_status':       return `Checking CI status on ${input.branch || 'branch'}…`
     case 'create_github_issue':   return `Creating issue: "${(input.title || '').slice(0, 50)}"…`
     case 'resolve_merge_conflict':return `Resolving conflicts in ${input.path || 'file'} (${input.resolution})…`
+    case 'watch_process':         return `Probing port ${input.port || 5173}${input.process_name ? ` / ${input.process_name}` : ''}…`
+    case 'browser_screenshot':    return `Screenshotting ${input.url || `localhost:${input.port || 5173}`}…`
     case 'web_search':          return `Searching web: "${(input.query || '').slice(0, 40)}"…`
     case 'hybrid_search':       return `Running hybrid retrieval for "${(input.query || '').slice(0, 40)}"…`
     case 'retrieve_context':    return `Retrieving grounded context for "${(input.query || '').slice(0, 40)}"…`

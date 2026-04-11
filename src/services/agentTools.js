@@ -348,6 +348,33 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ── Phase 5: Environment feedback ───────────────────────────────────────────
+  {
+    name: 'watch_process',
+    description: 'Check the health of a running local process: HTTP-probes a port, lists what is listening on it, and optionally checks for a named process by name. Use this after code changes to verify the dev server or test watcher is still running correctly. Requires the exec bridge (npm run dev).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        port:         { type: 'number', description: 'Port to probe (default: 5173 for Vite)' },
+        process_name: { type: 'string', description: 'Optional process name to look up with pgrep (e.g. "vite", "node", "jest")' },
+        lines:        { type: 'number', description: 'Number of log lines to return (default 30, max 200)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'browser_screenshot',
+    description: 'Take a headless-browser screenshot of the running dev server (or any URL) using Playwright CLI. Saves the screenshot as a PNG to the repository under screenshots/ and returns the GitHub URL plus any JavaScript console errors detected. Falls back to returning the raw HTML if Playwright is not installed. Requires the exec bridge (npm run dev).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url:  { type: 'string', description: 'Full URL to screenshot (default: http://localhost:<port>)' },
+        port: { type: 'number', description: 'Dev server port (default: 5173). Used to build the default URL.' },
+      },
+      required: [],
+    },
+  },
+
   // ── Phase 3: Repository intelligence ────────────────────────────────────────
   {
     name: 'git_log',
@@ -556,6 +583,8 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
     !planMode ? `Use check_ci_status to verify CI passes on your branch before considering a task done.` : null,
     !planMode ? `Use create_github_issue to log discovered bugs or future improvements without interrupting the current task.` : null,
     !planMode ? `Use resolve_merge_conflict to clean up conflict markers (<<<<<<< / ======= / >>>>>>>) in a file.` : null,
+    !planMode && bridgeAvailable ? `Use watch_process to verify the dev server is still healthy after code changes (probes the port, checks the process).` : null,
+    !planMode && bridgeAvailable ? `Use browser_screenshot to take a visual snapshot of the running app and detect JS console errors — saves PNG to the repo.` : null,
     `Use token_io_optimizer for long/complex requests to reduce unnecessary token spend while preserving implementation quality.`,
     `Use update_memory to append important facts to BLUSWAN.md so they persist across sessions.`,
     `Use the todo tool to track tasks when working on complex multi-step operations.`,
