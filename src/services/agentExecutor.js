@@ -26,6 +26,7 @@ import {
   listDirectory,
   createPullRequest,
   listFileCommits,
+  compareCommits,
 } from './githubService.js'
 import { decodeBase64 } from '../utils/base64.js'
 import { shadowContext } from './shadowContext.js'
@@ -700,6 +701,149 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
         const finalText = result?.finalText || textChunks.join('') || '(no result)'
         return `[Sub-agent: ${label}]\n\n${finalText}`
+      }
+
+      // ── get_diff ───────────────────────────────────────────────────────
+      // Compares two refs (branch, tag, SHA) and returns a unified diff.
+      // Falls back to GitHub Compare API when exec bridge is unavailable.
+      case 'get_diff': {
+        const head = (input.head || branch || '').trim()
+        const base = (input.base || 'main').trim()
+
+        // Prefer exec bridge — shows uncommitted changes and is faster
+        if (bridgeAvailable) {
+          const pathArg = input.path ? `-- "${input.path}"` : ''
+          const out = await execBridge(`git diff ${base}...${head} ${pathArg} 2>&1 | head -400`, null)
+          if (out && !out.includes('bridge unavailable')) {
+            return out.trim() || `No differences between ${base} and ${head}.`
+          }
+        }
+
+        // Fall back to GitHub Compare API
+        try {
+          const comparison = await compareCommits(token, owner, repo, base, head)
+          const allFiles = comparison.files || []
+          const files = input.path
+            ? allFiles.filter(f => f.filename === input.path || f.filename.startsWith(input.path + '/'))
+            : allFiles
+
+          if (files.length === 0) {
+            return input.path
+              ? `No differences for ${input.path} between ${base} and ${head}.`
+              : `No differences between ${base} and ${head}.`
+          }
+
+          const header = [
+            `Comparing ${base}...${head}`,
+            `${comparison.ahead_by ?? '?'} commit(s) ahead, ${comparison.behind_by ?? '?'} behind`,
+            `${files.length} file(s) changed (showing up to 20)`,
+            '',
+          ]
+          const patches = files.slice(0, 20).map(f => {
+            const stat = `+${f.additions}/-${f.deletions}`
+            const patchBlock = f.patch ? `\n${f.patch.slice(0, 4000)}` : ' (binary or too large)'
+            return `## ${f.status}: ${f.filename} (${stat})${patchBlock}`
+          })
+          return [...header, ...patches].join('\n').slice(0, 20000)
+        } catch (err) {
+          return `get_diff failed: ${err.message}`
+        }
+      }
+
+      // ── type_check ─────────────────────────────────────────────────────
+      // Runs tsc --noEmit and returns structured errors with file/line/message.
+      case 'type_check': {
+        if (!bridgeAvailable) return 'type_check requires the exec bridge (run with npm run dev).'
+
+        const raw = await execBridge('npx tsc --noEmit 2>&1 | head -150', null)
+        if (!raw || (raw.includes('bridge') && raw.includes('unavailable'))) return 'exec bridge unavailable.'
+
+        // Filter to requested path if given
+        const rawLines = raw.split('\n')
+        const relevant = input.path
+          ? rawLines.filter(l => !l.match(/^[^\s].*\(\d+,\d+\):/) || l.includes(input.path))
+          : rawLines
+
+        // Parse "file(line,col): error|warning TSxxxx: message"
+        const errorRe = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.+)$/
+        const errors = []
+        for (const line of relevant) {
+          const m = line.match(errorRe)
+          if (m) errors.push({
+            file:     m[1].trim(),
+            line:     Number(m[2]),
+            col:      Number(m[3]),
+            severity: m[4],
+            code:     m[5],
+            message:  m[6].trim(),
+          })
+        }
+
+        if (errors.length === 0) {
+          // tsc exited clean (or no TS errors in filtered path)
+          return raw.includes('error TS')
+            ? relevant.join('\n').slice(0, 3000) // unparseable output — return raw
+            : `TypeScript check passed ✓${input.path ? ` (${input.path})` : ''}`
+        }
+
+        const label = errors.length === 1 ? '1 type error' : `${errors.length} type errors`
+        return `${label}\n${JSON.stringify({ errorCount: errors.length, errors }, null, 2)}`
+      }
+
+      // ── run_tests ──────────────────────────────────────────────────────
+      // Auto-detects Vitest, Jest, or npm test from package.json, runs the
+      // suite, and returns a structured pass/fail summary + raw output tail.
+      case 'run_tests': {
+        if (!bridgeAvailable) return 'run_tests requires the exec bridge (run with npm run dev).'
+
+        // Detect test runner from package.json
+        let runner = 'npm'
+        let testCmd = 'npm test -- --passWithNoTests 2>&1'
+        try {
+          const pkgFile = await getFileContent(token, owner, repo, 'package.json', branch)
+          if (pkgFile?.content) {
+            const pkg = JSON.parse(decodeBase64(pkgFile.content))
+            const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) }
+            const scripts = pkg.scripts || {}
+            const pat   = input.test_pattern ? `-t "${input.test_pattern.replace(/"/g, '\\"')}"` : ''
+            const path  = input.path ? `"${input.path}"` : ''
+
+            if (deps['vitest'] || scripts.test?.includes('vitest')) {
+              runner = 'vitest'
+              testCmd = `npx vitest run ${path} ${pat} 2>&1`
+            } else if (deps['jest'] || scripts.test?.includes('jest')) {
+              runner = 'jest'
+              testCmd = `npx jest ${path} ${pat} --no-coverage --passWithNoTests 2>&1`
+            } else if (scripts.test) {
+              runner = 'npm'
+              testCmd = `npm test 2>&1`
+            }
+          }
+        } catch { /* fall through to default */ }
+
+        const raw = await execBridge(`${testCmd} | tail -80`, null)
+        if (!raw || (raw.includes('bridge') && raw.includes('unavailable'))) return 'exec bridge unavailable.'
+
+        // Parse pass/fail counts
+        let passed = 0, failed = 0, skipped = 0
+        // Vitest: "✓ 12 passed" / "× 2 failed" / "↓ 3 skipped"
+        const vPass = raw.match(/(\d+)\s+passed/)
+        const vFail = raw.match(/(\d+)\s+failed/)
+        const vSkip = raw.match(/(\d+)\s+skipped/)
+        if (vPass) passed  = Number(vPass[1])
+        if (vFail) failed  = Number(vFail[1])
+        if (vSkip) skipped = Number(vSkip[1])
+        // Jest: "Tests: 5 passed, 1 failed, 6 total"
+        const jLine = raw.match(/Tests:\s+(.+)/)
+        if (jLine) {
+          const jp = jLine[1].match(/(\d+) passed/);  if (jp) passed  = Number(jp[1])
+          const jf = jLine[1].match(/(\d+) failed/);  if (jf) failed  = Number(jf[1])
+          const js = jLine[1].match(/(\d+) skipped/); if (js) skipped = Number(js[1])
+        }
+
+        const icon    = failed > 0 ? '✗' : passed > 0 ? '✓' : '?'
+        const summary = `${icon} ${runner}: ${passed} passed, ${failed} failed, ${skipped} skipped`
+        return `${summary}\n\n${raw.slice(0, 6000)}`
       }
 
       default:

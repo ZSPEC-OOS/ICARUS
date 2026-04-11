@@ -116,6 +116,18 @@ export const TOOL_CONTRACTS = {
     input: { type: 'object', additionalProperties: false, properties: { task: baseString, description: baseString }, required: ['task'] },
     output: { type: 'string' },
   },
+  get_diff: {
+    input: { type: 'object', additionalProperties: false, properties: { base: baseString, head: baseString, path: baseString }, required: [] },
+    output: { type: 'string' },
+  },
+  type_check: {
+    input: { type: 'object', additionalProperties: false, properties: { path: baseString }, required: [] },
+    output: { type: 'string' },
+  },
+  run_tests: {
+    input: { type: 'object', additionalProperties: false, properties: { path: baseString, test_pattern: baseString }, required: [] },
+    output: { type: 'string' },
+  },
 }
 
 export function normalizeToolName(name = '') {
