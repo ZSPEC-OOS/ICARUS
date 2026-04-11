@@ -27,6 +27,7 @@ export default function PromptBar({
   isRunningPostPushTests,
   // LRM
   longRequestMode, setLongRequestMode,
+  executionMode, setExecutionMode,
   lrmPlan, setLrmPlan,
   // model selector
   models,
@@ -124,6 +125,11 @@ export default function PromptBar({
                 title={longRequestMode ? 'Long Request Mode ON — click to disable' : 'Enable Long Request Mode'}
                 onClick={() => { setLongRequestMode(v => !v); if (!longRequestMode) setLrmPlan(null) }}
               >⇥ LRM</button>
+              <button
+                className={`lk-toolbar-btn--drct${executionMode === 'drct' ? ' lk-toolbar-btn--drct-on' : ''}`}
+                title={executionMode === 'drct' ? 'DRCT Creative Mode ON — click to disable' : 'Enable DRCT Creative Mode'}
+                onClick={() => setExecutionMode(prev => prev === 'drct' ? 'default' : 'drct')}
+              >🎨 DRCT</button>
             </div>
 
             <div className="lk-input-toolbar-right">

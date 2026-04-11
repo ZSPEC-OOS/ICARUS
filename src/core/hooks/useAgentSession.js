@@ -75,7 +75,7 @@ export function useAgentSession({
   const runningRef      = useRef(false)   // guard against concurrent runs
   const pendingToolsRef = useRef(new Map()) // Map<toolId, activityId> for matching tool_start/done
 
-  const run = useCallback(async (task, conversationHistory = [], { forceBuildMode = false, skipAgentStart = false, branchOverride = null } = {}) => {
+  const run = useCallback(async (task, conversationHistory = [], { forceBuildMode = false, skipAgentStart = false, branchOverride = null, executionMode = 'default' } = {}) => {
     if (!task?.trim()) { onSetError?.('Enter a task for the agent.'); return }
     if (!modelConfig)        { onSetError?.('Select a model.'); return }
     if (!modelConfig.apiKey) { onSetError?.(`No API key for "${modelConfig.name}". Open Admin Panel.`); return }
@@ -161,6 +161,7 @@ export function useAgentSession({
       modelConfig,
       availableModels: availableModels || [],
       enhancerConfig: loadEnhancerConfig(),
+      executionMode,
       signal:      ctrl.signal,
       conversationHistory,
       onEvent: (ev) => {

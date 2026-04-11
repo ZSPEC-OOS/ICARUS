@@ -71,6 +71,7 @@ function isCheapModel(model) {
  *   classifyAndRoute(task: string, defaultModelConfig: object): RouterDecision,
  *   callWithFallback(routing: RouterDecision, callFn: Function, onFallback?: Function): Promise<object>,
  *   callEnsemble(routing: RouterDecision, callFn: Function): Promise<object>,
+ *   callEnsembleCandidates(routing: RouterDecision, callFn: Function, options?: object): Promise<object>,
  *   resolveModelForRole(role: string): {primary: object, fallbacks: object[], cost: string}|null,
  * }}
  */
@@ -274,7 +275,54 @@ export function createModelRouter(orchestrationConfig = {}, availableModels = []
     }
   }
 
-  return { route, classifyAndRoute, callWithFallback, callEnsemble, resolveModelForRole, saveFallbackPref: _saveFallbackPref }
+  /**
+   * Creative expansion helper: produce N candidate generations and return all
+   * candidates (instead of selecting a single winner).
+   *
+   * @param {RouterDecision} routing
+   * @param {Function} callFn async (modelConfig, promptVariant, idx) => { text, metadata? }|string
+   * @param {{count?:number, iteration?:number, promptVariants?:string[]}} [options]
+   * @returns {Promise<{ candidates: object[], modelsUsed: object[] }>}
+   */
+  async function callEnsembleCandidates(routing, callFn, options = {}) {
+    const count = Math.max(1, Math.min(10, Number(options.count) || 6))
+    const iteration = Number(options.iteration) || 0
+    const promptVariants = Array.isArray(options.promptVariants) ? options.promptVariants : []
+    const models = [routing.modelConfig, ...routing.fallbacks].filter(Boolean)
+    const usableModels = models.length > 0 ? models : [routing.modelConfig].filter(Boolean)
+    const tasks = Array.from({ length: count }, (_, idx) => {
+      const model = usableModels[idx % usableModels.length]
+      const variant = promptVariants[idx] || ''
+      return callFn(model, variant, idx)
+    })
+    const settled = await Promise.allSettled(tasks)
+    const candidates = settled
+      .map((res, idx) => {
+        if (res.status !== 'fulfilled') return null
+        const payload = res.value
+        const content = typeof payload === 'string' ? payload : (payload?.text || '')
+        if (!String(content || '').trim()) return null
+        return {
+          id: `dream-${iteration}-${idx + 1}-${Date.now()}`,
+          content: String(content),
+          metadata: (typeof payload === 'object' && payload?.metadata) ? payload.metadata : {},
+          origin: 'dream',
+          iteration,
+        }
+      })
+      .filter(Boolean)
+    return { candidates, modelsUsed: usableModels }
+  }
+
+  return {
+    route,
+    classifyAndRoute,
+    callWithFallback,
+    callEnsemble,
+    callEnsembleCandidates,
+    resolveModelForRole,
+    saveFallbackPref: _saveFallbackPref,
+  }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
