@@ -7013,12 +7013,13 @@ kbd {
   background: rgba(77, 120, 180, 0.05);
 }
 .lk-toolbar-btn--lrm-on {
-  color: #4d9cff;
-  border-color: rgba(77,156,255,0.5);
-  background: rgba(77,156,255,0.1);
+  color: #e8f3ff;
+  border-color: rgba(100, 170, 255, 0.9);
+  background: rgba(77, 156, 255, 0.22);
+  box-shadow: 0 0 0 1px rgba(77, 156, 255, 0.2) inset;
 }
 .lk-toolbar-btn--lrm-on:hover {
-  background: rgba(77,156,255,0.18);
+  background: rgba(77, 156, 255, 0.28);
 }
 
 .lk-toolbar-btn--drct {
