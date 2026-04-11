@@ -166,6 +166,7 @@ export async function runAgentLoop({
   const recentSigs = []
   // Track which prompt registry variants are active this session
   const _registryVariants = {}
+  const taskId = `agent-${Date.now()}`
   try {
     const identityV  = promptRegistry.get('agent.identity',     taskId)
     const narrationV = promptRegistry.get('agent.narration',    taskId)
@@ -174,7 +175,6 @@ export async function runAgentLoop({
     if (narrationV) _registryVariants['agent.narration']    = narrationV.id
     if (verifyV)    _registryVariants['agent.verification'] = verifyV.id
   } catch { /* non-fatal */ }
-  const taskId = `agent-${Date.now()}`
   const executionTrace = { mutations: [], commandRuns: [] }
   let finalText = ''
 

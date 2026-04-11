@@ -43,7 +43,7 @@ function estimateCost({ inputTokens = 0, outputTokens = 0, pricing = DEFAULT_COS
 async function taskReliabilityGate() {
   const executionTrace = {
     commandRuns: [{ result: 'exit 0\nPASS' }, { result: 'exit 0\nlint ok' }],
-    mutations: [{ beforeContent: 'export function a(x){}', afterContent: 'export function a(x){ return x }', apiSignatureChanged: false }],
+    mutations: [{ path: 'src/test.js', beforeContent: 'export function a(x){}', afterContent: 'export function a(x){ return x }', apiSignatureChanged: false }],
   }
   const verification = evaluateReliabilityGates({
     executionTrace,
