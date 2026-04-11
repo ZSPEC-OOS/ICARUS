@@ -116,6 +116,54 @@ export const TOOL_CONTRACTS = {
     input: { type: 'object', additionalProperties: false, properties: { task: baseString, description: baseString }, required: ['task'] },
     output: { type: 'string' },
   },
+  multi_edit_file: {
+    input: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        path:    baseString,
+        edits:   { type: 'array', items: { type: 'object', additionalProperties: false, properties: { old_str: baseString, new_str: baseString }, required: ['old_str', 'new_str'] } },
+        message: baseString,
+      },
+      required: ['path', 'edits'],
+    },
+    output: { type: 'string' },
+  },
+  search_replace_many: {
+    input: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        pattern:     baseString,
+        replacement: baseString,
+        path_glob:   baseString,
+        literal:     { type: 'boolean' },
+        dry_run:     { type: 'boolean' },
+        message:     baseString,
+      },
+      required: ['pattern', 'replacement'],
+    },
+    output: { type: 'string' },
+  },
+  move_file: {
+    input: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        from:           baseString,
+        to:             baseString,
+        update_imports: { type: 'boolean' },
+        message:        baseString,
+      },
+      required: ['from', 'to'],
+    },
+    output: { type: 'string' },
+  },
+  apply_patch: {
+    input: {
+      type: 'object', additionalProperties: false,
+      properties: { path: baseString, patch: baseString, message: baseString },
+      required: ['path', 'patch'],
+    },
+    output: { type: 'string' },
+  },
   get_diff: {
     input: { type: 'object', additionalProperties: false, properties: { base: baseString, head: baseString, path: baseString }, required: [] },
     output: { type: 'string' },
