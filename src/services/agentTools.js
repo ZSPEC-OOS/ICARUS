@@ -4,6 +4,7 @@
 
 import { BLUSWAN_MD_CAP } from '../config/constants.js'
 import { getInputSchema, schemaVersion } from '../tools/contracts.js'
+import { promptRegistry } from './promptRegistry.js'
 
 export const AGENT_TOOLS = [
   {
@@ -586,16 +587,20 @@ for (const tool of AGENT_TOOLS) {
 // System prompt injected at the start of every agent session.
 // planMode=true  → read-only analysis; no file writes.
 // webSearch=true → web_search tool is active (Tavily key configured).
-export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoName, bridgeAvailable, sourceRepoConfig = null, planMode = false, webSearch = false, repoMap = null) {
+export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoName, bridgeAvailable, sourceRepoConfig = null, planMode = false, webSearch = false, repoMap = null, sessionId = '') {
   const hasSrc = !!(sourceRepoConfig?.owner && sourceRepoConfig?.repo)
   const srcLabel = hasSrc ? `${sourceRepoConfig.owner}/${sourceRepoConfig.repo}` : null
+
+  // ── Prompt registry: resolve A/B variant for identity line ────────────────
+  const identityVariant = promptRegistry.get('agent.identity', sessionId)
+  const identityLabel   = identityVariant?.content || 'an autonomous AI coding assistant'
 
   const lines = [
     planMode
       ? `You are BLUSWAN Agent operating in READ-ONLY PLAN MODE on the GitHub repository ${repoOwner}/${repoName}.`
       : hasSrc
-        ? `You are BLUSWAN Agent, an autonomous AI coding assistant operating in FUSION MODE.`
-        : `You are BLUSWAN Agent, an autonomous AI coding assistant operating on the GitHub repository ${repoOwner}/${repoName}.`,
+        ? `You are BLUSWAN Agent, ${identityLabel} operating in FUSION MODE.`
+        : `You are BLUSWAN Agent, ${identityLabel} operating on the GitHub repository ${repoOwner}/${repoName}.`,
     ``,
     planMode
       ? `READ-ONLY MODE: You may only read files, list directories, and search the codebase. Do NOT write, edit, or delete any files. Your job is to analyse the code and produce a detailed plan or explanation.`
@@ -642,11 +647,7 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
       ? `3. Analyse the relevant code and produce a clear, actionable plan or explanation.`
       : `3. Read relevant files before modifying them.`,
     !planMode ? `4. Make changes using edit_file (for small changes) or write_file (for new files or rewrites).` : null,
-    !planMode ? `5. VERIFICATION LOOP — run after every set of edits (skip steps that are unavailable):` : null,
-    !planMode ? `   a. lint_file on each changed .js/.jsx/.ts/.tsx file` : null,
-    !planMode ? `   b. type_check to surface TypeScript errors across the project` : null,
-    !planMode ? `   c. run_tests to confirm the test suite passes` : null,
-    !planMode ? `   Fix any errors found before moving on.` : null,
+    !planMode ? `5. ${(promptRegistry.get('agent.verification', sessionId)?.content) || 'VERIFICATION LOOP — run after every set of edits (skip steps that are unavailable):\n   a. lint_file on each changed .js/.jsx/.ts/.tsx file\n   b. type_check to surface TypeScript errors across the project\n   c. run_tests to confirm the test suite passes\n   Fix any errors found before moving on.'}` : null,
     `${planMode ? '4' : '6'}. Mark tasks done with todo(done) and summarise what you found${planMode ? '' : ' / changed'}.`,
     !planMode ? `7. Call get_diff to review the full branch diff, then create the PR.` : null,
     ``,
@@ -662,12 +663,8 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
     planMode ? `- You are in READ-ONLY mode — do NOT call write_file, edit_file, delete_file, or create_pull_request.` : null,
     ``,
     `NARRATION:`,
-    `As you work, write short natural-language sentences before and after significant actions — what you are about to do and why, what you found, what decision you made. Write like a developer talking to their colleague: direct, specific, and informative.`,
-    `Examples of good narration:`,
-    `  "I'll start by checking how the existing auth middleware works before touching the routes."`,
-    `  "Found the token validation in three places — I'll update all of them consistently."`,
-    `  "The component re-renders on every keystroke because the handler is recreated inline. I'll memoize it."`,
-    `Keep it brief (1–2 sentences). Do not restate what the tool call itself already shows (e.g. don't say "I'm reading src/auth.js" right before a read_file call on that file). Narrate the thinking, not the mechanics.`,
+    (promptRegistry.get('agent.narration', sessionId)?.content) ||
+    `As you work, write short natural-language sentences before and after significant actions — what you are about to do and why, what you found, what decision you made. Write like a developer talking to their colleague: direct, specific, and informative.\nKeep it brief (1–2 sentences). Do not restate what the tool call itself already shows. Narrate the thinking, not the mechanics.`,
   ].filter(l => l !== null)
 
   if (conventions && conventions.framework !== 'unknown') {

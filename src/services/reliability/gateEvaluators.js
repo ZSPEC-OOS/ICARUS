@@ -1,4 +1,5 @@
 import { runCritiquePass } from '../enhancers/critiqueMiddleware.js'
+import { scanMutations } from '../securityScanner.js'
 
 function toLineSet(text = '') {
   return new Set(String(text).split('\n').map(l => l.trim()).filter(Boolean))
@@ -97,7 +98,20 @@ export function evaluateReliabilityGates({
     critique,
   }
 
-  const gates = [testGate, semanticGate, apiGate, critiqueGate]
+  // ── Security scan gate ────────────────────────────────────────────────────
+  // Scans all file mutations for hardcoded secrets and OWASP Top 10 patterns.
+  // Critical and high severity issues block the verification pass.
+  const secScan = scanMutations(executionTrace.mutations || [])
+  const secGate = {
+    id:       'security_scan',
+    metric:   secScan.critical + secScan.high,
+    threshold: 0,
+    passed:   secScan.passed,
+    detail:   secScan.summary,
+    issues:   secScan.issues,
+  }
+
+  const gates = [testGate, semanticGate, apiGate, critiqueGate, secGate]
   const failed = gates.filter(g => !g.passed)
 
   return {
@@ -105,6 +119,7 @@ export function evaluateReliabilityGates({
     gates,
     failedGateIds: failed.map(g => g.id),
     critique,
+    securityScan: secScan,
   }
 }
 
