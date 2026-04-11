@@ -109,6 +109,8 @@ export function useAgentSession({
       sourceRepoConfig,
       webSearchApiKey: webSearchApiKey || '',
       bridgeAvailable: !!bridgeAvailable,
+      modelConfig,
+      availableModels: availableModels || [],
       onFileWrite: (path, action) => {
         setAgentFiles(prev => prev.includes(path) ? prev : [...prev, path])
         onFileWrite?.(path, action)

@@ -334,6 +334,18 @@ export const AGENT_TOOLS = [
       required: ['task'],
     },
   },
+  {
+    name: 'spawn_agent',
+    description: "Spawn a focused read-only sub-agent to handle a specific research or investigation task in isolation. Use this to delegate deep codebase research, parallel investigations, or complex analysis without cluttering the main context. The sub-agent has access to all read tools (read_file, grep, search_files, analyze_codebase, web_search, etc.) but cannot write or modify files. Returns the sub-agent's complete findings as a single text result.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        task: { type: 'string', description: 'Clear, specific task for the sub-agent to complete. Be precise — the sub-agent has no context from the current conversation.' },
+        description: { type: 'string', description: 'Short label shown in the activity log (e.g. "Research auth flow")' },
+      },
+      required: ['task'],
+    },
+  },
 ]
 
 for (const tool of AGENT_TOOLS) {

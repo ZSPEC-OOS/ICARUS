@@ -112,6 +112,10 @@ export const TOOL_CONTRACTS = {
     input: { type: 'object', additionalProperties: false, properties: { task: baseString, expected_output_size: { type: 'string', enum: ['small', 'medium', 'large', 'huge'] }, mode: { type: 'string', enum: ['off', 'adaptive', 'aggressive'] } }, required: ['task'] },
     output: { type: 'string' },
   },
+  spawn_agent: {
+    input: { type: 'object', additionalProperties: false, properties: { task: baseString, description: baseString }, required: ['task'] },
+    output: { type: 'string' },
+  },
 }
 
 export function normalizeToolName(name = '') {

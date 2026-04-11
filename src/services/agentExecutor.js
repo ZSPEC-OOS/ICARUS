@@ -17,6 +17,7 @@
 //   token_io_optimizer → returns a quality-preserving token optimization plan
 //   run_command       → Vite exec bridge (POST /api/exec)
 //   create_pull_request → GitHub Pulls API
+//   spawn_agent       → recursive read-only sub-agent (max depth 1)
 
 import {
   getFileContent,
@@ -33,6 +34,8 @@ import { retrieveContext, hybridSearch } from './enhancers/ragService.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
 import { validateToolInput, validateToolOutput, schemaVersion } from '../tools/contracts.js'
 import { beginToolTrace, endToolTrace, replayTrace, setTraceLoopState } from './toolTraceStore.js'
+import { runAgentLoop } from './agentLoop.js'
+import { AGENT_TOOLS } from './agentTools.js'
 
 // ── Exec bridge call ──────────────────────────────────────────────────────────
 async function execBridge(cmd, cwd) {
@@ -189,7 +192,7 @@ function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive'
   }
 }
 
-export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, enhancerConfig: enhancerConfigOverrides }) {
+export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, modelConfig, availableModels, _depth = 0, enhancerConfig: enhancerConfigOverrides }) {
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
 
   async function rawExecuteTool(name, input) {
@@ -640,6 +643,63 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         }
         const plan = buildTokenIoPlan(input.task, input.expected_output_size, input.mode)
         return JSON.stringify(plan, null, 2)
+      }
+
+      // ── spawn_agent ────────────────────────────────────────────────────
+      case 'spawn_agent': {
+        if (!input.task?.trim()) return 'spawn_agent error: task is required.'
+        if (_depth >= 1) return 'spawn_agent error: sub-agents cannot spawn further sub-agents.'
+        if (!modelConfig) return 'spawn_agent error: no model config available.'
+
+        const subTask = input.task.trim()
+        const label = (input.description?.trim() || subTask).slice(0, 60)
+
+        // Sub-agents are read-only — no writes, no shell, no further spawning
+        const SUB_AGENT_TOOLS = new Set([
+          'analyze_codebase', 'read_file', 'list_directory', 'search_files',
+          'glob', 'grep', 'read_many_files', 'web_fetch', 'web_search',
+          'hybrid_search', 'retrieve_context', 'check_url_health',
+        ])
+        const subTools = AGENT_TOOLS.filter(t => SUB_AGENT_TOOLS.has(t.name))
+
+        const subExecutor = makeExecutor({
+          token, owner, repo, branch,
+          sourceRepoConfig,
+          webSearchApiKey,
+          bridgeAvailable: false,
+          modelConfig,
+          availableModels,
+          _depth: _depth + 1,
+        })
+
+        const subSystemPrompt = [
+          'You are a focused research sub-agent. Complete the assigned task thoroughly and return a comprehensive, well-structured answer.',
+          `You have read-only access to the GitHub repository ${owner}/${repo} (branch: ${branch}).`,
+          'Do NOT attempt to write, edit, or delete any files — you have no write tools.',
+          'Be precise and structured in your response. Return all findings directly.',
+        ].join('\n')
+
+        const textChunks = []
+        let result
+        try {
+          result = await runAgentLoop({
+            task: subTask,
+            systemPrompt: subSystemPrompt,
+            tools: subTools,
+            executeTool: subExecutor,
+            modelConfig,
+            onEvent: (ev) => { if (ev.type === 'text_delta') textChunks.push(ev.delta) },
+            signal: null,
+            conversationHistory: [],
+            enhancerConfig: null,
+            availableModels: availableModels || [],
+          })
+        } catch (err) {
+          return `spawn_agent error: sub-agent failed — ${err.message}`
+        }
+
+        const finalText = result?.finalText || textChunks.join('') || '(no result)'
+        return `[Sub-agent: ${label}]\n\n${finalText}`
       }
 
       default:
