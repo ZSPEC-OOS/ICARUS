@@ -44,6 +44,7 @@ function renderMarkdown(text) {
 // ─── Main component ───────────────────────────────────────────────────────────
 const BluswanActivityFeed = memo(function BluswanActivityFeed({
   activityLog,
+  narrationThread = [],
   isAgentRunning,
   agentStreamText,
   isGenerating,
@@ -141,64 +142,105 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                   </div>
                 )}
 
-                {/* Activity log — all entries as plain text lines */}
-                {activityLog.map(entry => {
-                  const text = [entry.msg, entry.detail].filter(Boolean).join(' — ')
-                  const done = entry.status === 'done' || entry.status === 'skip'
-                  const active = entry.status === 'active'
-                  return (
-                    <div
-                      key={entry.id}
-                      className={[
-                        'lk-stream-line',
-                        done   ? 'lk-stream-line--dim'  : '',
-                        active ? 'lk-stream-line--live' : '',
-                      ].filter(Boolean).join(' ')}
-                    >
-                      {text}
-                    </div>
-                  )
-                })}
-
-                {/* Amplifier decisions */}
-                {amplifierDecisions.map((d, i) => (
-                  <div key={`amp-${i}`} className="lk-stream-line">{d}</div>
-                ))}
-
-                {/* Status lines */}
-                {isAmplifying    && <div className="lk-stream-line lk-stream-line--live">Amplifying intent</div>}
-                {isPlanning      && <div className="lk-stream-line lk-stream-line--live">Planning across repo</div>}
-                {remediationStatus && <div className="lk-stream-line lk-stream-line--live">{remediationStatus}</div>}
-                {isGenerating    && <div className="lk-stream-line lk-stream-line--live">Generating</div>}
-                {isPushing       && <div className="lk-stream-line lk-stream-line--live">{pushStep || 'Pushing'}</div>}
-
-                {/* File plan */}
-                {filePlan.map(entry => {
-                  const action = entry.action === 'modify' ? 'editing' : 'writing'
-                  const done   = entry.status === 'done'
-                  const err    = entry.status === 'error'
-                  const live   = !done && !err
-                  return (
-                    <div
-                      key={`fp-${entry.path}`}
-                      className={[
-                        'lk-stream-line',
-                        done ? 'lk-stream-line--dim'   : '',
-                        err  ? 'lk-stream-line--error' : '',
-                        live ? 'lk-stream-line--live'  : '',
-                      ].filter(Boolean).join(' ')}
-                    >
-                      {action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
-                    </div>
-                  )
-                })}
-
-                {/* Live stream text */}
-                {isAgentRunning && agentStreamText && (
-                  <div className="lk-stream-line lk-stream-line--current">
-                    {renderInlineMarkdown(agentStreamText)}
-                    <span className="lk-stream-cursor">▋</span>
+                {/* ── Narration thread (agent mode) ─────────────────────── */}
+                {narrationThread.length > 0 ? (
+                  <div className="lk-narration-thread">
+                    {narrationThread.map((entry, i) => {
+                      if (entry.kind === 'text') {
+                        return (
+                          <div key={`n-${i}`} className="lk-narration-text">
+                            {renderInlineMarkdown(entry.text)}
+                          </div>
+                        )
+                      }
+                      if (entry.kind === 'tool') {
+                        return (
+                          <div
+                            key={`t-${i}`}
+                            className={[
+                              'lk-narration-chip',
+                              entry.status === 'done'  ? 'lk-narration-chip--done'  : '',
+                              entry.status === 'error' ? 'lk-narration-chip--error' : '',
+                              entry.status === 'active'? 'lk-narration-chip--active': '',
+                            ].filter(Boolean).join(' ')}
+                          >
+                            {entry.status === 'done'  ? '✓' :
+                             entry.status === 'error' ? '✗' : '◌'} {entry.logMsg}
+                          </div>
+                        )
+                      }
+                      return null
+                    })}
+                    {/* Live typing narration */}
+                    {isAgentRunning && agentStreamText && (
+                      <div className="lk-narration-text lk-narration-text--live">
+                        {renderInlineMarkdown(agentStreamText)}
+                        <span className="lk-stream-cursor">▋</span>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <>
+                    {/* Fallback: raw activity log when no narration yet */}
+                    {activityLog.map(entry => {
+                      const text = [entry.msg, entry.detail].filter(Boolean).join(' — ')
+                      const done = entry.status === 'done' || entry.status === 'skip'
+                      const active = entry.status === 'active'
+                      return (
+                        <div
+                          key={entry.id}
+                          className={[
+                            'lk-stream-line',
+                            done   ? 'lk-stream-line--dim'  : '',
+                            active ? 'lk-stream-line--live' : '',
+                          ].filter(Boolean).join(' ')}
+                        >
+                          {text}
+                        </div>
+                      )
+                    })}
+
+                    {/* Amplifier decisions */}
+                    {amplifierDecisions.map((d, i) => (
+                      <div key={`amp-${i}`} className="lk-stream-line">{d}</div>
+                    ))}
+
+                    {/* Status lines */}
+                    {isAmplifying    && <div className="lk-stream-line lk-stream-line--live">Amplifying intent</div>}
+                    {isPlanning      && <div className="lk-stream-line lk-stream-line--live">Planning across repo</div>}
+                    {remediationStatus && <div className="lk-stream-line lk-stream-line--live">{remediationStatus}</div>}
+                    {isGenerating    && <div className="lk-stream-line lk-stream-line--live">Generating</div>}
+                    {isPushing       && <div className="lk-stream-line lk-stream-line--live">{pushStep || 'Pushing'}</div>}
+
+                    {/* File plan */}
+                    {filePlan.map(entry => {
+                      const action = entry.action === 'modify' ? 'editing' : 'writing'
+                      const done   = entry.status === 'done'
+                      const err    = entry.status === 'error'
+                      const live   = !done && !err
+                      return (
+                        <div
+                          key={`fp-${entry.path}`}
+                          className={[
+                            'lk-stream-line',
+                            done ? 'lk-stream-line--dim'   : '',
+                            err  ? 'lk-stream-line--error' : '',
+                            live ? 'lk-stream-line--live'  : '',
+                          ].filter(Boolean).join(' ')}
+                        >
+                          {action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
+                        </div>
+                      )
+                    })}
+
+                    {/* Live stream text */}
+                    {isAgentRunning && agentStreamText && (
+                      <div className="lk-stream-line lk-stream-line--current">
+                        {renderInlineMarkdown(agentStreamText)}
+                        <span className="lk-stream-cursor">▋</span>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Failure reason */}

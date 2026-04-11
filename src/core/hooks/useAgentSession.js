@@ -65,6 +65,10 @@ export function useAgentSession({
   const [lastVerification,setLastVerification]= useState(null) // reliability gate result
   const [lastCritique,    setLastCritique]    = useState(null) // critique pass result
 
+  // Narration thread — ordered mix of { kind:'text', text } and { kind:'tool', name, status }
+  const [narrationThread, setNarrationThread] = useState([])
+  const narrationRef = useRef([])  // sync copy for use inside async callbacks
+
   const streamTextRef   = useRef('')
   const abortRef        = useRef(null)
   const runningRef      = useRef(false)   // guard against concurrent runs
@@ -85,6 +89,8 @@ export function useAgentSession({
     setAgentFiles([])
     streamTextRef.current = ''
     setAgentStreamText('')
+    narrationRef.current = []
+    setNarrationThread([])
 
     // Layer 1: detect intent before the loop so the badge appears immediately
     const intent     = detectIntent(task)
@@ -163,6 +169,8 @@ export function useAgentSession({
             const prev = streamTextRef.current.trim()
             if (prev) {
               logActivity('agent', `💬 ${prev}`)
+              narrationRef.current = [...narrationRef.current, { kind: 'text', text: prev }]
+              setNarrationThread([...narrationRef.current])
               streamTextRef.current = ''
               setAgentStreamText('')
             }
@@ -180,6 +188,8 @@ export function useAgentSession({
             const narration = streamTextRef.current.trim()
             if (narration) {
               logActivity('agent', `💬 ${narration}`)
+              narrationRef.current = [...narrationRef.current, { kind: 'text', text: narration }]
+              setNarrationThread([...narrationRef.current])
               streamTextRef.current = ''
               setAgentStreamText('')
             }
@@ -192,11 +202,21 @@ export function useAgentSession({
             if (ev.name === 'todo' && ev.input?.action === 'in_progress') {
               setAgentTask(prev => prev ? { ...prev, steps: [...(prev.steps || []), ev.input.task || ''] } : prev)
             }
+            // Add tool chip to narration thread
+            narrationRef.current = [...narrationRef.current, { kind: 'tool', id: ev.id, name: ev.name, logMsg, status: 'active' }]
+            setNarrationThread([...narrationRef.current])
             logActivity('tool', `● ${logMsg}`)
             break
           }
 
           case 'tool_done': {
+            // Update tool chip status in narration thread
+            narrationRef.current = narrationRef.current.map(e =>
+              e.kind === 'tool' && e.id === ev.id
+                ? { ...e, status: ev.error ? 'error' : 'done' }
+                : e
+            )
+            setNarrationThread([...narrationRef.current])
             // Update the last entry in the activity log (which is the tool_start we just added)
             const last = activityRef?.current?.[activityRef.current.length - 1]
             if (last) {
@@ -224,6 +244,8 @@ export function useAgentSession({
             const final = streamTextRef.current.trim()
             if (final) {
               logActivity('agent', `💬 ${final}`)
+              narrationRef.current = [...narrationRef.current, { kind: 'text', text: final }]
+              setNarrationThread([...narrationRef.current])
               streamTextRef.current = ''
               setAgentStreamText('')
             }
@@ -322,6 +344,7 @@ export function useAgentSession({
 
   return {
     isAgentRunning, agentSummary, agentFiles, agentStreamText,
+    narrationThread,
     // Layer 1+2+3 new exports
     agentIntent, agentTask, agentPhase,
     // 4.1 / 4.2: orchestration exports
