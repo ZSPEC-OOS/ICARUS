@@ -378,5 +378,42 @@ export async function loadModelDocs(uid) {
   })
 }
 
+// ── Modular user tools (cross-device persistence) ────────────────────────────
+// Saved to: users/{uid}/data/modularTools
+// payload: { entries: [{ source, checksum, installedAt }], _ts, _v }
+export async function saveUserToolsDoc(uid, entries = []) {
+  if (!uid) return
+  try {
+    const db = await getFirestore()
+    const { doc, setDoc } = await import('firebase/firestore')
+    await setDoc(
+      doc(db, 'users', uid, 'data', 'modularTools'),
+      {
+        entries: Array.isArray(entries) ? entries.slice(0, 3) : [],
+        _ts: Date.now(),
+        _v: 1,
+      },
+      { merge: true },
+    )
+  } catch (err) {
+    console.warn('[Bluswan] saveUserToolsDoc failed:', err.message)
+  }
+}
+
+export async function loadUserToolsDoc(uid) {
+  if (!uid) return []
+  try {
+    const db = await getFirestore()
+    const { doc, getDoc } = await import('firebase/firestore')
+    const snap = await getDoc(doc(db, 'users', uid, 'data', 'modularTools'))
+    if (!snap.exists()) return []
+    const data = snap.data()
+    return Array.isArray(data?.entries) ? data.entries.slice(0, 3) : []
+  } catch (err) {
+    console.warn('[Bluswan] loadUserToolsDoc failed:', err.message)
+    return []
+  }
+}
+
 // ── Auto-init on module load ──────────────────────────────────────────────────
 initFirebaseSync(loadFirebaseConfig())

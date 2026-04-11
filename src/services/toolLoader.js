@@ -15,6 +15,14 @@ import { KEYS } from '../shared/storageKeys.js'
 
 const USER_TOOLS_KEY = KEYS.LS.USER_TOOLS
 
+function readUserToolEntries() {
+  try { return JSON.parse(localStorage.getItem(USER_TOOLS_KEY)) || [] } catch { return [] }
+}
+
+function writeUserToolEntries(entries) {
+  localStorage.setItem(USER_TOOLS_KEY, JSON.stringify(entries))
+}
+
 // ── Validation ────────────────────────────────────────────────────────────────
 export function validateToolModule(mod) {
   const errors = []
@@ -118,6 +126,14 @@ export function getAllTools() {
   return [...loadBuiltins(), ...loadUserTools()]
 }
 
+export function getUserToolEntries() {
+  return readUserToolEntries()
+}
+
+export function setUserToolEntries(entries = []) {
+  try { writeUserToolEntries(Array.isArray(entries) ? entries : []) } catch {}
+}
+
 /** Install a tool from its source code string. Returns { ok, errors, tool }. */
 export function installTool(source) {
   let mod
@@ -130,9 +146,7 @@ export function installTool(source) {
   const errors = validateToolModule(mod)
   if (errors.length) return { ok: false, errors, tool: null }
 
-  const stored = (() => {
-    try { return JSON.parse(localStorage.getItem(USER_TOOLS_KEY)) || [] } catch { return [] }
-  })()
+  const stored = readUserToolEntries()
 
   // Replace existing tool with same id
   const idx = stored.findIndex(e => {
@@ -144,7 +158,45 @@ export function installTool(source) {
   else stored.push(entry)
 
   try {
-    localStorage.setItem(USER_TOOLS_KEY, JSON.stringify(stored))
+    writeUserToolEntries(stored)
+  } catch {
+    return { ok: false, errors: ['localStorage quota exceeded'], tool: null }
+  }
+
+  return {
+    ok: true,
+    errors: [],
+    tool: { ...mod.toolMeta, _checksum: entry.checksum, _installedAt: entry.installedAt, _builtin: false },
+  }
+}
+
+/** Install or replace a user tool at a fixed slot index (0-based). */
+export function installToolAtSlot(source, slotIndex, maxSlots = 3) {
+  let mod
+  try {
+    mod = evalToolSource(source)
+  } catch (e) {
+    return { ok: false, errors: [`Parse error: ${e.message}`], tool: null }
+  }
+  const errors = validateToolModule(mod)
+  if (errors.length) return { ok: false, errors, tool: null }
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= maxSlots) {
+    return { ok: false, errors: [`Slot index out of range (0-${maxSlots - 1})`], tool: null }
+  }
+
+  const entry = { source, checksum: checksum(source), installedAt: new Date().toISOString() }
+  const stored = readUserToolEntries()
+
+  // Remove duplicates by tool id first, then set the target slot.
+  const deduped = stored.filter(e => {
+    try { return evalToolSource(e.source)?.toolMeta?.id !== mod.toolMeta.id } catch { return false }
+  })
+  const next = deduped.slice(0, maxSlots)
+  while (next.length < maxSlots) next.push(null)
+  next[slotIndex] = entry
+
+  try {
+    writeUserToolEntries(next.filter(Boolean))
   } catch {
     return { ok: false, errors: ['localStorage quota exceeded'], tool: null }
   }
@@ -158,14 +210,12 @@ export function installTool(source) {
 
 /** Uninstall a user tool by id. Returns true if removed. */
 export function uninstallTool(id) {
-  const stored = (() => {
-    try { return JSON.parse(localStorage.getItem(USER_TOOLS_KEY)) || [] } catch { return [] }
-  })()
+  const stored = readUserToolEntries()
   const next = stored.filter(e => {
     try { return evalToolSource(e.source)?.toolMeta?.id !== id } catch { return true }
   })
   if (next.length === stored.length) return false
-  try { localStorage.setItem(USER_TOOLS_KEY, JSON.stringify(next)) } catch {}
+  try { writeUserToolEntries(next) } catch {}
   return true
 }
 
