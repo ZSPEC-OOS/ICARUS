@@ -192,6 +192,14 @@ export const TOOL_CONTRACTS = {
     input: { type: 'object', additionalProperties: false, properties: { path: baseString, test_pattern: baseString }, required: [] },
     output: { type: 'string' },
   },
+  watch_process: {
+    input: { type: 'object', additionalProperties: false, properties: { port: baseNumber, process_name: baseString, lines: baseNumber }, required: [] },
+    output: { type: 'string' },
+  },
+  browser_screenshot: {
+    input: { type: 'object', additionalProperties: false, properties: { url: baseString, port: baseNumber }, required: [] },
+    output: { type: 'string' },
+  },
 }
 
 export function normalizeToolName(name = '') {

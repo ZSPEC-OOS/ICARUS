@@ -1257,6 +1257,112 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         return `${summary}\n\n${raw.slice(0, 6000)}`
       }
 
+      // ── watch_process ──────────────────────────────────────────────────
+      // Health-checks a running local service: HTTP probe + port listener + pgrep.
+      case 'watch_process': {
+        if (!bridgeAvailable) return 'watch_process requires the exec bridge (run with npm run dev).'
+
+        const port        = Math.max(1, Math.min(Number(input.port) || 5173, 65535))
+        const processName = (input.process_name || '').trim().replace(/"/g, '')
+        const lines       = Math.max(5, Math.min(Number(input.lines) || 30, 200))
+        const parts       = []
+
+        // 1. HTTP probe
+        const httpOut = await execBridge(
+          `curl -s -o /dev/null -w "HTTP %{http_code} in %{time_total}s" http://localhost:${port}/ --max-time 5 2>&1`,
+          null,
+        )
+        parts.push(`Port ${port} HTTP probe: ${httpOut.replace(/^exit \d+\n/, '').trim() || 'no response'}`)
+
+        // 2. TCP listener
+        const lsofOut = await execBridge(
+          `lsof -i :${port} -sTCP:LISTEN 2>/dev/null | awk 'NR>1{print $1,$2,$9}' | head -5`,
+          null,
+        )
+        const listener = lsofOut.replace(/^exit \d+\n/, '').trim()
+        parts.push(listener ? `Listening: ${listener}` : `Nothing listening on :${port}`)
+
+        // 3. Named process (optional)
+        if (processName) {
+          const pgrepOut = await execBridge(`pgrep -a -f "${processName}" 2>/dev/null | head -8`, null)
+          const procs = pgrepOut.replace(/^exit \d+\n/, '').trim()
+          parts.push(procs
+            ? `Process "${processName}":\n${procs}`
+            : `No process matching "${processName}".`)
+        }
+
+        // 4. Tail recent stdout/stderr if a log file exists
+        const logOut = await execBridge(
+          `tail -${lines} /tmp/bluswan-dev.log /tmp/vite.log /tmp/dev.log 2>/dev/null | tail -${lines}`,
+          null,
+        )
+        const log = logOut.replace(/^exit \d+\n/, '').trim()
+        if (log) parts.push(`Recent log (${lines} lines):\n${log.slice(0, 3000)}`)
+
+        return parts.join('\n\n')
+      }
+
+      // ── browser_screenshot ─────────────────────────────────────────────
+      // Takes a headless screenshot via Playwright CLI, saves PNG to repo,
+      // returns GitHub URL + console errors. Falls back to HTML on failure.
+      case 'browser_screenshot': {
+        if (!bridgeAvailable) return 'browser_screenshot requires the exec bridge (run with npm run dev).'
+
+        const port    = Math.max(1, Math.min(Number(input.port) || 5173, 65535))
+        const url     = (input.url || `http://localhost:${port}`).replace(/"/g, '')
+        const outFile = '/tmp/bluswan-screenshot.png'
+
+        // Try Playwright CLI (zero-config, most modern JS projects have it)
+        const pwOut = await execBridge(
+          `npx --yes playwright screenshot "${url}" "${outFile}" --wait-for-timeout 4000 2>&1`,
+          null,
+        )
+        const pwExit   = Number((pwOut.match(/^exit (\d+)/) || [])[1] ?? 1)
+        const pwStdout = pwOut.replace(/^exit \d+\n/, '').trim()
+
+        if (pwExit !== 0) {
+          // Playwright unavailable or failed — return HTML snippet instead
+          const htmlOut = await execBridge(
+            `curl -s "${url}" --max-time 8 2>&1 | head -80`,
+            null,
+          )
+          const html = htmlOut.replace(/^exit \d+\n/, '').trim()
+          return [
+            `browser_screenshot: Playwright not available (${pwStdout.slice(0, 120)}).`,
+            `Falling back to raw HTML from ${url}:`,
+            html.slice(0, 4000),
+          ].join('\n')
+        }
+
+        // Read screenshot as base64 and commit to repo
+        const b64Out = await execBridge(`base64 -w 0 "${outFile}" 2>/dev/null`, null)
+        const b64    = b64Out.replace(/^exit \d+\n/, '').trim()
+
+        if (!b64 || b64.includes('unavailable')) {
+          return `Screenshot taken but base64 read failed. Playwright output:\n${pwStdout.slice(0, 500)}`
+        }
+
+        const timestamp     = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')
+        const screenshotPath = `screenshots/${timestamp}.png`
+        try {
+          const existing = await getFileContent(token, owner, repo, screenshotPath, branch)
+          await createOrUpdateFile(
+            token, owner, repo, screenshotPath, b64,
+            `chore: screenshot ${timestamp}`, branch, existing?.sha || null,
+          )
+          onFileWrite?.(screenshotPath, 'write')
+          const lines = [
+            `Screenshot saved: ${screenshotPath}`,
+            `GitHub: https://github.com/${owner}/${repo}/blob/${branch}/${screenshotPath}`,
+            `URL captured: ${url}`,
+          ]
+          if (pwStdout) lines.push(`Playwright output: ${pwStdout.slice(0, 200)}`)
+          return lines.join('\n')
+        } catch (err) {
+          return `Screenshot taken but upload failed: ${err.message}\nPlaywright: ${pwStdout.slice(0, 300)}`
+        }
+      }
+
       default:
         return `Unknown tool: ${name}`
     }
