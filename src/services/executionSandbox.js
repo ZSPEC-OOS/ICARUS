@@ -93,7 +93,8 @@ class E2BProvider {
   async probe() {
     if (!this._apiKey) return false
     try {
-      const mod = await import('@e2b/code-interpreter')
+      const dynamicImport = (specifier) => Function('s', 'return import(s)')(specifier)
+      const mod = await dynamicImport('@e2b/code-interpreter')
       this._Sandbox = mod.Sandbox
       return true
     } catch { return false }
