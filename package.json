@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "node --test src/services/**/*.test.mjs",
     "benchmark:nightly": "node scripts/run-benchmarks.mjs",
-    "cli": "node src/cli/bluswan-cli.mjs"
+    "cli": "node src/cli/bluswan-cli.mjs",
+    "lint": "eslint src/"
   },
   "dependencies": {
     "diff": "^8.0.3",
@@ -20,6 +21,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.4.0",
     "vite": "^7.3.1"
   }
 }
