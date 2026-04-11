@@ -85,6 +85,13 @@ export function saveSettings(s) {
 }
 export function loadHistory()  { try { return JSON.parse(localStorage.getItem(HISTORY_KEY))  || [] } catch { return [] } }
 export function saveHistory(h) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 60))) } catch {} }
+function buildHistoryPromptFromConversation(messages = []) {
+  const firstUser = messages.find(m => m?.role === 'user' && typeof m?.content === 'string' && m.content.trim())
+  if (firstUser) return firstUser.content.trim().replace(/\s+/g, ' ').slice(0, 100)
+  const firstAssistant = messages.find(m => m?.role === 'assistant' && typeof m?.content === 'string' && m.content.trim())
+  if (firstAssistant) return firstAssistant.content.trim().replace(/\s+/g, ' ').slice(0, 100)
+  return ''
+}
 export function formatRelativeDate(ts) {
   const diff = Date.now() - ts
   if (diff < 60000)        return 'just now'
@@ -303,8 +310,46 @@ export function useWorkspaceState({
   const hasGithub      = !!(githubToken && repoOwner && repoName)
   const shouldUseAgent = hasGithub
 
+  const persistSessionToHistory = useCallback((messages = conversation) => {
+    if (!Array.isArray(messages) || messages.length === 0) return false
+    const promptSummary = buildHistoryPromptFromConversation(messages)
+    if (!promptSummary) return false
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      prompt: promptSummary,
+      filePath: planRef.current[0]?.path || filePlan[0]?.path || '',
+      timestamp: new Date().toISOString(),
+      conversation: messages.slice(-20),
+    }
+    setHistory(prev => {
+      const updated = [entry, ...prev].slice(0, 60)
+      saveHistory(updated)
+      return updated
+    })
+    return true
+  }, [conversation, filePlan])
+
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => { loadSearchKey().then(setWebSearchApiKey).catch(() => {}) }, [])
+
+  // Migrate previously persisted conversation into Task History on load.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(KEYS.LS.CONV)
+      if (!raw) return
+      const cached = JSON.parse(raw)
+      if (Array.isArray(cached) && cached.length > 0) persistSessionToHistory(cached)
+      localStorage.removeItem(KEYS.LS.CONV)
+    } catch {}
+  }, [persistSessionToHistory])
+
+  // Archive current in-progress chat before refresh/navigation.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onBeforeUnload = () => { persistSessionToHistory(conversation) }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [conversation, persistSessionToHistory])
 
   useEffect(() => { onSettingsChangedRef.current = onSettingsChanged }, [onSettingsChanged])
 
@@ -898,12 +943,13 @@ export function useWorkspaceState({
 
   // ── Reset / abort ─────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
+    persistSessionToHistory(conversation)
     resetConversation(); clearActivity(); setFilePlan([]); setActiveFileIndex(0)
     setIsPlanning(false); planRef.current = []; setRefinementPrompt(''); setSandboxOutput([])
     setPrResult(null); setGitStatus(null); setPrompt(''); setError(''); setAmplifierDecisions([])
     setRemediationStatus(null); setPlanApproval(null); setExecutedPlan(null)
     setLastBranchName(''); setAttachedFiles([]); setActiveTab('code')
-  }, [resetConversation, clearActivity])
+  }, [persistSessionToHistory, conversation, resetConversation, clearActivity])
 
   const handleAbort = useCallback(() => {
     abortRef.current?.abort()

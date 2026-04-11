@@ -205,19 +205,37 @@ const BluswanSettings = memo(function BluswanSettings({
   }
 
   const modularInstructionText = `Convert this tool into BLUSWAN Modular Tool format.
-Requirements:
-1) Export: toolMeta, execute(input, config), test()
-2) toolMeta must include:
-   - id (kebab-case unique id)
-   - name
-   - version
-   - description
-   - category ("coding" | "utility" | "analysis")
-   - author (optional)
-3) Tool must be self-contained (no imports).
-4) Return complete JavaScript source only (no markdown).
-5) Keep execute deterministic unless randomness is required.
-6) Add a test() that returns { passed: boolean, message: string }.`
+Output rules:
+1) Return complete JavaScript source only (no markdown, no explanations).
+2) Export exactly these symbols:
+   - toolMeta
+   - execute(input, config)
+   - test()
+3) Keep the tool self-contained (no imports, no external runtime dependencies).
+
+toolMeta requirements:
+- id: unique kebab-case string (example: "summarize-diff")
+- name: human-readable name
+- version: semver string (example: "1.0.0")
+- description: one concise sentence
+- category: one of "coding" | "utility" | "analysis"
+- author: optional
+
+execute(input, config) contract:
+- Must be async and return JSON-serializable data.
+- Accept object or primitive input safely (normalize if needed).
+- Validate required fields and return clear error messages instead of throwing when recoverable.
+- Keep behavior deterministic unless randomness is explicitly needed.
+
+test() contract:
+- Must be async.
+- Run at least one representative execute() call.
+- Return exactly: { passed: boolean, message: string }.
+
+Use this skeleton:
+export const toolMeta = { id: "my-tool-id", name: "My Tool", version: "1.0.0", description: "…", category: "utility" };
+export async function execute(input, config) { /* ... */ return { ok: true }; }
+export async function test() { return { passed: true, message: "Smoke test passed." }; }`
 
   function refreshModularTools() {
     setModularTools(getAllTools().filter(t => !t._builtin).slice(0, 3))
