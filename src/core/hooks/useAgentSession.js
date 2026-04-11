@@ -37,6 +37,7 @@ export function useAgentSession({
   bridgeAvailable,   // bool
   webSearchApiKey,   // string | '' — Tavily API key (optional)
   planMode,          // bool — read-only analysis mode
+  hooksConfig,       // { autoLintAfterWrite, autoTypeCheckAfterEdit } | null
   logActivity,       // (type, msg, detail?) => id
   updateActivity,    // (id, updates) => void
   clearActivity,     // () => void
@@ -117,6 +118,7 @@ export function useAgentSession({
       bridgeAvailable: !!bridgeAvailable,
       modelConfig,
       availableModels: availableModels || [],
+      hooksConfig:     hooksConfig || null,
       onFileWrite: (path, action) => {
         setAgentFiles(prev => prev.includes(path) ? prev : [...prev, path])
         onFileWrite?.(path, action)
@@ -334,7 +336,7 @@ export function useAgentSession({
     }
   }, [modelConfig, githubConfig, sourceRepoConfig, bridgeAvailable, webSearchApiKey, planMode,
       logActivity, updateActivity, clearActivity, activityRef, onFileWrite, onSetActiveTab, onSetError, onPromptClear,
-      onPlanDone, onAgentStart, onAgentComplete, availableModels])
+      onPlanDone, onAgentStart, onAgentComplete, availableModels, hooksConfig])
 
   const abort = useCallback(() => {
     abortRef.current?.abort()
