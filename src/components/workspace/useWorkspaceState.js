@@ -431,8 +431,391 @@ export function useWorkspaceState({
     setFilePlan([...planRef.current])
   }, [])
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  // (added in p3/usestate-generate, p3/usestate-handlers, p3/usestate-lrm-return)
+  // ── Generation helpers ────────────────────────────────────────────────────
+  const setActivePhase = useCallback((phase) => {
+    setPipelinePhase(phase)
+    setPipelineSteps(createPipelineSteps(phase))
+  }, [])
+
+  const emitStreamEvent = useCallback((event) => {
+    if (!event?.type) return
+    if (event.type === 'status' && event.phase) setActivePhase(event.phase)
+    if (event.type === 'plan' && Array.isArray(event.steps)) {
+      setAssistantMessage(prev => applyStreamEvent(prev, event)); return
+    }
+    if (event.type === 'content' || event.type === 'code' || event.type === 'validation')
+      setAssistantMessage(prev => applyStreamEvent(prev, event))
+  }, [setActivePhase])
+
+  const orderFilePlan = useCallback((plan) => {
+    const graph   = shadowContext.getImportGraph() || {}
+    const paths   = plan.map(p => p.path)
+    const pathSet = new Set(paths)
+    const depsMap = {}
+    paths.forEach(p => { depsMap[p] = new Set() })
+    paths.forEach(p => { (graph[p] || []).forEach(d => { if (pathSet.has(d)) depsMap[p].add(d) }) })
+    const result = [], temp = new Set(), perm = new Set()
+    const visit = (node) => {
+      if (perm.has(node) || temp.has(node)) return
+      temp.add(node)
+      for (const dep of depsMap[node] || []) visit(dep)
+      temp.delete(node); perm.add(node); result.push(node)
+    }
+    paths.forEach(p => visit(p))
+    const ordered = result.map(p => plan.find(e => e.path === p)).filter(Boolean)
+    plan.forEach(p => { if (!ordered.find(e => e.path === p.path)) ordered.push(p) })
+    return ordered
+  }, [])
+
+  const runSandboxTest = useCallback((code, lang = 'javascript') => {
+    return new Promise((resolve) => {
+      const iframe = sandboxRef.current
+      if (!iframe) { resolve(null); return }
+      const isPython = lang === 'python'
+      const timeoutMs = isPython ? 22000 : 7000
+      const timer = setTimeout(() => {
+        window.removeEventListener('message', onMsg)
+        resolve('[timeout] code did not complete within expected time')
+      }, timeoutMs)
+      const onMsg = (e) => {
+        if (!e.data?.done) return
+        clearTimeout(timer); window.removeEventListener('message', onMsg)
+        const errors = (e.data.log || []).filter(l => l.level === 'error')
+        resolve(errors.length ? errors.map(l => l.text).join('\n') : null)
+      }
+      window.addEventListener('message', onMsg)
+      iframe.srcdoc = isPython ? buildPyodideSandboxHtml(code) : buildSandboxHtml(code, '')
+    })
+  }, [])
+
+  const autoRemediate = useCallback(async (code, lang, model, signal, filePath = '', purpose = '') => {
+    if (!REMEDIATABLE.has(lang)) return code
+    const MAX_ATTEMPTS = 5
+    let current = code
+    const isJS     = lang === 'javascript' || lang === 'typescript'
+    const isPython = lang === 'python'
+    const hasSandbox = isJS || isPython
+    const checklist  = LANG_CHECKLIST[lang] || null
+    let hasEslint = false, hasTsNode = false
+    if (isJS && bridgeAvailable) {
+      const [eslintProbe, tsnodeProbe] = await Promise.all([
+        callExecBridge('npx eslint --version', undefined, 5000),
+        lang === 'typescript' ? callExecBridge('npx ts-node --version', undefined, 5000) : Promise.resolve({ exitCode: 1 }),
+      ])
+      hasEslint = eslintProbe.exitCode === 0
+      hasTsNode = tsnodeProbe.exitCode === 0
+    }
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      setRemediationStatus(`Auto-remediating (${attempt}/${MAX_ATTEMPTS})…`)
+      let errorHint = null
+      if (isJS && hasEslint) {
+        const ext  = lang === 'typescript' ? 'ts' : 'js'
+        const lint = await callExecBridge(
+          `npx eslint --stdin --stdin-filename=bluswan-check.${ext} --format=compact --rule '{"no-undef":"error","no-unused-vars":"warn"}'`,
+          undefined, 15000, current)
+        const lintOut = [lint.stdout, lint.stderr].filter(Boolean).join('\n').trim()
+        if (lint.exitCode !== 0 && lintOut) {
+          errorHint = lintOut.slice(0, 1500)
+        } else if (lang === 'typescript' && hasTsNode) {
+          const ts    = await callExecBridge('npx ts-node --transpile-only --stdin', undefined, 15000, current)
+          const tsOut = [ts.stdout, ts.stderr].filter(Boolean).join('\n').trim()
+          if (ts.exitCode !== 0 && tsOut) errorHint = tsOut.slice(0, 1500)
+          else break
+        } else { break }
+      } else if (hasSandbox) {
+        errorHint = await runSandboxTest(current, lang)
+        if (!errorHint) break
+      } else {
+        errorHint = checklist || 'syntax review requested'
+      }
+      const fileCtx    = filePath ? ` in ${filePath}` : ''
+      const purposeCtx = purpose  ? ` Purpose: ${purpose}.` : ''
+      const fixCtx = [
+        { role: 'user',      content: `You are a code repair assistant.${purposeCtx} Fix all syntax errors, undefined references, type errors, and obvious runtime bugs. Output ONLY the corrected ${lang} code — no fences, no explanations.` },
+        { role: 'assistant', content: 'Corrected code:' },
+      ]
+      const fixMsg = hasSandbox
+        ? `Fix this ${lang} code${fileCtx}. Error:\n\n${errorHint}\n\nOutput ONLY the corrected code:\n\n${current}`
+        : checklist
+          ? `Review this ${lang} code${fileCtx} against this checklist:\n${checklist}\n\nFix every issue. Output ONLY the corrected code:\n\n${current}`
+          : `Review this ${lang} code${fileCtx} for syntax errors and fix them. Output ONLY the corrected code:\n\n${current}`
+      try {
+        const fixed = await runPromptWithRetry(model, fixMsg, fixCtx, null, signal)
+        const newCode = extractCode(fixed)
+        if (newCode && newCode !== current) current = newCode; else break
+      } catch { break }
+    }
+    setRemediationStatus(null)
+    return current
+  }, [runSandboxTest, bridgeAvailable, callExecBridge])
+
+  // ── handleGenerate ────────────────────────────────────────────────────────
+  const handleGenerate = useCallback(async (userMsg = prompt, isRefinement = false) => {
+    if (!userMsg.trim()) { setError('Enter a coding request first.'); return }
+    const model = models?.find(m => m.id === activeModelId)
+    if (!model)        { setError('Select a model.'); return }
+    if (!model.apiKey) { setError(`No API key for "${model.name}". Open Admin Panel.`); return }
+
+    const { command, content } = parsePromptCommand(userMsg)
+    if (command === '/reset') {
+      resetConversation(); setFilePlan([]); planRef.current = []
+      setTurnCount(0); setValidationResults([]); setActivePhase('understanding'); return
+    }
+    const requestText = command ? content : userMsg
+    if (!requestText.trim()) { setError(`Add details after ${command}.`); return }
+
+    setError(''); setValidationResults([])
+    setAssistantMessage(createAssistantMessage(`${Date.now()}`))
+    emitStreamEvent(createStreamEvent('status', { phase: 'understanding' }))
+    setAmplifierDecisions([]); setIsGenerating(true)
+    setConversation(prev => [...prev, { role: 'user', content: requestText }])
+
+    if (!isRefinement) {
+      setGitStatus(null); setPrResult(null); setSandboxOutput([])
+      clearActivity(); setActiveTab('code')
+    }
+
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    const effectiveModel = {
+      ...model,
+      temperature: parseFloat((0.2 + (creativity / 100) * 0.8).toFixed(2)),
+      ...(enableThinking ? { enableThinking: true, thinkingBudget } : {}),
+    }
+
+    try {
+      let effectiveMsg = requestText
+      if (!isRefinement && isVaguePrompt(requestText)) {
+        setIsAmplifying(true)
+        const ampId = logActivity('amplify', '◆ Analyzing intent…')
+        const conv  = shadowContext.getConventions()
+        const { enrichedPrompt, decisions } = await amplifyPrompt(
+          requestText, conv, effectiveModel, ctrl.signal, conversation.slice(-6))
+        setIsAmplifying(false)
+        if (enrichedPrompt !== requestText) {
+          effectiveMsg = enrichedPrompt; setAmplifierDecisions(decisions)
+          updateActivity(ampId, { status: 'done', msg: `◆ Intent clarified — ${decisions.length} assumption${decisions.length !== 1 ? 's' : ''} made` })
+        } else {
+          updateActivity(ampId, { status: 'done', msg: '◆ Intent clear — proceeding as-is' })
+        }
+      }
+
+      if (isRefinement) {
+        const entry = planRef.current[activeFileIndex] ?? {}
+        const lang  = detectLanguage(entry.path, entry.code || '')
+        const mode  = entry.existingContent !== null ? 'patch' : 'replace'
+        const refStyleExamples = shadowContext.getStyleExamples(effectiveMsg, STYLE_EXAMPLES_LIMIT)
+        const sys   = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, shadowContext.getBluswanMd(), [], refStyleExamples)
+        const refMsg = `Current code:\n${entry.code || ''}\n\nChange request: ${effectiveMsg}`
+        const ctx   = [{ role: 'user', content: sys }, { role: 'assistant', content: 'Understood. I will output only the code.' }, ...conversation]
+        emitStreamEvent(createStreamEvent('status', { phase: 'refining' }))
+        const refId = logActivity('generate', `↺ Refining ${entry.path || 'file'}…`)
+        let streaming = '', prevStreaming = ''
+        const raw = await runPromptWithRetry(effectiveModel, refMsg, ctx, (partial) => {
+          streaming = mode === 'patch' && entry.existingContent ? partial : extractCode(partial)
+          updatePlanEntry(activeFileIndex, { code: streaming })
+          const chunk = streaming.startsWith(prevStreaming) ? streaming.slice(prevStreaming.length) : streaming
+          prevStreaming = streaming
+          emitStreamEvent(createStreamEvent('code', { chunk }))
+          updateActivity(refId, { detail: `${streaming.split('\n').length} lines…` })
+        }, ctrl.signal)
+        let finalCode = extractCode(raw)
+        if (mode === 'patch' && entry.existingContent) {
+          const { result, edits } = applyEditBlocks(entry.existingContent, raw)
+          if (edits.length > 0) finalCode = result
+        }
+        updatePlanEntry(activeFileIndex, { code: finalCode, status: 'done' })
+        emitStreamEvent(createStreamEvent('status', { phase: 'validating' }))
+        updateActivity(refId, { status: 'done', msg: `↺ Refined ${entry.path || 'file'}`, detail: `${finalCode.split('\n').length} lines` })
+        const refValidation = ['✓ Refinement applied to active file.', '✓ Output is ready for review.']
+        setValidationResults(refValidation)
+        emitStreamEvent(createStreamEvent('validation', { results: refValidation }))
+        const refOut = formatStructuredOutput({
+          summary: `Refined ${entry.path || 'active file'} based on follow-up request.`,
+          plan: [`Apply requested changes to ${entry.path || 'active file'}`],
+          code: finalCode, codeLang: lang,
+          changes: [`Updated ${entry.path || 'active file'}`],
+          validation: refValidation,
+          notes: ['Further follow-ups will continue from this state.'],
+        })
+        setConversation(prev => [...prev, { role: 'assistant', content: refOut }])
+        setTurnCount(t => t + 1); setRefinementPrompt(''); setActiveTab('code')
+      } else {
+        const recentFiles = filePlan.filter(e => e.status === 'done').map(e => e.path)
+        emitStreamEvent(createStreamEvent('status', { phase: 'planning' }))
+        const planId = logActivity('plan', '◆ Building file plan…')
+        setIsPlanning(true)
+        const rawPlan = await buildFilePlan(effectiveMsg, shadowContext._fileIndex || [], shadowContext.getConventions(), effectiveModel, ctrl.signal, recentFiles)
+        setIsPlanning(false)
+        updateActivity(planId, { status: 'done', msg: `◆ Plan — ${rawPlan.length} file${rawPlan.length !== 1 ? 's' : ''}`, detail: rawPlan.map(e => e.path.split('/').pop()).join(' · ') })
+        const orderedRawPlan = orderFilePlan(rawPlan)
+        emitStreamEvent(createStreamEvent('plan', { steps: orderedRawPlan.map(e => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} — ${e.purpose}`) }))
+        if (command === '/plan') {
+          const planOnlyValidation = ['✓ Plan generated.', '✓ No code emitted in /plan mode.']
+          setValidationResults(planOnlyValidation)
+          setConversation(prev => [...prev, { role: 'assistant', content: formatStructuredOutput({ summary: `Created an execution plan for: ${requestText}`, plan: orderedRawPlan.map(e => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} — ${e.purpose}`), code: '', changes: orderedRawPlan.map(e => `${e.action === 'modify' ? 'Will update' : 'Will add'} ${e.path}`), validation: planOnlyValidation, notes: ['Run /code to execute this plan.'] }) }])
+          setTurnCount(t => t + 1); setActivePhase('complete'); return
+        }
+        const initialPlan = orderedRawPlan.map(e => ({ ...e, existingContent: null, _sha: null, code: '', testCode: '', patchEdits: [], diffText: '', status: 'pending', error: null }))
+        planRef.current = initialPlan; setFilePlan([...initialPlan]); setActiveFileIndex(0)
+
+        if (hasGithub) {
+          for (let i = 0; i < planRef.current.length; i++) {
+            if (ctrl.signal.aborted) break
+            const ep = planRef.current[i]
+            if (ep.action !== 'modify') continue
+            updatePlanEntry(i, { status: 'fetching' })
+            const fetchId = logActivity('fetch', `⬇ Reading ${ep.path}`)
+            try {
+              const file = await getFileContent(githubToken, repoOwner, repoName, ep.path, baseBranch)
+              if (file?.content) {
+                const c = decodeBase64(file.content)
+                updatePlanEntry(i, { existingContent: c, _sha: file.sha, status: 'pending' })
+                updateActivity(fetchId, { status: 'done', msg: `⬇ ${ep.path}`, detail: `${c.split('\n').length} lines` })
+              } else {
+                updatePlanEntry(i, { status: 'pending' })
+                updateActivity(fetchId, { status: 'skip', msg: `⬇ ${ep.path} — not found, will create` })
+              }
+            } catch {
+              updatePlanEntry(i, { status: 'pending' })
+              updateActivity(fetchId, { status: 'skip', msg: `⬇ ${ep.path} — fetch failed, will create` })
+            }
+          }
+        }
+
+        const bluswanMd   = shadowContext.getBluswanMd()
+        let ambientFiles  = []
+        try { ambientFiles = await shadowContext.getContextContent(effectiveMsg, CONTEXT_FILES_LIMIT) }
+        catch (ctxErr) { logActivity('warn', `⚠ Context index unavailable (${ctxErr.message})`) }
+        let styleExamples = []
+        try { styleExamples = shadowContext.getStyleExamples(effectiveMsg, STYLE_EXAMPLES_LIMIT) }
+        catch { /* non-fatal */ }
+
+        emitStreamEvent(createStreamEvent('status', { phase: 'coding' }))
+        for (let i = 0; i < planRef.current.length; i++) {
+          if (ctrl.signal.aborted) break
+          setActiveFileIndex(i); currentFileRef.current = i
+          const entry = planRef.current[i]
+          const lang  = detectLanguage(entry.path, '')
+          const mode  = entry.existingContent !== null ? 'patch' : 'replace'
+          const contextFiles    = ambientFiles.filter(f => f.path !== entry.path)
+          const fileStyleExamples = styleExamples.filter(s => s.path !== entry.path)
+          const sys     = buildFileSystemPrompt(entry.path, entry.existingContent, lang, repoOwner, repoName, false, bluswanMd, contextFiles, fileStyleExamples)
+          const fileTask = `${effectiveMsg}\n\nFor this file: ${entry.path} — ${entry.purpose}`
+          updatePlanEntry(i, { status: 'generating' })
+          const genId = logActivity('generate', `▶ Generating ${entry.path}`, `${mode} mode`)
+          try {
+            let streaming = '', prevStreaming = ''
+            const raw = await runPromptWithRetry(effectiveModel, fileTask, [
+              { role: 'user', content: sys }, { role: 'assistant', content: 'Understood. I will output only the code.' },
+            ], (partial) => {
+              streaming = mode === 'patch' && entry.existingContent ? partial : extractCode(partial)
+              updatePlanEntry(i, { code: streaming })
+              const chunk = streaming.startsWith(prevStreaming) ? streaming.slice(prevStreaming.length) : streaming
+              prevStreaming = streaming
+              emitStreamEvent(createStreamEvent('code', { chunk }))
+              updateActivity(genId, { detail: `${streaming.split('\n').length} lines…` })
+            }, ctrl.signal)
+            let finalCode = extractCode(raw), newEdits = [], newDiff = ''
+            if (mode === 'patch' && entry.existingContent) {
+              const { result, edits } = applyEditBlocks(entry.existingContent, raw)
+              if (edits.length > 0) {
+                finalCode = result; newEdits = edits
+                const old = entry.existingContent.split('\n').map((l, idx) => `- ${String(idx+1).padStart(3)}: ${l}`)
+                const neo = result.split('\n').map((l, idx) => `+ ${String(idx+1).padStart(3)}: ${l}`)
+                newDiff = `--- a/${entry.path}\n+++ b/${entry.path}\n\n${old.join('\n')}\n\n${neo.join('\n')}`
+              }
+            }
+            if (!newDiff) newDiff = computeLineDiff(entry.existingContent || null, finalCode, entry.path)
+            if (mode !== 'patch' && !isCodeComplete(finalCode, lang)) {
+              const contCtx = [{ role: 'user', content: sys }, { role: 'assistant', content: 'Understood. I will output only the code.' }]
+              for (let cont = 0; cont < 3; cont++) {
+                if (ctrl.signal.aborted || isCodeComplete(finalCode, lang)) break
+                const lineCount = finalCode.split('\n').length
+                updateActivity(genId, { detail: `continuing… (${lineCount} lines, attempt ${cont+1}/3)` })
+                const tail = finalCode.split('\n').slice(-30).join('\n')
+                try {
+                  const contRaw = await runPromptWithRetry(effectiveModel, `The previous code output for ${entry.path} was truncated at ${lineCount} lines. The last lines were:\n\n${tail}\n\nContinue writing ONLY the remaining code from exactly where the output ended. No fences, no explanations.`, contCtx, null, ctrl.signal)
+                  const contChunk = extractCode(contRaw).trim()
+                  if (contChunk) finalCode = finalCode.trimEnd() + '\n' + contChunk; else break
+                } catch (contErr) { updateActivity(genId, { detail: `continuation failed (${contErr.message})` }); break }
+              }
+            }
+            updateActivity(genId, { status: 'done', msg: `▶ ${entry.path}`, detail: `${finalCode.split('\n').length} lines` })
+            emitStreamEvent(createStreamEvent('status', { phase: 'refining' }))
+            updatePlanEntry(i, { status: 'remediating', code: finalCode })
+            const remId = logActivity('remediate', `⊛ Testing ${entry.path}`)
+            finalCode = await autoRemediate(finalCode, lang, effectiveModel, ctrl.signal, entry.path, entry.purpose)
+            updateActivity(remId, { status: 'done', msg: `⊛ ${entry.path} — clean` })
+            let builtTestCode = ''
+            if (generateTests) {
+              setIsGenTests(true)
+              const testId = logActivity('test', `⊛ Writing tests for ${entry.path}`)
+              try {
+                const testSys = buildFileSystemPrompt(entry.path, null, lang, repoOwner, repoName, true)
+                const testRaw = await runPromptWithRetry(effectiveModel, `Write tests for:\n${finalCode}`, [{ role: 'user', content: testSys }, { role: 'assistant', content: 'Understood. Test code only.' }], null, ctrl.signal)
+                builtTestCode = extractCode(testRaw)
+                updateActivity(testId, { status: 'done', msg: `⊛ Tests → ${testFilePath(entry.path)}`, detail: `${builtTestCode.split('\n').length} lines` })
+              } catch (e) {
+                if (e.name !== 'AbortError') updateActivity(testId, { status: 'error', msg: `⊛ Test gen failed: ${e.message}` })
+              } finally { setIsGenTests(false) }
+            }
+            updatePlanEntry(i, { code: finalCode, testCode: builtTestCode, patchEdits: newEdits, diffText: newDiff, status: 'done' })
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              updatePlanEntry(i, { status: 'error', error: err.message })
+              updateActivity(genId, { status: 'error', msg: `✗ ${entry.path} — ${err.message}` })
+            }
+            setIsGenTests(false)
+          }
+        }
+
+        if (!ctrl.signal.aborted && planRef.current.length > 0) {
+          emitStreamEvent(createStreamEvent('status', { phase: 'validating' }))
+          const doneCount = planRef.current.filter(e => e.status === 'done').length
+          logActivity('done', `✓ Complete — ${doneCount}/${planRef.current.length} file${planRef.current.length !== 1 ? 's' : ''} generated`)
+          const hasDiffs = planRef.current.some(e => e.diffText?.trim())
+          setActiveTab(hasDiffs ? 'diff' : 'code')
+          const he = { id: Date.now().toString(), prompt: requestText.slice(0, 100), filePath: planRef.current[0]?.path || '', timestamp: new Date().toISOString() }
+          const planSteps = planRef.current.map(e => `${e.action === 'modify' ? 'Update' : 'Create'} ${e.path} — ${e.purpose}`)
+          const primary = planRef.current[0] || {}
+          const combinedDiff = planRef.current.map(e => e.diffText?.trim()).filter(Boolean).join('\n\n')
+          const validation = [
+            `✓ Generated ${doneCount}/${planRef.current.length} planned file(s).`,
+            planRef.current.some(e => e.status === 'error') ? '⚠ Some files failed and may need retry.' : '✓ No file-level generation errors.',
+            generateTests ? '✓ Test generation attempted for completed files.' : '⚠ Test generation disabled.',
+          ]
+          setValidationResults(validation)
+          emitStreamEvent(createStreamEvent('validation', { results: validation }))
+          const modeCode = command === '/diff' ? combinedDiff : (primary.code || '')
+          const assistantText = formatStructuredOutput({
+            summary: `Implemented: ${requestText}`,
+            plan: planSteps, code: modeCode,
+            codeLang: command === '/diff' ? 'diff' : detectLanguage(primary.path || '', primary.code || ''),
+            changes: planRef.current.map(e => `${e.action === 'modify' ? 'Updated' : 'Added'} ${e.path}`),
+            validation, notes: ['Use follow-up prompts to iteratively modify generated files.'],
+          })
+          setConversation(prev => [...prev, { role: 'assistant', content: assistantText }])
+          setTurnCount(t => t + 1)
+          const updated = [he, ...history]
+          setHistory(updated); saveHistory(updated)
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') { setError(`Generation failed: ${err.message}`); logActivity('error', `✗ ${err.message}`) }
+    } finally {
+      setIsGenerating(false); setIsPlanning(false); setIsAmplifying(false); setIsGenTests(false)
+      emitStreamEvent(createStreamEvent('status', { phase: 'complete' })); setPrompt('')
+    }
+  }, [
+    prompt, models, activeModelId, conversation, filePlan, generateTests, creativity,
+    enableThinking, thinkingBudget, repoOwner, repoName, baseBranch, githubToken, hasGithub,
+    history, activeFileIndex, autoRemediate, updatePlanEntry, logActivity, updateActivity,
+    setActivePhase, resetConversation, emitStreamEvent, orderFilePlan, clearActivity,
+  ]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Handlers (continued) ──────────────────────────────────────────────────
+  // (added in p3/usestate-handlers, p3/usestate-lrm-return)
 
   return {}
 }
