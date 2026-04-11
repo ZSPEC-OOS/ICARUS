@@ -1071,8 +1071,344 @@ export function useWorkspaceState({
     finally { setIsPushing(false); setPushStep('') }
   }, [filePlan, githubToken, repoOwner, repoName, baseBranch, dryRun, history, prompt, models, activeModelId, turnCount, hasGithub, confirmAction, logActivity, updateActivity]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Handlers (continued) ──────────────────────────────────────────────────
-  // (added in p3/usestate-lrm-return)
+  // ── Sandbox run handlers ──────────────────────────────────────────────────
+  const handleRunInSandbox = useCallback(() => {
+    if (!generatedCode) return
+    const isPython = language === 'python'
+    setIsRunning(true)
+    setSandboxOutput([{ level: 'info', text: isPython ? '▶ Loading Python runtime (Pyodide)…' : '▶ Running in isolated sandbox…' }])
+    const iframe = sandboxRef.current
+    if (!iframe) { setIsRunning(false); return }
+    const guardMs = isPython ? 25000 : 9000
+    const onMessage = (e) => {
+      if (e.data?.done) {
+        setSandboxOutput(e.data.log?.length ? e.data.log : [{ level: 'info', text: '(no output)' }])
+        setIsRunning(false); window.removeEventListener('message', onMessage)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunning(false) }, guardMs)
+    iframe.srcdoc = isPython ? buildPyodideSandboxHtml(generatedCode) : buildSandboxHtml(generatedCode, sandboxSetup)
+  }, [generatedCode, sandboxSetup, language])
 
-  return {}
+  const handleRunTests = useCallback(() => {
+    if (!testCode) return
+    const isPython = language === 'python'
+    setIsRunningTests(true)
+    setSandboxOutput([{ level: 'info', text: isPython ? '▶ Loading Python runtime (Pyodide)…' : '▶ Running tests in isolated sandbox…' }])
+    const iframe = sandboxRef.current
+    if (!iframe) { setIsRunningTests(false); return }
+    const guardMs = isPython ? 25000 : 9000
+    const onMessage = (e) => {
+      if (e.data?.done) {
+        setSandboxOutput(e.data.log?.length ? e.data.log : [{ level: 'info', text: '(no output)' }])
+        setIsRunningTests(false); window.removeEventListener('message', onMessage)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunningTests(false) }, guardMs)
+    iframe.srcdoc = isPython ? buildPyodideSandboxHtml(testCode) : buildSandboxHtml(testCode, sandboxSetup)
+  }, [testCode, sandboxSetup, language])
+
+  // ── Terminal ──────────────────────────────────────────────────────────────
+  const runTerminalCommand = useCallback((cmd) => {
+    const trimmed = cmd.trim()
+    if (!trimmed) return
+    const ts = new Date().toLocaleTimeString()
+    const pushEntry = (output, type = 'output') =>
+      setTerminalLog(prev => [...prev, { cmd: trimmed, output, type, ts }])
+    if (trimmed === 'clear') { setTerminalLog([]); return }
+    if (trimmed === 'help') {
+      pushEntry('Available commands:\n  JS/TS expressions  → executed in browser sandbox\n  python: <code>     → executed via Pyodide\n  clear / help', 'info'); return
+    }
+    if (/^python:/i.test(trimmed)) {
+      const code = trimmed.slice(7).trim()
+      setIsTerminalRunning(true)
+      const iframe = sandboxRef.current
+      if (!iframe) { pushEntry('Sandbox not available', 'error'); setIsTerminalRunning(false); return }
+      const timer = setTimeout(() => { window.removeEventListener('message', onPyMsg); pushEntry('[timeout] 20 s limit reached', 'warn'); setIsTerminalRunning(false) }, 22000)
+      const onPyMsg = (e) => {
+        if (!e.data?.done) return
+        clearTimeout(timer); window.removeEventListener('message', onPyMsg)
+        const lines = e.data.log || []
+        pushEntry(lines.length ? lines.map(l => l.text).join('\n') : '(no output)', lines.some(l => l.level === 'error') ? 'error' : 'output')
+        setIsTerminalRunning(false)
+      }
+      window.addEventListener('message', onPyMsg)
+      iframe.srcdoc = buildPyodideSandboxHtml(code); return
+    }
+    const isJsLike = /^(const |let |var |function |class |console\.|\/\/|import |export |async |await )/.test(trimmed) ||
+      (/[+\-*/%=()[\]{}.`"']/.test(trimmed) && !/^[a-z]+ /.test(trimmed)) || /^\d/.test(trimmed)
+    if (isJsLike) {
+      setIsTerminalRunning(true)
+      const iframe = sandboxRef.current
+      if (!iframe) { pushEntry('Sandbox not available', 'error'); setIsTerminalRunning(false); return }
+      const timer = setTimeout(() => { window.removeEventListener('message', onJsMsg); pushEntry('[timeout] 7 s limit reached', 'warn'); setIsTerminalRunning(false) }, 8000)
+      const onJsMsg = (e) => {
+        if (!e.data?.done) return
+        clearTimeout(timer); window.removeEventListener('message', onJsMsg)
+        const lines = e.data.log || []
+        pushEntry(lines.length ? lines.map(l => l.text).join('\n') : '(no output)', lines.some(l => l.level === 'error') ? 'error' : 'output')
+        setIsTerminalRunning(false)
+      }
+      window.addEventListener('message', onJsMsg)
+      iframe.srcdoc = buildSandboxHtml(trimmed, ''); return
+    }
+    if (/^node( -v|--version)?$/.test(trimmed)) { pushEntry('v20.x (browser JS engine)', 'info'); return }
+    if (/^python3?( --version|-V)?$/.test(trimmed)) { pushEntry('Python 3.12 (Pyodide) — use: python: print("hello")', 'info'); return }
+    if (bridgeAvailable) {
+      setIsTerminalRunning(true)
+      let streamOut = ''
+      const streamId = `stream-${Date.now()}`
+      setTerminalLog(prev => [...prev, { cmd: trimmed, output: '', type: 'output', ts, streamId }])
+      callExecBridgeStream(trimmed, undefined, (chunk) => {
+        streamOut += chunk
+        setTerminalLog(prev => prev.map(e => e.streamId === streamId ? { ...e, output: streamOut } : e))
+      }).then(({ exitCode }) => {
+        setTerminalLog(prev => prev.map(e => e.streamId === streamId ? { ...e, output: streamOut || '(no output)', type: exitCode === 0 ? 'output' : 'error', streamId: undefined } : e))
+        setIsTerminalRunning(false)
+      }); return
+    }
+    const shellCmds = ['npm','yarn','pnpm','git','npx','tsc','eslint','jest','vitest','cargo','go','pip']
+    const base = trimmed.split(/\s+/)[0]
+    if (shellCmds.includes(base)) {
+      pushEntry(`ℹ "${trimmed}" requires the exec bridge (run via \`npm run dev\`).\nBridge not detected — start the Vite dev server to enable real shell execution.`, 'info'); return
+    }
+    pushEntry(`command not found: ${base}\nType "help" for available commands.`, 'error')
+  }, [sandboxRef, bridgeAvailable, callExecBridge, callExecBridgeStream]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Conversational reply ──────────────────────────────────────────────────
+  const isConversationalPrompt = useCallback((value) => {
+    const text = String(value || '').trim().toLowerCase()
+    if (!text) return false
+    if (text.length < 80 && /^(hi|hello|hey|thanks|thank you|how are you|what can you do)/i.test(text)) return true
+    const codingSignals = /(create|build|implement|fix|refactor|add|remove|update|generate|write|bug|error|test|repo|file|component|api|function|class|css|ui|database|deploy|pipeline|module|route)/i
+    const chatSignals   = /(explain|what is|why|how does|compare|difference|ideas|brainstorm|summary|summarize|help me understand)/i
+    if (codingSignals.test(text)) return false
+    return chatSignals.test(text) || text.endsWith('?')
+  }, [])
+
+  const handleConversationalReply = useCallback(async (userMsg) => {
+    const model = models?.find(m => m.id === activeModelId)
+    if (!model)        { setError('Select a model.'); return }
+    if (!model.apiKey) { setError(`No API key for "${model.name}". Open Admin Panel.`); return }
+    const clean = userMsg.trim()
+    if (!clean) return
+    setError(''); setIsGenerating(true)
+    try {
+      const reply = await runPromptWithRetry(model, clean, [
+        { role: 'system', content: 'You are BLUSWAN in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
+        ...conversation.slice(-10),
+      ])
+      setConversation(prev => [...prev, { role: 'user', content: clean }, { role: 'assistant', content: reply }])
+      setTurnCount(t => t + 1); setPrompt('')
+    } catch (err) { setError(`Chat response failed: ${err.message}`) }
+    finally { setIsGenerating(false) }
+  }, [models, activeModelId, conversation, setConversation, setTurnCount])
+
+  // ── Long Request Mode ─────────────────────────────────────────────────────
+  const handleLrmGeneratePlan = useCallback(async (userMsg) => {
+    const model = models.find(m => m.id === activeModelId)
+    if (!model) { setError('Select a model before using Long Request Mode.'); return }
+    setLrmGeneratingPlan(true); setError('')
+    try {
+      let raw = ''
+      await runPromptWithRetry(model, `Plan this task into phases:\n\n${userMsg}`,
+        [{ role: 'user', content: PHASE_PLAN_SYSTEM }, { role: 'assistant', content: 'Here is the phase plan as a JSON array:\n[' }],
+        chunk => { raw = chunk })
+      const jsonStr = raw.includes('[') ? raw.slice(raw.indexOf('[')) : '[' + raw
+      const phases  = JSON.parse(jsonStr.slice(0, jsonStr.lastIndexOf(']') + 1))
+      if (!Array.isArray(phases) || phases.length === 0) throw new Error('Empty phase plan')
+      setLrmPlan({ originalPrompt: userMsg, phases, currentIdx: 0, statuses: {}, verifyError: null })
+    } catch (err) { setError(`LRM plan generation failed: ${err.message}`) }
+    finally { setLrmGeneratingPlan(false) }
+  }, [models, activeModelId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLrmStart = useCallback(() => {
+    if (!lrmPlan) return
+    const phase = lrmPlan.phases[0]
+    setLrmPhasePushed(false); setLrmPhasePrUrl(null)
+    setLrmPlan(p => ({ ...p, currentIdx: 0, statuses: { ...p.statuses, 0: 'active' } }))
+    handleGenerate(`[Phase 1: ${phase.title}]\n${phase.instructions}\n\nOriginal request: ${lrmPlan.originalPrompt}`)
+  }, [lrmPlan, handleGenerate])
+
+  const handleLrmProceed = useCallback(async (fromIdx) => {
+    if (!lrmPlan) return
+    if (!lrmPhasePushed && hasGithub && !dryRun) {
+      const phaseFiles = filePlan.filter(e => e.code?.trim())
+      if (phaseFiles.length === 0) {
+        setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'blocked' }, verifyError: `Phase ${fromIdx + 1} hasn't generated any files yet.` })); return
+      }
+      setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'verifying' } }))
+      try {
+        const phaseTitle = lrmPlan.phases[fromIdx]?.title || `Phase ${fromIdx + 1}`
+        const branchData = await getBranch(githubToken, repoOwner, repoName, baseBranch)
+        const phaseBranch = generateBranchName(`phase-${fromIdx + 1}-${phaseTitle}`)
+        if (!dryRun) await createBranch(githubToken, repoOwner, repoName, phaseBranch, branchData.commit.sha)
+        for (const entry of phaseFiles) {
+          const existing = await getFileContent(githubToken, repoOwner, repoName, entry.path, phaseBranch).catch(() => null)
+          await createOrUpdateFile(githubToken, repoOwner, repoName, entry.path, entry.code, `feat(phase-${fromIdx + 1}): ${phaseTitle}`, phaseBranch, existing?.sha || null)
+        }
+        const prBody = [`## BLUSWAN LRM — Phase ${fromIdx + 1} of ${lrmPlan.phases.length}: ${phaseTitle}`, ``, `**Original request:** ${lrmPlan.originalPrompt}`, ``, `**Files changed (${phaseFiles.length}):**`, phaseFiles.map(e => `- \`${e.path}\``).join('\n'), ``, `---`, `*Merge this PR before proceeding to Phase ${fromIdx + 2}.*`].filter(Boolean).join('\n')
+        const pr = await createPullRequest(githubToken, repoOwner, repoName, `BLUSWAN Phase ${fromIdx + 1}: ${phaseTitle}`, phaseBranch, baseBranch, prBody)
+        setLrmPhasePushed(true); setLrmPhasePrUrl(pr?.html_url || null)
+        setLastBranchName(phaseBranch); setPrResult({ url: pr?.html_url, number: pr?.number })
+        logActivity('push', `✓ Phase ${fromIdx + 1} PR #${pr?.number} opened — merge on GitHub then click Proceed`)
+        setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'blocked' }, verifyError: `Phase ${fromIdx + 1} PR opened. Merge it on GitHub, then click Proceed.` }))
+      } catch (err) {
+        setError(`Phase ${fromIdx + 1} push failed: ${err.message}`)
+        setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'active' }, verifyError: null }))
+      }
+      return
+    }
+    if (lrmPhasePushed && hasGithub && lrmPlan.phases[fromIdx]?.targets?.length > 0) {
+      setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'verifying' } }))
+      try {
+        const checks = await Promise.allSettled(lrmPlan.phases[fromIdx].targets.map(t => getFileContent(githubToken, repoOwner, repoName, t, baseBranch)))
+        const anyFound = checks.some(c => c.status === 'fulfilled' && c.value !== null)
+        if (!anyFound) {
+          setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'blocked' }, verifyError: `Phase ${fromIdx + 1} PR not merged yet. Merge on GitHub, then click Proceed.` })); return
+        }
+      } catch { /* network error — allow proceeding */ }
+    }
+    setLrmPhasePushed(false); setLrmPhasePrUrl(null)
+    const nextIdx = fromIdx + 1
+    if (nextIdx >= lrmPlan.phases.length) { setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [fromIdx]: 'complete' } })); return }
+    const phase = lrmPlan.phases[nextIdx]
+    setLrmPlan(p => ({ ...p, currentIdx: nextIdx, statuses: { ...p.statuses, [fromIdx]: 'complete', [nextIdx]: 'active' }, verifyError: null }))
+    handleGenerate(`[Phase ${nextIdx + 1}: ${phase.title}]\n${phase.instructions}\n\nOriginal request: ${lrmPlan.originalPrompt}`)
+  }, [lrmPlan, lrmPhasePushed, filePlan, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, handleGenerate, logActivity]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLrmOverride = useCallback((idx) => {
+    setLrmPlan(p => ({ ...p, statuses: { ...p.statuses, [idx]: 'active' }, verifyError: null }))
+  }, [])
+
+  const handleLrmCancel = useCallback(() => { setLrmPlan(null); setLrmGeneratingPlan(false) }, [])
+
+  // ── Submit + keyboard ─────────────────────────────────────────────────────
+  const handleSubmitPrompt = useCallback(async () => {
+    setHistoryOpen(false); setSettingsOpen(false)
+    const userMsg = prompt.trim()
+    if (!userMsg && attachedFiles.length === 0) return
+    const fileContext = attachedFiles.length > 0 ? `\n\n[Attached files: ${attachedFiles.map(f => f.name).join(', ')}]` : ''
+    const fullMsg = (userMsg + fileContext).trim()
+    setPrompt(''); setAttachedFiles([])
+    if (longRequestMode && !lrmPlan && !isConversationalPrompt(fullMsg)) { handleLrmGeneratePlan(fullMsg); return }
+    if (isConversationalPrompt(fullMsg)) { handleConversationalReply(fullMsg); return }
+    if (shouldUseAgent) {
+      let branchOverride = null
+      if (hasGithub && !dryRun) {
+        try {
+          const branchData = await getBranch(githubToken, repoOwner, repoName, baseBranch)
+          const newBranch  = generateBranchName(fullMsg)
+          await createBranch(githubToken, repoOwner, repoName, newBranch, branchData.commit.sha)
+          branchOverride = newBranch; agentBranchRef.current = newBranch
+        } catch (err) { setError(`Failed to create branch: ${err.message}`); return }
+      }
+      agentSession.run(fullMsg, conversation.slice(-10), { branchOverride })
+    } else { handleGenerate(fullMsg) }
+  }, [prompt, attachedFiles, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleKeyDown = useCallback((e) => {
+    const submitByEnter    = e.key === 'Enter' && !e.shiftKey && !e.isComposing
+    const submitByModifier = (e.ctrlKey || e.metaKey) && e.key === 'Enter'
+    if (submitByEnter || submitByModifier) {
+      e.preventDefault()
+      if (!isGenerating && !isPushing && !agentSession.isAgentRunning) {
+        if (generatedCode && refinementPrompt.trim()) handleRefine()
+        else handleSubmitPrompt()
+      }
+    }
+  }, [isGenerating, isPushing, agentSession.isAgentRunning, generatedCode, refinementPrompt, handleRefine, handleSubmitPrompt])
+
+  // ── Computed values ───────────────────────────────────────────────────────
+  const busy             = isGenerating || isPushing
+  const isModulesPage    = activeTab === 'modules'
+  const hasOutputContent = Boolean(
+    (assistantMessage.code || generatedCode || '').trim() || diffText?.trim() || testCode?.trim() ||
+    terminalLog.length || sandboxOutput.length || isGenerating || isGenTests || isRunning ||
+    isRunningTests || validationResults.length || (assistantMessage.plan && assistantMessage.plan.length)
+  )
+  const ft = { brightness: 130, contrast: 100, saturation: 125, highlight: 50, shadow: 50 }
+  const ftFilter = [
+    `brightness(${(ft.brightness / 100) * (0.85 + (ft.highlight / 100) * 0.30)})`,
+    `contrast(${(ft.contrast / 100) * (0.85 + (ft.shadow / 100) * 0.30)})`,
+    `saturate(${ft.saturation / 100})`,
+  ].join(' ')
+
+  // ── Return ────────────────────────────────────────────────────────────────
+  return {
+    // external props
+    onClose, onLogout, userEmail, savedModelIds, onModelSaved, models, setModels, onModelChange,
+    // config
+    activeModelId, setActiveModelId, repoOwner, setRepoOwner, repoName, setRepoName,
+    baseBranch, setBaseBranch, githubToken, setGithubToken, githubClientId, setGithubClientId,
+    dryRun, setDryRun, hasGithub, shouldUseAgent,
+    // layout
+    fineTune: ft, headerLayout: { headerHeight: 44, titleSize: 11, titleOffsetX: 0, titleOffsetY: 0, toggleOffsetX: 0, toggleOffsetY: 0 },
+    ftFilter,
+    // input
+    prompt, setPrompt, refinementPrompt, setRefinementPrompt, attachedFiles, setAttachedFiles, fileInputRef,
+    // toggles
+    generateTests, setGenerateTests, creativity, setCreativity, enableThinking, setEnableThinking,
+    thinkingBudget, setThinkingBudget, hooksConfig, setHooksConfig, planMode,
+    planApproval, setPlanApproval, executedPlan, setExecutedPlan, webSearchApiKey,
+    // file plan
+    filePlan, setFilePlan, activeFileIndex, setActiveFileIndex, isPlanning,
+    activeFile, filePath, existingContent, editMode, generatedCode, testCode, patchEdits, diffText, language,
+    // conversation
+    conversation, setConversation, turnCount, setTurnCount, resetConversation,
+    // output
+    activeTab, setActiveTab, gitStatus, prResult, workflows, workflowRuns, isPollingCI,
+    // sandbox
+    sandboxOutput, sandboxSetup, setSandboxSetup, isRunning, isRunningTests, sandboxRef,
+    // terminal
+    terminalInput, setTerminalInput, terminalLog, setTerminalLog, isTerminalRunning,
+    // permission
+    permissionMode, setPermissionMode,
+    // agent mode
+    isRunningPostPushTests,
+    // bluswan.md
+    bluswanMdDraft, setBluswanMdDraft, isSavingBluswanMd,
+    // repo picker
+    repoPickerOpen, setRepoPickerOpen, repoPickerSearch, setRepoPickerSearch,
+    userRepos, repoPickerLoading, repoPickerError, repoPickerRef,
+    // ui state
+    isGenerating, isGenTests, isPushing, pushStep, error, setError,
+    settingsOpen, setSettingsOpen, historyOpen, setHistoryOpen,
+    sourceOpen, setSourceOpen, mobileDrawerOpen, setMobileDrawerOpen,
+    history, setHistory, busy, isModulesPage, hasOutputContent,
+    // lrm
+    longRequestMode, setLongRequestMode, lrmPlan, setLrmPlan,
+    lrmGeneratingPlan, taskSidebarCollapsed, setTaskSidebarCollapsed,
+    lrmPhasePushed, lrmPhasePrUrl,
+    // shadow context
+    shadowStatus,
+    // pipeline
+    pipelinePhase, pipelineSteps, validationResults, assistantMessage,
+    // amplifier / remediation
+    isAmplifying, amplifierDecisions, remediationStatus,
+    // activity log
+    activityLog, activityRef, logActivity, updateActivity, clearActivity, activityFeedRef,
+    // exec bridge
+    bridgeAvailable, callExecBridge, callExecBridgeStream,
+    // agent session
+    agentSession,
+    // cost
+    costEstimate,
+    // handlers
+    handleGenerate, handleRefine, handleRetryFile, updatePlanEntry,
+    handleSaveBluswanMd, handleRunProjectTests,
+    handleReset, handleAbort,
+    loadRepos, openRepoPicker, handlePickRepo, handleReindex,
+    loadWorkflows, triggerWorkflow,
+    handleRunInSandbox, handleRunTests,
+    runTerminalCommand, confirmAction, handlePush,
+    handleConversationalReply, isConversationalPrompt,
+    handleLrmGeneratePlan, handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel,
+    handleSubmitPrompt, handleKeyDown,
+    setActivePhase, emitStreamEvent,
+    lastBranchName, setLastBranchName,
+  }
+}
 }
