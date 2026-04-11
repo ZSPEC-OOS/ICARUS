@@ -34,6 +34,10 @@ const BluswanSettings = memo(function BluswanSettings({
   generateTests, setGenerateTests,
   creativity, setCreativity,
   enableThinking, setEnableThinking,
+  thinkingBudget, setThinkingBudget,
+
+  // Per-tool hooks
+  hooksConfig, setHooksConfig,
 
   // Push options
   dryRun,         setDryRun,
@@ -585,7 +589,31 @@ const BluswanSettings = memo(function BluswanSettings({
         <label className="lk-toggle lk-toggle--warn"><input type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} /><span>Dry run — preview only, no commits</span></label>
         <label className="lk-toggle"><input type="checkbox" checked={enableThinking} onChange={e => setEnableThinking(e.target.checked)} /><span>Extended thinking <span className="lk-hint-inline">(Claude only — deeper reasoning, slower)</span></span></label>
         <label className="lk-toggle"><input type="checkbox" checked={deepReasoningEnabled} onChange={handleDeepReasoningToggle} /><span>Deep reasoning pipeline <span className="lk-hint-inline">(structured plan → RAG retrieval → critique loop)</span></span></label>
+        <label className="lk-toggle"><input type="checkbox" checked={hooksConfig?.autoLintAfterWrite ?? false} onChange={e => setHooksConfig(h => ({ ...h, autoLintAfterWrite: e.target.checked }))} /><span>Auto-lint after write <span className="lk-hint-inline">(run ESLint on every edited .js/.ts file)</span></span></label>
+        <label className="lk-toggle"><input type="checkbox" checked={hooksConfig?.autoTypeCheckAfterEdit ?? false} onChange={e => setHooksConfig(h => ({ ...h, autoTypeCheckAfterEdit: e.target.checked }))} /><span>Auto type-check after edit <span className="lk-hint-inline">(run tsc on each changed file — requires bridge)</span></span></label>
       </div>
+
+      {/* Thinking budget slider — only shown when extended thinking is enabled */}
+      {enableThinking && (
+        <div className="lk-finetune-section">
+          <div className="lk-finetune-label">Thinking Budget</div>
+          <div className="lk-finetune-grid">
+            <div className="lk-finetune-row">
+              <div className="lk-finetune-row-label">
+                <span className="lk-finetune-name">{thinkingBudget >= 12000 ? 'Deep' : thinkingBudget >= 6000 ? 'Standard' : 'Light'}</span>
+                <span className="lk-finetune-val">{(thinkingBudget / 1000).toFixed(0)}k tokens</span>
+              </div>
+              <input
+                type="range" className="lk-slider"
+                min={1000} max={16000} step={1000}
+                value={thinkingBudget}
+                onChange={e => setThinkingBudget(Number(e.target.value))}
+              />
+            </div>
+            <span className="lk-hint">1k = light · 8k = standard · 16k = deep (slower, uses more tokens)</span>
+          </div>
+        </div>
+      )}
 
       {/* Creativity slider */}
       <div className="lk-finetune-section">

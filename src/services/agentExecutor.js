@@ -292,7 +292,7 @@ function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive'
   }
 }
 
-export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, modelConfig, availableModels, _depth = 0, enhancerConfig: enhancerConfigOverrides }) {
+export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, modelConfig, availableModels, _depth = 0, enhancerConfig: enhancerConfigOverrides, hooksConfig }) {
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
 
   async function rawExecuteTool(name, input) {
@@ -746,38 +746,55 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
       }
 
       // ── spawn_agent ────────────────────────────────────────────────────
+      // Phase 4: allow_writes: true unlocks full tool access on the same branch.
       case 'spawn_agent': {
         if (!input.task?.trim()) return 'spawn_agent error: task is required.'
         if (_depth >= 1) return 'spawn_agent error: sub-agents cannot spawn further sub-agents.'
         if (!modelConfig) return 'spawn_agent error: no model config available.'
 
-        const subTask = input.task.trim()
-        const label = (input.description?.trim() || subTask).slice(0, 60)
+        const subTask    = input.task.trim()
+        const label      = (input.description?.trim() || subTask).slice(0, 60)
+        const allowWrites = !!input.allow_writes
 
-        // Sub-agents are read-only — no writes, no shell, no further spawning
-        const SUB_AGENT_TOOLS = new Set([
+        // Read-only tool set (research/investigation mode)
+        const READ_ONLY_TOOLS = new Set([
           'analyze_codebase', 'read_file', 'list_directory', 'search_files',
           'glob', 'grep', 'read_many_files', 'web_fetch', 'web_search',
           'hybrid_search', 'retrieve_context', 'check_url_health',
+          'git_log', 'check_ci_status', 'get_diff',
         ])
-        const subTools = AGENT_TOOLS.filter(t => SUB_AGENT_TOOLS.has(t.name))
 
+        // Write mode: all tools except spawn_agent (no recursion)
+        const subTools = allowWrites
+          ? AGENT_TOOLS.filter(t => t.name !== 'spawn_agent')
+          : AGENT_TOOLS.filter(t => READ_ONLY_TOOLS.has(t.name))
+
+        const subFilesChanged = []
         const subExecutor = makeExecutor({
           token, owner, repo, branch,
           sourceRepoConfig,
           webSearchApiKey,
-          bridgeAvailable: false,
+          bridgeAvailable: allowWrites ? bridgeAvailable : false,
           modelConfig,
           availableModels,
           _depth: _depth + 1,
+          onFileWrite: allowWrites
+            ? (path, action) => { subFilesChanged.push({ path, action }); onFileWrite?.(path, action) }
+            : undefined,
         })
 
-        const subSystemPrompt = [
-          'You are a focused research sub-agent. Complete the assigned task thoroughly and return a comprehensive, well-structured answer.',
-          `You have read-only access to the GitHub repository ${owner}/${repo} (branch: ${branch}).`,
-          'Do NOT attempt to write, edit, or delete any files — you have no write tools.',
-          'Be precise and structured in your response. Return all findings directly.',
-        ].join('\n')
+        const subSystemPrompt = allowWrites
+          ? [
+              `You are a focused implementation sub-agent working on the GitHub repository ${owner}/${repo} (branch: ${branch}).`,
+              'Complete the assigned task autonomously. Read files before editing. Use lint_file after edits.',
+              'Do NOT spawn further sub-agents. Return a concise summary of what you implemented and which files you changed.',
+            ].join('\n')
+          : [
+              'You are a focused research sub-agent. Complete the assigned task thoroughly and return a comprehensive, well-structured answer.',
+              `You have read-only access to the GitHub repository ${owner}/${repo} (branch: ${branch}).`,
+              'Do NOT attempt to write, edit, or delete any files — you have no write tools.',
+              'Be precise and structured in your response. Return all findings directly.',
+            ].join('\n')
 
         const textChunks = []
         let result
@@ -799,7 +816,10 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         }
 
         const finalText = result?.finalText || textChunks.join('') || '(no result)'
-        return `[Sub-agent: ${label}]\n\n${finalText}`
+        const filesSummary = subFilesChanged.length
+          ? `\n\nFiles changed (${subFilesChanged.length}): ${subFilesChanged.map(f => f.path).join(', ')}`
+          : ''
+        return `[Sub-agent: ${label}]\n\n${finalText}${filesSummary}`
       }
 
       // ── git_log ────────────────────────────────────────────────────────
@@ -1259,13 +1279,42 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
     }
 
     try {
-      const output = await rawExecuteTool(name, normalizedInput)
+      let output = await rawExecuteTool(name, normalizedInput)
       const outputValidation = validateToolOutput(name, output)
       if (!outputValidation.ok) {
         const err = `Invalid output for ${name} (schema v${outputValidation.schemaVersion || schemaVersion()}): ${outputValidation.errors.join('; ')}`
         endToolTrace({ traceId: trace.traceId, toolName: name, input: normalizedInput, output, error: err, startedAt: trace.startedAt })
         return err
       }
+
+      // ── Per-tool hooks (Phase 4) ────────────────────────────────────────
+      // After write/edit operations on code files, optionally auto-run lint
+      // and/or type-check and append results to the tool output.
+      if (hooksConfig && bridgeAvailable) {
+        const WRITE_OPS = new Set(['write_file', 'edit_file', 'multi_edit_file', 'apply_patch', 'move_file'])
+        const CODE_RE   = /\.(js|jsx|ts|tsx)$/
+        if (WRITE_OPS.has(name)) {
+          const changedPath = normalizedInput.path || normalizedInput.to || null
+          const hookLines = []
+
+          if (hooksConfig.autoLintAfterWrite && changedPath && CODE_RE.test(changedPath)) {
+            try {
+              const lintOut = await rawExecuteTool('lint_file', { path: changedPath })
+              hookLines.push(`\n[hook: lint] ${lintOut.slice(0, 400)}`)
+            } catch { /* lint hook errors are non-fatal */ }
+          }
+
+          if (hooksConfig.autoTypeCheckAfterEdit && changedPath && CODE_RE.test(changedPath)) {
+            try {
+              const tcOut = await rawExecuteTool('type_check', { path: changedPath })
+              hookLines.push(`\n[hook: type_check] ${tcOut.slice(0, 600)}`)
+            } catch { /* type-check hook errors are non-fatal */ }
+          }
+
+          if (hookLines.length) output = output + hookLines.join('')
+        }
+      }
+
       endToolTrace({ traceId: trace.traceId, toolName: name, input: normalizedInput, output, error: null, startedAt: trace.startedAt })
       return output
     } catch (error) {

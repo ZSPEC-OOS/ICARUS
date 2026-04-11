@@ -198,6 +198,13 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   const [creativity,      setCreativity]      = useState(saved.creativity ?? 50)
   // enableThinking: Anthropic extended thinking (deeper reasoning, slower)
   const [enableThinking,  setEnableThinking]  = useState(saved.enableThinking ?? false)
+  // thinkingBudget: token budget for extended thinking (1000–16000, default 8000)
+  const [thinkingBudget,  setThinkingBudget]  = useState(saved.thinkingBudget ?? 8000)
+  // hooksConfig: per-tool post-execution hooks
+  const [hooksConfig, setHooksConfig] = useState({
+    autoLintAfterWrite:       saved.hooksConfig?.autoLintAfterWrite       ?? false,
+    autoTypeCheckAfterEdit:   saved.hooksConfig?.autoTypeCheckAfterEdit   ?? false,
+  })
   // planMode: always true — agent always plans first, implements only after user approval
   const planMode = true
   // planApproval: pending plan awaiting user approve/reject/modify
@@ -336,17 +343,18 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
   useEffect(() => {
     const s = {
       repoOwner, repoName, baseBranch, githubToken, githubClientId,
-      creativity, enableThinking,
+      creativity, enableThinking, thinkingBudget,
       webSearchApiKey,
       permissionMode,
       generateTests, dryRun,
+      hooksConfig,
     }
     saveSettings(s)
     // Notify App.jsx so it can debounce-save to Firestore (cloud persistence)
     onSettingsChangedRef.current?.(s)
   }, [repoOwner, repoName, baseBranch, githubToken, githubClientId,
-      creativity, enableThinking, webSearchApiKey, permissionMode,
-      generateTests, dryRun])
+      creativity, enableThinking, thinkingBudget, webSearchApiKey, permissionMode,
+      generateTests, dryRun, hooksConfig])
 
   // ── Phase 4: start ShadowContext indexing when credentials are ready ────
   useEffect(() => {
@@ -400,6 +408,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
     bridgeAvailable,
     webSearchApiKey,
     planMode,
+    hooksConfig,
     logActivity,
     updateActivity,
     clearActivity,
@@ -673,7 +682,7 @@ export default function Bluswan({ onClose, models, setModels, selectedModelId, o
       ...model,
       temperature: parseFloat((0.2 + (creativity / 100) * 0.8).toFixed(2)),
       // enableThinking works for Anthropic (interleaved thinking) and Kimi K2.5 (enable_thinking)
-      ...(enableThinking ? { enableThinking: true } : {}),
+      ...(enableThinking ? { enableThinking: true, thinkingBudget } : {}),
     }
 
     try {
@@ -2119,6 +2128,8 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
             generateTests={generateTests}     setGenerateTests={setGenerateTests}
             creativity={creativity}           setCreativity={setCreativity}
             enableThinking={enableThinking}   setEnableThinking={setEnableThinking}
+            thinkingBudget={thinkingBudget}   setThinkingBudget={setThinkingBudget}
+            hooksConfig={hooksConfig}         setHooksConfig={setHooksConfig}
             webSearchApiKey={webSearchApiKey} setWebSearchApiKey={setWebSearchApiKey}
             dryRun={dryRun}                   setDryRun={setDryRun}
             permissionMode={permissionMode} setPermissionMode={setPermissionMode}

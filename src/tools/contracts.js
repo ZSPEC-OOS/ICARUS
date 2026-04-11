@@ -113,7 +113,7 @@ export const TOOL_CONTRACTS = {
     output: { type: 'string' },
   },
   spawn_agent: {
-    input: { type: 'object', additionalProperties: false, properties: { task: baseString, description: baseString }, required: ['task'] },
+    input: { type: 'object', additionalProperties: false, properties: { task: baseString, description: baseString, allow_writes: { type: 'boolean' } }, required: ['task'] },
     output: { type: 'string' },
   },
   multi_edit_file: {
