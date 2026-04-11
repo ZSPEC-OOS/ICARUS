@@ -10,6 +10,7 @@ import {
   loadUserSettings,
   saveUserSettings,
   loadModelDocs,
+  loadUserToolsDoc,
 } from './services/firebaseService'
 import { KEYS } from './shared/storageKeys.js'
 
@@ -133,6 +134,13 @@ export default function App() {
           }
         } catch (err) {
           console.warn('[Bluswan] Could not load model docs:', err.message)
+        }
+
+        try {
+          const toolEntries = await loadUserToolsDoc(user.uid)
+          localStorage.setItem(KEYS.LS.USER_TOOLS, JSON.stringify(toolEntries))
+        } catch (err) {
+          console.warn('[Bluswan] Could not load modular tools:', err.message)
         }
 
         setAuthUser(user)

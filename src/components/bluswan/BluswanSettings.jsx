@@ -12,8 +12,15 @@ import {
   getCurrentUser,
   saveModelDoc,
   saveWebSearchKeyDoc,
+  saveUserToolsDoc,
 } from '../../services/firebaseService.js'
 import { loadEnhancerConfig, saveEnhancerConfig } from '../../services/enhancers/config.js'
+import {
+  getAllTools,
+  getUserToolEntries,
+  installToolAtSlot,
+  uninstallTool,
+} from '../../services/toolLoader.js'
 
 // ─── BluswanSettings ────────────────────────────────────────────────────────────
 // Settings drawer: GitHub credentials, theme picker, fine-tune sliders,
@@ -112,6 +119,9 @@ const BluswanSettings = memo(function BluswanSettings({
   const [newModelName,          setNewModelName]          = useState('')
   const [newModelUseCompTokens, setNewModelUseCompTokens] = useState(false)
   const [searchTestResult, setSearchTestResult] = useState(null)  // { testing, ok, error, ms }
+  const [modularInstallMsg, setModularInstallMsg] = useState(null)
+  const [isModularDragging, setIsModularDragging] = useState([false, false, false])
+  const [modularTools, setModularTools] = useState(() => getAllTools().filter(t => !t._builtin).slice(0, 3))
 
   // ── Web Search collapse / save state ───────────────────────────────────────
   // webSearchApiKey loads asynchronously in the parent (AES-GCM decrypt), so we
@@ -192,6 +202,65 @@ const BluswanSettings = memo(function BluswanSettings({
     const updated = (models || []).filter(m => m.id !== id)
     setModels(updated)
     saveModels(updated)
+  }
+
+  const modularInstructionText = `Convert this tool into BLUSWAN Modular Tool format.
+Requirements:
+1) Export: toolMeta, execute(input, config), test()
+2) toolMeta must include:
+   - id (kebab-case unique id)
+   - name
+   - version
+   - description
+   - category ("coding" | "utility" | "analysis")
+   - author (optional)
+3) Tool must be self-contained (no imports).
+4) Return complete JavaScript source only (no markdown).
+5) Keep execute deterministic unless randomness is required.
+6) Add a test() that returns { passed: boolean, message: string }.`
+
+  function refreshModularTools() {
+    setModularTools(getAllTools().filter(t => !t._builtin).slice(0, 3))
+  }
+
+  async function persistModularTools(entries = getUserToolEntries()) {
+    const uid = getCurrentUser()?.uid
+    if (!uid) return
+    await saveUserToolsDoc(uid, entries.slice(0, 3))
+  }
+
+  async function handleInstallModularFile(file, slotIndex) {
+    if (!file) return
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (!['js', 'json'].includes(ext)) {
+      setModularInstallMsg({ type: 'error', text: `${file.name}: only .js and .json files accepted` })
+      return
+    }
+    let source = ''
+    if (ext === 'json') {
+      let descriptor
+      try { descriptor = JSON.parse(await file.text()) } catch {
+        setModularInstallMsg({ type: 'error', text: `${file.name}: invalid JSON` })
+        return
+      }
+      source = `export const toolMeta = ${JSON.stringify(descriptor.toolMeta || descriptor, null, 2)};\nexport async function execute(input, config) {\n  return { message: 'JSON tool loaded', input };\n}\nexport async function test() {\n  return { passed: true, message: 'JSON descriptor loaded.' };\n}\n`
+    } else {
+      source = await file.text()
+    }
+    const result = installToolAtSlot(source, slotIndex, 3)
+    if (!result.ok) {
+      setModularInstallMsg({ type: 'error', text: `${file.name}: ${result.errors.join(' · ')}` })
+      return
+    }
+    await persistModularTools()
+    refreshModularTools()
+    setModularInstallMsg({ type: 'success', text: `Installed: ${result.tool.name}` })
+  }
+
+  async function handleRemoveModularTool(toolId) {
+    uninstallTool(toolId)
+    await persistModularTools()
+    refreshModularTools()
   }
 
   // ── Test connection ─────────────────────────────────────────────────────────
@@ -381,6 +450,84 @@ const BluswanSettings = memo(function BluswanSettings({
             <button className="lk-btn lk-btn--small lk-settings-add-btn" onClick={() => setAddModelOpen(true)}>
               + Add Model
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Modular Tools ─────────────────────────────────────────────────── */} 
+      <div className="lk-settings-section">
+        <div className="lk-settings-section-hd">
+          <span className="lk-settings-section-icon">🧩</span>
+          Modular Tools
+          <span className="lk-settings-badge">{modularTools.length}/3 installed</span>
+        </div>
+        <div className="lk-settings-section-body">
+          <span className="lk-hint">
+            Drop or attach up to 3 modular tool files. Installed tools sync to Firestore and are restored across devices.
+          </span>
+          <div className="lk-modular-slots">
+            {[0, 1, 2].map(slot => {
+              const tool = modularTools[slot]
+              return (
+                <div
+                  key={slot}
+                  className={`lk-modular-slot${isModularDragging[slot] ? ' lk-modular-slot--drag' : ''}`}
+                  onDragOver={e => {
+                    e.preventDefault()
+                    setIsModularDragging(prev => prev.map((v, i) => i === slot ? true : v))
+                  }}
+                  onDragLeave={() => setIsModularDragging(prev => prev.map((v, i) => i === slot ? false : v))}
+                  onDrop={async e => {
+                    e.preventDefault()
+                    setIsModularDragging(prev => prev.map((v, i) => i === slot ? false : v))
+                    await handleInstallModularFile(e.dataTransfer.files?.[0], slot)
+                  }}
+                >
+                  <div className="lk-modular-slot-title">Slot {slot + 1}</div>
+                  {tool ? (
+                    <div className="lk-modular-slot-tool">
+                      <div>{tool.name} <span className="lk-hint-inline">v{tool.version}</span></div>
+                      <button className="lk-btn lk-btn--small lk-btn--warn" onClick={() => handleRemoveModularTool(tool.id)}>Remove</button>
+                    </div>
+                  ) : (
+                    <div className="lk-modular-slot-empty">Drop .js/.json here</div>
+                  )}
+                  <label className="lk-btn lk-btn--small">
+                    Attach file
+                    <input
+                      type="file"
+                      accept=".js,.json"
+                      style={{ display: 'none' }}
+                      onChange={async e => {
+                        await handleInstallModularFile(e.target.files?.[0], slot)
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="lk-modular-instructions">
+            <div className="lk-modular-instructions-hd">
+              <strong>Tool Conversion Instructions</strong>
+              <button
+                className="lk-btn lk-btn--small"
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText(modularInstructionText) } catch {}
+                }}
+              >
+                Copy
+              </button>
+            </div>
+            <textarea className="lk-bluswanmd-editor" value={modularInstructionText} readOnly rows={10} />
+          </div>
+
+          {modularInstallMsg && (
+            <div className={`lk-install-msg lk-install-msg--${modularInstallMsg.type}`}>
+              {modularInstallMsg.text}
+            </div>
           )}
         </div>
       </div>

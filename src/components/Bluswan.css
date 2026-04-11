@@ -4191,6 +4191,49 @@ kbd {
   align-items: center;
 }
 
+.lk-modular-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.lk-modular-slot {
+  border: 1px dashed var(--lk-border);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: color-mix(in srgb, var(--lk-bg) 70%, transparent);
+}
+.lk-modular-slot--drag {
+  border-color: var(--lk-accent);
+  background: var(--lk-accent-dim);
+}
+.lk-modular-slot-title {
+  font-size: 0.74rem;
+  color: var(--lk-muted);
+  font-weight: 600;
+}
+.lk-modular-slot-empty {
+  font-size: 0.76rem;
+  color: var(--lk-muted);
+}
+.lk-modular-slot-tool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+.lk-modular-instructions { margin-top: 10px; }
+.lk-modular-instructions-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
 /* ── Review Diff button ──────────────────────────────────────────── */
 .lk-btn--review {
   background: transparent;
