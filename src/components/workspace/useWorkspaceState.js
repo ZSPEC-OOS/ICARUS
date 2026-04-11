@@ -38,10 +38,10 @@ import {
   createStreamEvent,
   applyStreamEvent,
 } from '../../services/interactivePipeline'
-import { useConversation }   from '../core/hooks/useConversation'
-import { useExecBridge }     from '../core/hooks/useExecBridge'
-import { useActivityLog }    from '../core/hooks/useActivityLog'
-import { useAgentSession }   from '../core/hooks/useAgentSession'
+import { useConversation }   from '../../core/hooks/useConversation'
+import { useExecBridge }     from '../../core/hooks/useExecBridge'
+import { useActivityLog }    from '../../core/hooks/useActivityLog'
+import { useAgentSession }   from '../../core/hooks/useAgentSession'
 import {
   detectLanguage, extractCode, applyEditBlocks,
   buildSandboxHtml, buildPyodideSandboxHtml, isCodeComplete,
@@ -296,8 +296,140 @@ export function useWorkspaceState({
   const onSettingsChangedRef = useRef(onSettingsChanged)
   const activityFeedRef      = useRef(null)
 
-  // ── Effects + sub-hooks ──────────────────────────────────────────────────
-  // (added in p3/usestate-effects)
+  // ── Effects ───────────────────────────────────────────────────────────────
+  useEffect(() => { loadSearchKey().then(setWebSearchApiKey).catch(() => {}) }, [])
+
+  useEffect(() => { onSettingsChangedRef.current = onSettingsChanged }, [onSettingsChanged])
+
+  useEffect(() => {
+    const s = {
+      repoOwner, repoName, baseBranch, githubToken, githubClientId,
+      creativity, enableThinking, thinkingBudget, webSearchApiKey,
+      permissionMode, generateTests, dryRun, hooksConfig,
+    }
+    saveSettings(s)
+    onSettingsChangedRef.current?.(s)
+  }, [repoOwner, repoName, baseBranch, githubToken, githubClientId,
+      creativity, enableThinking, thinkingBudget, webSearchApiKey,
+      permissionMode, generateTests, dryRun, hooksConfig]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!hasGithub) return
+    shadowContext.startIndexing(githubToken, repoOwner, repoName, baseBranch, () => {
+      setShadowStatus(shadowContext.statusSummary())
+    })
+  }, [hasGithub, githubToken, repoOwner, repoName, baseBranch]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Watchdog — resets stuck busy flags after 5 min
+  useEffect(() => {
+    if (isGenerating) {
+      generationStartRef.current = Date.now()
+      const id = setTimeout(() => {
+        const elapsed = Date.now() - (generationStartRef.current || 0)
+        if (elapsed >= 5 * 60 * 1000) {
+          setIsGenerating(false); setIsGenTests(false)
+          setIsPlanning(false);   setIsAmplifying(false)
+          logActivity('warn', '⚠ Watchdog: generation timed out after 5 min — state reset')
+        }
+      }, 5 * 60 * 1000)
+      return () => clearTimeout(id)
+    } else {
+      generationStartRef.current = null
+    }
+  }, [isGenerating]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (selectedModelId && !activeModelId) setActiveModelId(selectedModelId)
+  }, [selectedModelId, activeModelId])
+
+  // Repo picker outside-click handler
+  useEffect(() => {
+    if (!repoPickerOpen) return
+    const handler = e => {
+      if (repoPickerRef.current && !repoPickerRef.current.contains(e.target))
+        setRepoPickerOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [repoPickerOpen])
+
+  // ── Sub-hooks ─────────────────────────────────────────────────────────────
+  const { conversation, setConversation, turnCount, setTurnCount, reset: resetConversation } = useConversation()
+  const { bridgeAvailable, callExecBridge, callExecBridgeStream } = useExecBridge()
+  const { activityLog, activityRef, logActivity, updateActivity, clearActivity } = useActivityLog(activityFeedRef)
+
+  const activeModel   = models?.find(m => m.id === activeModelId) ?? models?.[0]
+  const hasGithub     = !!(githubToken && repoOwner && repoName)
+  const shouldUseAgent = hasGithub
+
+  const githubConfig = useMemo(
+    () => ({ token: githubToken, owner: repoOwner, repo: repoName, branch: baseBranch }),
+    [githubToken, repoOwner, repoName, baseBranch],
+  )
+
+  const agentSession = useAgentSession({
+    modelConfig:     activeModel,
+    githubConfig,
+    sourceRepoConfig: null,
+    bridgeAvailable,
+    webSearchApiKey,
+    planMode,
+    hooksConfig,
+    logActivity,
+    updateActivity,
+    clearActivity,
+    activityRef,
+    onSetActiveTab:  setActiveTab,
+    onSetError:      setError,
+    onPromptClear:   useCallback(() => setPrompt(''), []),
+    onPlanDone:      (task, summary) => setPlanApproval({ task, summary }),
+    onAgentStart:    (task) => setConversation(prev => [...prev, { role: 'user', content: task }]),
+    onAgentComplete: async (task, text) => {
+      if (text?.trim()) setConversation(prev => [...prev, { role: 'assistant', content: text }])
+      if (hasGithub && !dryRun && agentBranchRef.current && agentBranchRef.current !== baseBranch) {
+        const branch = agentBranchRef.current
+        agentBranchRef.current = null
+        try {
+          const prBody = [
+            `## BLUSWAN AI Generated Code`, ``,
+            `**Task:** ${task.slice(0, 200)}`, ``, `---`,
+            `*Generated by BLUSWAN — WolfKrow AI Coding Assistant*`,
+          ].join('\n')
+          const pr = await createPullRequest(githubToken, repoOwner, repoName,
+            `BLUSWAN: ${task.slice(0, 72)}`, branch, baseBranch, prBody)
+          setPrResult({ url: pr?.html_url, number: pr?.number })
+          setLastBranchName(branch)
+          logActivity('push', `✓ PR #${pr?.number} opened — merge on GitHub to apply changes`)
+        } catch (err) {
+          logActivity('error', `✗ PR creation failed: ${err.message}`)
+        }
+      }
+    },
+    availableModels: models || [],
+  })
+
+  // ── Derived values ────────────────────────────────────────────────────────
+  const activeFile      = filePlan[activeFileIndex] ?? {}
+  const filePath        = activeFile.path            ?? ''
+  const existingContent = activeFile.existingContent ?? null
+  const editMode        = existingContent !== null ? 'patch' : 'replace'
+  const generatedCode   = activeFile.code            ?? ''
+  const testCode        = activeFile.testCode         ?? ''
+  const patchEdits      = activeFile.patchEdits       ?? []
+  const diffText        = activeFile.diffText         ?? ''
+  const language        = detectLanguage(filePath, generatedCode)
+
+  const costEstimate = useMemo(() => {
+    const text = prompt.trim()
+    if (!text) return null
+    const model = models?.find(m => m.id === activeModelId)
+    return estimateCost(text, model?.modelId)
+  }, [prompt, activeModelId, models])
+
+  const updatePlanEntry = useCallback((index, updates) => {
+    planRef.current = planRef.current.map((e, i) => i === index ? { ...e, ...updates } : e)
+    setFilePlan([...planRef.current])
+  }, [])
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   // (added in p3/usestate-generate, p3/usestate-handlers, p3/usestate-lrm-return)
