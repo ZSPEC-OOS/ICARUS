@@ -2181,6 +2181,7 @@ Return ONLY a valid JSON array — no markdown fences, no prose, no explanation 
             activityLog={activityLog}
             isAgentRunning={agentSession.isAgentRunning}
             agentStreamText={agentSession.agentStreamText}
+            narrationThread={agentSession.narrationThread}
             isGenerating={isGenerating}
             isPushing={isPushing}
             pushStep={pushStep}

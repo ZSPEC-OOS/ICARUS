@@ -411,6 +411,14 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
     !planMode && !bridgeAvailable ? `- run_command is not available (exec bridge offline).` : null,
     !planMode && bridgeAvailable  ? `- run_command is available — use it to verify your work.` : null,
     planMode ? `- You are in READ-ONLY mode — do NOT call write_file, edit_file, delete_file, or create_pull_request.` : null,
+    ``,
+    `NARRATION:`,
+    `As you work, write short natural-language sentences before and after significant actions — what you are about to do and why, what you found, what decision you made. Write like a developer talking to their colleague: direct, specific, and informative.`,
+    `Examples of good narration:`,
+    `  "I'll start by checking how the existing auth middleware works before touching the routes."`,
+    `  "Found the token validation in three places — I'll update all of them consistently."`,
+    `  "The component re-renders on every keystroke because the handler is recreated inline. I'll memoize it."`,
+    `Keep it brief (1–2 sentences). Do not restate what the tool call itself already shows (e.g. don't say "I'm reading src/auth.js" right before a read_file call on that file). Narrate the thinking, not the mechanics.`,
   ].filter(l => l !== null)
 
   if (conventions && conventions.framework !== 'unknown') {

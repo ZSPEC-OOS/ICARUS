@@ -6564,6 +6564,84 @@ kbd {
 .lk-stream-line--error { color: var(--lk-danger); opacity: 0.75; }
 
 
+/* ── Narration thread ───────────────────────────────────────────────────── */
+/* Container: stacks text paragraphs and tool chips vertically              */
+.lk-narration-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Conversational prose from the agent between tool calls */
+.lk-narration-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: rgba(214, 230, 255, 0.82);
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid rgba(116, 192, 252, 0.30);
+  word-break: break-word;
+}
+.lk-narration-text strong { color: rgba(232, 244, 255, 0.95); font-weight: 600; }
+.lk-narration-text code {
+  background: rgba(116, 192, 252, 0.10);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+}
+
+/* Live typing variant — slightly brighter, cursor visible */
+.lk-narration-text--live {
+  color: rgba(232, 244, 255, 0.90);
+  border-left-color: rgba(116, 192, 252, 0.55);
+}
+
+/* Tool event chip — compact monospace badge */
+.lk-narration-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 8px 2px 7px;
+  border-radius: 4px;
+  background: rgba(176, 186, 208, 0.07);
+  border: 1px solid rgba(176, 186, 208, 0.10);
+  color: rgba(176, 186, 208, 0.50);
+  word-break: break-word;
+  max-width: 100%;
+}
+.lk-narration-chip--active {
+  color: rgba(176, 186, 208, 0.82);
+  border-color: rgba(116, 192, 252, 0.22);
+  background: rgba(116, 192, 252, 0.06);
+}
+.lk-narration-chip--done {
+  color: rgba(176, 186, 208, 0.38);
+  border-color: rgba(81, 207, 102, 0.15);
+}
+.lk-narration-chip--error {
+  color: rgba(255, 145, 145, 0.70);
+  border-color: rgba(255, 107, 107, 0.22);
+  background: rgba(255, 107, 107, 0.05);
+}
+
+/* Blinking cursor inside live narration text */
+.lk-stream-cursor {
+  display: inline-block;
+  animation: lk-blink 1s step-end infinite;
+  color: rgba(116, 192, 252, 0.80);
+  margin-left: 1px;
+}
+@keyframes lk-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+
 /* ── Failure reason block ───────────────────────────────────────────────── */
 .lk-stream-error-reason {
   display: flex;
