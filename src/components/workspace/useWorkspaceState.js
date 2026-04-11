@@ -296,6 +296,10 @@ export function useWorkspaceState({
   const onSettingsChangedRef = useRef(onSettingsChanged)
   const activityFeedRef      = useRef(null)
 
+  // ── hasGithub / shouldUseAgent — defined early so effects can reference them ─
+  const hasGithub      = !!(githubToken && repoOwner && repoName)
+  const shouldUseAgent = hasGithub
+
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => { loadSearchKey().then(setWebSearchApiKey).catch(() => {}) }, [])
 
@@ -359,8 +363,6 @@ export function useWorkspaceState({
   const { activityLog, activityRef, logActivity, updateActivity, clearActivity } = useActivityLog(activityFeedRef)
 
   const activeModel   = models?.find(m => m.id === activeModelId) ?? models?.[0]
-  const hasGithub     = !!(githubToken && repoOwner && repoName)
-  const shouldUseAgent = hasGithub
 
   const githubConfig = useMemo(
     () => ({ token: githubToken, owner: repoOwner, repo: repoName, branch: baseBranch }),
@@ -1409,6 +1411,9 @@ export function useWorkspaceState({
     handleSubmitPrompt, handleKeyDown,
     setActivePhase, emitStreamEvent,
     lastBranchName, setLastBranchName,
+    // module-level helpers exposed for shell/history
+    saveHistory, formatRelativeDate,
+    // missing setters
+    setWebSearchApiKey,
   }
-}
 }

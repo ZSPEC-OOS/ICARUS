@@ -9,6 +9,7 @@ import BluswanActivityFeed  from '../bluswan/BluswanActivityFeed'
 import BluswanSettings      from '../bluswan/BluswanSettings'
 import BluswanModularTools  from '../bluswan/BluswanModularTools'
 import { useWorkspaceState } from './useWorkspaceState'
+import { shadowContext } from '../../services/shadowContext'
 import '../Bluswan.css'
 
 export default function WorkspaceShell(props) {
@@ -81,12 +82,12 @@ export default function WorkspaceShell(props) {
         <button className={`lk-sidebar-btn${historyOpen ? ' lk-sidebar-btn--on' : ''}`}
           onClick={() => { ws.setHistoryOpen(v => !v); ws.setSettingsOpen(false) }} title="History">⧖</button>
         <button className={`lk-sidebar-btn${settingsOpen ? ' lk-sidebar-btn--on' : ''}`}
-          onClick={() => { ws.setSettingsOpen(v => !v); ws.setHistoryOpen(false); setBluswanMdDraft(window.__shadowContext?.bluswanMd || '') }}
+          onClick={() => { ws.setSettingsOpen(v => !v); ws.setHistoryOpen(false); setBluswanMdDraft(shadowContext.bluswanMd || '') }}
           title="Settings">⚙</button>
         <button className="lk-sidebar-btn" onClick={handleReset} title="New Chat">＋</button>
         <div className="lk-sidebar-spacer" />
         {shadowStatus && (
-          <div className={`lk-sidebar-shadow${window.__shadowContext?.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`}
+          <div className={`lk-sidebar-shadow${shadowContext.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`}
             title={shadowStatus} />
         )}
 
@@ -128,7 +129,7 @@ export default function WorkspaceShell(props) {
           ><span className="lk-sidebar-nav-icon">⚙</span> Settings</button>
           {shadowStatus && (
             <div className="lk-sidebar-nav-status">
-              <div className={`lk-sidebar-shadow${window.__shadowContext?.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`} />
+              <div className={`lk-sidebar-shadow${shadowContext.isIndexing ? ' lk-sidebar-shadow--pulse' : ' lk-sidebar-shadow--ready'}`} />
               <span>{shadowStatus}</span>
             </div>
           )}
@@ -205,7 +206,7 @@ export default function WorkspaceShell(props) {
             )}
             <div className="lk-topbar-spacer" />
             {shadowStatus && (
-              <div className={`lk-shadow-badge${window.__shadowContext?.isIndexing ? ' lk-shadow-badge--indexing' : ''}`}
+              <div className={`lk-shadow-badge${shadowContext.isIndexing ? ' lk-shadow-badge--indexing' : ''}`}
                 title="ShadowContext: background repo index">◆ {shadowStatus}</div>
             )}
           </>
