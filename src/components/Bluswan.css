@@ -6999,18 +6999,18 @@ kbd {
   line-height: 1;
   white-space: nowrap;
   border-radius: 6px;
-  border: 1px solid var(--lk-border);
+  border: 1px solid rgba(100, 120, 150, 0.2);
   background: transparent;
-  color: var(--lk-text-muted);
+  color: rgba(120, 140, 165, 0.45);
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 .lk-toolbar-btn--lrm:hover {
-  color: var(--lk-text-2);
-  border-color: var(--lk-accent);
-  background: var(--lk-accent-dim);
+  color: rgba(140, 158, 180, 0.65);
+  border-color: rgba(77, 130, 200, 0.22);
+  background: rgba(77, 120, 180, 0.05);
 }
 .lk-toolbar-btn--lrm-on {
   color: #4d9cff;
@@ -7036,16 +7036,16 @@ kbd {
   line-height: 1;
   white-space: nowrap;
   border-radius: 6px;
-  border: 1px solid rgba(191, 123, 255, 0.35);
-  background: rgba(191, 123, 255, 0.06);
-  color: #d7b1ff;
+  border: 1px solid rgba(160, 110, 200, 0.15);
+  background: rgba(120, 80, 160, 0.03);
+  color: rgba(160, 130, 195, 0.4);
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .lk-toolbar-btn--drct:hover {
-  border-color: rgba(203, 148, 255, 0.65);
-  background: rgba(191, 123, 255, 0.14);
-  color: #ecd9ff;
+  border-color: rgba(170, 120, 210, 0.28);
+  background: rgba(140, 90, 180, 0.06);
+  color: rgba(175, 145, 210, 0.55);
 }
 .lk-toolbar-btn--drct-on {
   border-color: rgba(221, 170, 255, 0.9);
