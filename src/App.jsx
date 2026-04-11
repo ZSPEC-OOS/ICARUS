@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import LoginScreen from './components/LoginScreen'
 import Bluswan from './components/Bluswan'
 import { loadModels, saveModels, saveSearchKey } from './services/aiService'
@@ -59,6 +59,52 @@ function Splash({ msg = 'Loading...' }) {
       <span style={{ color: '#3d5a7a', fontSize: '0.82rem', letterSpacing: '0.04em' }}>{msg}</span>
     </div>
   )
+}
+
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, message: '' }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || 'Unknown error' }
+  }
+
+  componentDidCatch(error) {
+    console.error('[Bluswan] Unhandled render error:', error)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(180deg, #020817 0%, #071630 100%)',
+          color: '#bfdbfe',
+          padding: '1.5rem',
+          textAlign: 'center',
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+        }}>
+          <div style={{ maxWidth: '38rem' }}>
+            <img src="/BLUSWAN-logo-transparent.png" alt="BLUSWAN" style={{ height: '44px', width: 'auto', marginBottom: '1rem' }} />
+            <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#dbeafe' }}>BLUSWAN hit a runtime error</h2>
+            <p style={{ margin: '0.75rem 0 0', lineHeight: 1.5, color: '#93c5fd' }}>
+              This usually means a JavaScript exception occurred right after loading.
+              Open browser DevTools and check the console for the first red error.
+            </p>
+            <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: '#60a5fa' }}>
+              Error: {this.state.message}
+            </p>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 export default function App() {
@@ -256,18 +302,20 @@ export default function App() {
           Warning: {cloudError}
         </div>
       )}
-      <Bluswan
-        models={models}
-        setModels={handleSetModels}
-        selectedModelId={selectedModelId}
-        onModelChange={(id) => setSelectedModelId(id)}
-        onClose={() => {}}
-        onSettingsChanged={handleSettingsChanged}
-        onLogout={handleLogout}
-        userEmail={authUser?.email || 'pin-user@local'}
-        savedModelIds={fbModelIds}
-        onModelSaved={handleModelSaved}
-      />
+      <AppErrorBoundary>
+        <Bluswan
+          models={models}
+          setModels={handleSetModels}
+          selectedModelId={selectedModelId}
+          onModelChange={(id) => setSelectedModelId(id)}
+          onClose={() => {}}
+          onSettingsChanged={handleSettingsChanged}
+          onLogout={handleLogout}
+          userEmail={authUser?.email || 'pin-user@local'}
+          savedModelIds={fbModelIds}
+          onModelSaved={handleModelSaved}
+        />
+      </AppErrorBoundary>
     </>
   )
 }
