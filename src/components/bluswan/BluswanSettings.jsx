@@ -28,8 +28,6 @@ const BluswanSettings = memo(function BluswanSettings({
   hasGithub,
   onReindex,
 
-  onReindex2,
-
   // Generation options
   generateTests, setGenerateTests,
   creativity, setCreativity,
