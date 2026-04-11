@@ -170,9 +170,13 @@ export function toolToLogMessage(name, input = {}) {
     case 'search_replace_many': return `Replacing "${(input.pattern || '').slice(0, 30)}" across ${input.path_glob || 'all files'}…`
     case 'move_file':           return `Moving ${input.from || 'file'} → ${input.to || 'destination'}…`
     case 'apply_patch':         return `Applying patch to ${input.path || 'file'}…`
-    case 'get_diff':            return input.path ? `Diffing ${input.path}…` : `Reviewing branch diff (${input.base || 'main'}...${input.head || 'HEAD'})…`
-    case 'type_check':          return input.path ? `Type-checking ${input.path}…` : 'Running TypeScript type check…'
-    case 'run_tests':           return input.path ? `Running tests in ${input.path}…` : 'Running test suite…'
+    case 'get_diff':              return input.path ? `Diffing ${input.path}…` : `Reviewing branch diff (${input.base || 'main'}...${input.head || 'HEAD'})…`
+    case 'type_check':            return input.path ? `Type-checking ${input.path}…` : 'Running TypeScript type check…'
+    case 'run_tests':             return input.path ? `Running tests in ${input.path}…` : 'Running test suite…'
+    case 'git_log':               return input.path ? `Fetching history for ${input.path}…` : `Fetching commit log (${input.branch || 'branch'})…`
+    case 'check_ci_status':       return `Checking CI status on ${input.branch || 'branch'}…`
+    case 'create_github_issue':   return `Creating issue: "${(input.title || '').slice(0, 50)}"…`
+    case 'resolve_merge_conflict':return `Resolving conflicts in ${input.path || 'file'} (${input.resolution})…`
     case 'web_search':          return `Searching web: "${(input.query || '').slice(0, 40)}"…`
     case 'hybrid_search':       return `Running hybrid retrieval for "${(input.query || '').slice(0, 40)}"…`
     case 'retrieve_context':    return `Retrieving grounded context for "${(input.query || '').slice(0, 40)}"…`

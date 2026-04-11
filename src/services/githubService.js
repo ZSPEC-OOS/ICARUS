@@ -199,6 +199,34 @@ export async function compareCommits(token, owner, repo, base, head) {
   }
 }
 
+// List commits on a branch, optionally scoped to a file path.
+// Returns [{sha, shortSha, message, author, date}]
+export async function listCommits(token, owner, repo, branch, path = null, limit = 10) {
+  try {
+    const params = new URLSearchParams({ sha: branch, per_page: String(Math.min(limit, 50)) })
+    if (path) params.set('path', path)
+    const data = await ghFetch(token, `/repos/${owner}/${repo}/commits?${params.toString()}`)
+    if (!Array.isArray(data)) return []
+    return data.map(c => ({
+      sha:      c.sha,
+      shortSha: c.sha.slice(0, 7),
+      message:  c.commit?.message?.split('\n')[0] || '',
+      author:   c.commit?.author?.name || c.author?.login || 'unknown',
+      date:     c.commit?.author?.date || '',
+    }))
+  } catch {
+    return []
+  }
+}
+
+// Create a GitHub issue in the repository.
+export async function createIssue(token, owner, repo, title, body = '', labels = []) {
+  return ghFetch(token, `/repos/${owner}/${repo}/issues`, {
+    method: 'POST',
+    body: JSON.stringify({ title, body, labels }),
+  })
+}
+
 export async function getWorkflowRuns(token, owner, repo, branch, perPage = 3, workflowId) {
   try {
     const params = new URLSearchParams({ branch, per_page: String(perPage), event: 'push' })

@@ -27,6 +27,9 @@ import {
   createPullRequest,
   listFileCommits,
   compareCommits,
+  listCommits,
+  createIssue,
+  getWorkflowRuns,
 } from './githubService.js'
 import { decodeBase64 } from '../utils/base64.js'
 import { shadowContext } from './shadowContext.js'
@@ -219,6 +222,35 @@ function applyHunks(fileContent, hunks) {
     result.splice(foundAt, oldLines.length, ...newLines)
   }
   return { ok: true, content: result.join('\n') }
+}
+
+// ── Phase 3 helpers ───────────────────────────────────────────────────────────
+
+// Resolve git conflict markers in file content.
+// Lines between <<<<<<< and ======= are "ours"; between ======= and >>>>>>> are "theirs".
+function resolveConflictMarkers(content, resolution) {
+  const lines = content.split('\n')
+  const result = []
+  let state = 'normal'   // 'normal' | 'ours' | 'theirs'
+  let count = 0
+  let unclosed = false
+
+  for (const line of lines) {
+    if (line.startsWith('<<<<<<<')) {
+      state = 'ours'
+      count++
+    } else if (line.startsWith('=======') && state === 'ours') {
+      state = 'theirs'
+    } else if (line.startsWith('>>>>>>>') && (state === 'ours' || state === 'theirs')) {
+      state = 'normal'
+    } else {
+      if (state === 'normal')                          result.push(line)
+      else if (state === 'ours'   && resolution === 'ours')   result.push(line)
+      else if (state === 'theirs' && resolution === 'theirs') result.push(line)
+    }
+  }
+  if (state !== 'normal') unclosed = true
+  return { resolved: result.join('\n'), count, unclosed }
 }
 
 function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive') {
@@ -768,6 +800,130 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
         const finalText = result?.finalText || textChunks.join('') || '(no result)'
         return `[Sub-agent: ${label}]\n\n${finalText}`
+      }
+
+      // ── git_log ────────────────────────────────────────────────────────
+      // Commit history for a branch or file via GitHub Commits API.
+      case 'git_log': {
+        const targetBranch = (input.branch || branch || '').trim()
+        const limit = Math.max(1, Math.min(Number(input.limit) || 10, 50))
+        const commits = await listCommits(token, owner, repo, targetBranch, input.path || null, limit)
+
+        if (commits.length === 0) {
+          return input.path
+            ? `No commits found for ${input.path} on branch ${targetBranch}.`
+            : `No commits found on branch ${targetBranch}.`
+        }
+
+        const header = input.path
+          ? `Last ${commits.length} commit(s) touching ${input.path} on ${targetBranch}:`
+          : `Last ${commits.length} commit(s) on ${targetBranch}:`
+
+        const rows = commits.map(c => {
+          const date = c.date ? c.date.slice(0, 10) : '??'
+          return `${c.shortSha}  ${date}  ${c.author.slice(0, 20).padEnd(20)}  ${c.message.slice(0, 72)}`
+        })
+        return `${header}\n\n${'SHA      Date        Author               Message'.padEnd(120)}\n${'─'.repeat(110)}\n${rows.join('\n')}`
+      }
+
+      // ── check_ci_status ────────────────────────────────────────────────
+      // Latest GitHub Actions workflow runs for a branch.
+      case 'check_ci_status': {
+        const targetBranch = (input.branch || branch || '').trim()
+        const data = await getWorkflowRuns(token, owner, repo, targetBranch, 5)
+        const runs = data?.workflow_runs || []
+
+        if (runs.length === 0) {
+          return `No workflow runs found for branch "${targetBranch}". CI may not be configured, or the branch has no push events yet.`
+        }
+
+        // Deduplicate by workflow name — keep most recent per workflow
+        const seen = new Map()
+        for (const run of runs) {
+          if (!seen.has(run.name)) seen.set(run.name, run)
+        }
+        const latest = [...seen.values()]
+
+        const statusIcon = (run) => {
+          if (run.status === 'in_progress' || run.status === 'queued') return '◌'
+          if (run.conclusion === 'success')   return '✓'
+          if (run.conclusion === 'failure')   return '✗'
+          if (run.conclusion === 'cancelled') return '○'
+          return '?'
+        }
+
+        const overallPassing = latest.every(r => r.conclusion === 'success')
+        const anyFailing     = latest.some(r  => r.conclusion === 'failure')
+        const anyRunning     = latest.some(r  => r.status !== 'completed')
+
+        const summary = anyRunning   ? `CI running on ${targetBranch}…`
+                      : anyFailing   ? `CI FAILING on ${targetBranch}`
+                      : overallPassing ? `CI passing on ${targetBranch} ✓`
+                      : `CI status mixed on ${targetBranch}`
+
+        const rows = latest.map(r => {
+          const icon    = statusIcon(r)
+          const created = (r.created_at || '').slice(0, 16).replace('T', ' ')
+          const conc    = r.conclusion || r.status || 'unknown'
+          return `${icon}  ${r.name.slice(0, 40).padEnd(40)}  ${conc.padEnd(12)}  ${created}  ${r.html_url}`
+        })
+
+        return `${summary}\n\n${rows.join('\n')}`
+      }
+
+      // ── create_github_issue ────────────────────────────────────────────
+      // Opens a GitHub issue for a discovered bug or future task.
+      case 'create_github_issue': {
+        if (!input.title?.trim()) return 'create_github_issue: title is required.'
+        try {
+          const issue = await createIssue(
+            token, owner, repo,
+            input.title.trim(),
+            input.body || '',
+            input.labels || [],
+          )
+          return issue?.html_url
+            ? `Issue created: ${issue.html_url} (#${issue.number}) — "${issue.title}"`
+            : 'Issue creation failed — no URL returned.'
+        } catch (err) {
+          return `create_github_issue failed: ${err.message}`
+        }
+      }
+
+      // ── resolve_merge_conflict ─────────────────────────────────────────
+      // Cleans up <<<<<<< / ======= / >>>>>>> markers from a file.
+      case 'resolve_merge_conflict': {
+        if (!input.path?.trim()) return 'resolve_merge_conflict: path is required.'
+
+        const file = await getFileContent(token, owner, repo, input.path, branch)
+        if (!file?.content) return `File not found: ${input.path}`
+        const original = decodeBase64(file.content)
+
+        // Sanity check — does the file actually have conflict markers?
+        const markerCount = (original.match(/^<{7}/gm) || []).length
+        if (markerCount === 0) return `No conflict markers found in ${input.path}.`
+
+        let resolved
+        if (input.resolution === 'manual') {
+          if (!input.manual_content?.trim())
+            return 'resolve_merge_conflict: manual_content is required when resolution is "manual".'
+          // Verify manual_content has no remaining markers
+          if (/^[<=>]{7}/m.test(input.manual_content))
+            return 'resolve_merge_conflict: manual_content still contains conflict markers — resolve them first.'
+          resolved = input.manual_content
+        } else {
+          const result = resolveConflictMarkers(original, input.resolution)
+          if (result.unclosed)
+            return `resolve_merge_conflict: unclosed conflict block detected in ${input.path} — file may be malformed.`
+          resolved = result.resolved
+        }
+
+        const msg = input.message || `fix(${input.path.split('/').pop()}): resolve merge conflict (${input.resolution})`
+        await createOrUpdateFile(token, owner, repo, input.path, resolved, msg, branch, file.sha)
+        onFileWrite?.(input.path, 'edit')
+
+        const resolvedCount = markerCount
+        return `resolve_merge_conflict: ${resolvedCount} conflict(s) resolved in ${input.path} using "${input.resolution}" strategy ✓`
       }
 
       // ── multi_edit_file ────────────────────────────────────────────────
