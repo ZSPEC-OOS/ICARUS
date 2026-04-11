@@ -4210,6 +4210,10 @@ kbd {
   border-color: var(--lk-accent);
   background: var(--lk-accent-dim);
 }
+.lk-modular-slot--filled {
+  border: 1px solid color-mix(in srgb, var(--lk-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--lk-accent) 7%, var(--lk-bg));
+}
 .lk-modular-slot-title {
   font-size: 0.74rem;
   color: var(--lk-muted);
@@ -4225,6 +4229,73 @@ kbd {
   justify-content: space-between;
   gap: 6px;
   font-size: 0.78rem;
+}
+.lk-modular-slot-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-width: 0;
+}
+.lk-modular-slot-indicator {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lk-accent);
+}
+.lk-modular-slot-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lk-modular-slot-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.lk-modular-slot-paste-area {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.lk-modular-slot-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--lk-input-bg, var(--lk-bg));
+  border: 1px solid var(--lk-border);
+  border-radius: 4px;
+  color: var(--lk-text);
+  font-size: 0.74rem;
+  padding: 3px 6px;
+  outline: none;
+}
+.lk-modular-slot-title-input:focus {
+  border-color: var(--lk-accent);
+}
+.lk-modular-slot-paste-text {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  resize: vertical;
+  background: var(--lk-input-bg, var(--lk-bg));
+  border: 1px solid var(--lk-border);
+  border-radius: 4px;
+  color: var(--lk-text);
+  font-family: monospace;
+  font-size: 0.72rem;
+  padding: 4px 6px;
+  outline: none;
+}
+.lk-modular-slot-paste-text:focus {
+  border-color: var(--lk-accent);
+}
+.lk-modular-slot-paste-btns {
+  display: flex;
+  gap: 4px;
 }
 .lk-modular-instructions { margin-top: 10px; }
 .lk-modular-instructions-hd {
