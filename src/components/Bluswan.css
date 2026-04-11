@@ -6978,6 +6978,39 @@ kbd {
   background: rgba(77,156,255,0.18);
 }
 
+.lk-toolbar-btn--drct {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: auto;
+  padding: 0 10px;
+  height: 28px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid rgba(191, 123, 255, 0.35);
+  background: rgba(191, 123, 255, 0.06);
+  color: #d7b1ff;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.lk-toolbar-btn--drct:hover {
+  border-color: rgba(203, 148, 255, 0.65);
+  background: rgba(191, 123, 255, 0.14);
+  color: #ecd9ff;
+}
+.lk-toolbar-btn--drct-on {
+  border-color: rgba(221, 170, 255, 0.9);
+  background: rgba(187, 127, 255, 0.22);
+  color: #f5eaff;
+  box-shadow: 0 0 0 1px rgba(191, 123, 255, 0.2) inset;
+}
+
 /* Generating-plan status bar */
 .lk-lrm-generating {
   display: flex;

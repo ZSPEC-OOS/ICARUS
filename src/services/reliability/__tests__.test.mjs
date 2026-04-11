@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { evaluateReliabilityGates, detectApiSignatureChange } from './gateEvaluators.js'
+import { evaluateReliabilityGates, detectApiSignatureChange, evaluateCreativeCandidates } from './gateEvaluators.js'
 import { createReliabilityLoopFSM, RELIABILITY_STATES } from './fsm.js'
 
 test('detectApiSignatureChange detects export signature mutations', () => {
@@ -37,4 +37,16 @@ test('fsm executes rollback path on verify failure', async () => {
   const out = await fsm.run()
   assert.equal(out.current, RELIABILITY_STATES.DONE)
   assert.deepEqual(transitions, ['plan', 'execute', 'verify', 'rollback', 'done'])
+})
+
+test('evaluateCreativeCandidates ranks candidates with expected shape', () => {
+  const ranked = evaluateCreativeCandidates([
+    { id: 'a', content: 'A cinematic immersive story with metaphor and surprise.' },
+    { id: 'b', content: 'A minimal dashboard layout with strict utility.' },
+  ])
+  assert.equal(ranked.length, 2)
+  assert.equal(typeof ranked[0].noveltyScore, 'number')
+  assert.equal(typeof ranked[0].coherenceScore, 'number')
+  assert.equal(typeof ranked[0].evocativenessScore, 'number')
+  assert.equal(typeof ranked[0].totalRankScore, 'number')
 })

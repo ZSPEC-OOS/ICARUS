@@ -156,3 +156,52 @@ export function evaluateBenchmarkRegressionGate({ benchmarkReport = null, requir
     regressions,
   }
 }
+
+function tokenSet(text = '') {
+  return new Set(
+    String(text)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+  )
+}
+
+function jaccardDistance(a = '', b = '') {
+  const sa = tokenSet(a)
+  const sb = tokenSet(b)
+  const union = new Set([...sa, ...sb])
+  if (union.size === 0) return 0
+  let overlap = 0
+  for (const tok of sa) if (sb.has(tok)) overlap += 1
+  return 1 - (overlap / union.size)
+}
+
+export function evaluateCreativeCandidates(candidates = []) {
+  const pool = Array.isArray(candidates) ? candidates.filter(c => String(c?.content || '').trim()) : []
+  if (pool.length === 0) return []
+
+  return pool.map((candidate) => {
+    const distances = pool
+      .filter(other => other.id !== candidate.id)
+      .map(other => jaccardDistance(candidate.content, other.content))
+    const noveltyScore = distances.length
+      ? distances.reduce((sum, n) => sum + n, 0) / distances.length
+      : 0.5
+
+    const coherenceScore = Math.max(0, Math.min(1, 0.35 + Math.min(0.65, (candidate.content.length / 1000))))
+    const evocativeSignals = ['surprise', 'emotion', 'story', 'delight', 'immersive', 'metaphor', 'cinematic', 'poetic']
+    const lc = String(candidate.content || '').toLowerCase()
+    const hits = evocativeSignals.filter(s => lc.includes(s)).length
+    const evocativenessScore = Math.max(0, Math.min(1, 0.2 + (hits * 0.12)))
+    const totalRankScore = Number((noveltyScore * 0.4 + coherenceScore * 0.3 + evocativenessScore * 0.3).toFixed(4))
+
+    return {
+      candidateId: candidate.id,
+      noveltyScore: Number(noveltyScore.toFixed(4)),
+      coherenceScore: Number(coherenceScore.toFixed(4)),
+      evocativenessScore: Number(evocativenessScore.toFixed(4)),
+      totalRankScore,
+    }
+  })
+}

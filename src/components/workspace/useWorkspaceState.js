@@ -267,6 +267,7 @@ export function useWorkspaceState({
 
   // ── Long Request Mode ────────────────────────────────────────────────────
   const [longRequestMode,    setLongRequestMode]    = useState(false)
+  const [executionMode,      setExecutionMode]      = useState(saved.executionMode || 'default')
   const [lrmPlan,            setLrmPlan]            = useState(null)
   const [lrmGeneratingPlan,  setLrmGeneratingPlan]  = useState(false)
   const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(false)
@@ -309,13 +310,13 @@ export function useWorkspaceState({
     const s = {
       repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking, thinkingBudget, webSearchApiKey,
-      permissionMode, generateTests, dryRun, hooksConfig,
+      permissionMode, generateTests, dryRun, hooksConfig, executionMode,
     }
     saveSettings(s)
     onSettingsChangedRef.current?.(s)
   }, [repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking, thinkingBudget, webSearchApiKey,
-      permissionMode, generateTests, dryRun, hooksConfig]) // eslint-disable-line react-hooks/exhaustive-deps
+      permissionMode, generateTests, dryRun, hooksConfig, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!hasGithub) return
@@ -1307,9 +1308,9 @@ export function useWorkspaceState({
           branchOverride = newBranch; agentBranchRef.current = newBranch
         } catch (err) { setError(`Failed to create branch: ${err.message}`); return }
       }
-      agentSession.run(fullMsg, conversation.slice(-10), { branchOverride })
+      agentSession.run(fullMsg, conversation.slice(-10), { branchOverride, executionMode })
     } else { handleGenerate(fullMsg) }
-  }, [prompt, attachedFiles, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prompt, attachedFiles, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleKeyDown = useCallback((e) => {
     const submitByEnter    = e.key === 'Enter' && !e.shiftKey && !e.isComposing
@@ -1382,6 +1383,7 @@ export function useWorkspaceState({
     history, setHistory, busy, isModulesPage, hasOutputContent,
     // lrm
     longRequestMode, setLongRequestMode, lrmPlan, setLrmPlan,
+    executionMode, setExecutionMode,
     lrmGeneratingPlan, taskSidebarCollapsed, setTaskSidebarCollapsed,
     lrmPhasePushed, lrmPhasePrUrl,
     // shadow context

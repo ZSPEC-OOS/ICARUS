@@ -210,3 +210,19 @@ test('callEnsemble degrades to single call when only one model available', async
   const { ensemble } = await router.callEnsemble(routing, async () => ({ text: 'single result' }))
   assert.equal(ensemble, false)
 })
+
+test('callEnsembleCandidates returns all fulfilled candidate outputs', async () => {
+  clearLocalStorage()
+  const router = createModelRouter({ enabled: true }, [])
+  const routing = { modelConfig: modelA, fallbacks: [modelB], strategy: 'ensemble', role: 'debugger', confidence: 0.9, scores: {} }
+
+  const { candidates } = await router.callEnsembleCandidates(
+    routing,
+    async (_model, variant, idx) => ({ text: `candidate-${idx}-${variant || 'plain'}`, metadata: { idx } }),
+    { count: 4, iteration: 2, promptVariants: ['a', 'b', 'c', 'd'] }
+  )
+
+  assert.equal(candidates.length, 4)
+  assert.equal(candidates[0].origin, 'dream')
+  assert.equal(candidates[0].iteration, 2)
+})
