@@ -270,7 +270,9 @@ export function useWorkspaceState({
   const [executionMode,      setExecutionMode]      = useState(saved.executionMode || 'default')
   const [lrmPlan,            setLrmPlan]            = useState(null)
   const [lrmGeneratingPlan,  setLrmGeneratingPlan]  = useState(false)
-  const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(false)
+  const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 430px)').matches
+  )
   const [lrmPhasePushed,     setLrmPhasePushed]     = useState(false)
   const [lrmPhasePrUrl,      setLrmPhasePrUrl]      = useState(null)
 
