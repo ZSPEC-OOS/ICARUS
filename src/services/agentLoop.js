@@ -13,8 +13,10 @@ import { efficiencyMetricsService } from './efficiency/metricsService.js'
 import { packContextSections } from './enhancers/contextPacker.js'
 import { enforceQualityFloor } from './enhancers/qualityFloor.js'
 import { createModelRouter } from './orchestration/modelRouter.js'
+import { createTaskDecomposer } from './orchestration/taskDecomposer.js'
 import { retrieveContext } from './enhancers/ragService.js'
 import { shadowContext } from './shadowContext.js'
+import { codeIntelligence } from './codeIntelligence.js'
 
 export function makeSessionDiary() {
   const filesRead = new Set()
@@ -106,6 +108,12 @@ export async function runAgentLoop({
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
   memoryGraphService.init()
 
+  // ── Code Intelligence: build / refresh symbol index from shadow context ───
+  // Zero-cost when the index is current (TTL + size guard in buildIndex).
+  if (shadowContext?.isReady) {
+    try { codeIntelligence.buildIndex(shadowContext) } catch { /* non-fatal */ }
+  }
+
   // ── Model Orchestration: classify task → route to specialised model ────────
   const orchCfg = enhancerConfig.orchestration
   const router = createModelRouter(orchCfg, availableModels || [])
@@ -182,13 +190,37 @@ export async function runAgentLoop({
     }
   }
 
+  // ── Task Decomposer: parallel multi-role pre-analysis ─────────────────────
+  // When plannerExecutor is enabled, complex compound tasks trigger lightweight
+  // parallel model calls for each specialist role before the main loop starts.
+  // The merged analyses are injected as structured context, giving the model a
+  // head start on multi-faceted tasks without recursive sub-agent loops.
+  let decompositionBlock = ''
+  if (enhancerConfig.plannerExecutor?.enabled) {
+    try {
+      const decomposer  = createTaskDecomposer({ onEvent })
+      const decomp      = decomposer.decomposeTask(task)
+      if (decomp.complex && decomp.subtasks.length >= 2) {
+        onEvent?.({ type: 'decompose_triggered', complexity: decomp.complexity, subtasks: decomp.subtasks.length })
+        decompositionBlock = await decomposer.runDecomposition(decomp.subtasks, {
+          modelConfig: activeModelConfig,
+          signal,
+        })
+      }
+    } catch {
+      // Decomposition failures must never block the main loop
+    }
+  }
+
   const taskText = enhancerConfig.structuredPrompting.enabled ? enforceStructuredPrompt(task).promptText : task
-  const packedInput = ragContextBlock
-    ? packContextSections([
-        { heading: 'RELEVANT CONTEXT (auto-retrieved)', content: ragContextBlock },
-        { heading: 'TASK', content: taskText },
-      ])
-    : packContextSections([{ heading: 'TASK', content: taskText }])
+
+  const contextSections = [
+    ragContextBlock   ? { heading: 'RELEVANT CONTEXT (auto-retrieved)', content: ragContextBlock }   : null,
+    decompositionBlock ? { heading: 'MULTI-ROLE PRE-ANALYSIS',           content: decompositionBlock } : null,
+    { heading: 'TASK', content: taskText },
+  ].filter(Boolean)
+
+  const packedInput = packContextSections(contextSections)
 
   let messages = [
     ...(isAnthropic ? [] : [{ role: 'system', content: systemPrompt }]),

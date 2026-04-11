@@ -37,6 +37,9 @@ const ENHANCER_CFG_KEY = KEYS.LS.ENHANCER_CONFIG
  * @property {{enabled:boolean,mode:CritiqueMode,checkGrounding:boolean,checkConstraints:boolean,checkCompleteness:boolean}} critique
  * @property {{enabled:boolean,emitVerboseTrace:boolean,summaryStyle:'concise_only'|'concise_plus_detailed'}} deepReasoning
  * @property {OrchestrationConfig} orchestration
+ * @property {{enabled:boolean,complexityThreshold:number,maxSubtasks:number}} taskDecomposer
+ * @property {{enabled:boolean,buildOnLoopStart:boolean,maxSymbolsPerFile:number}} codeIntelligence
+ * @property {{enabled:boolean,fuzzyThreshold:number,syntaxCheck:boolean}} patchValidator
  */
 
 /** @type {EnhancerConfig} */
@@ -92,6 +95,28 @@ export const DEFAULT_ENHANCER_CONFIG = {
     },
     costBudget: { preferCheap: false, maxCostPerTask: null },
     ensemble: { minModels: 2, aggregationStrategy: 'longest' },
+  },
+
+  // ── Phase 1 enhancer config blocks ────────────────────────────────────────
+  // taskDecomposer: disabled by default (adds latency + token cost per task).
+  // Enable via settings UI or saveEnhancerConfig({ plannerExecutor: { enabled: true } }).
+  // Note: taskDecomposer activation is gated on plannerExecutor.enabled (reuses
+  // the existing flag so no UI changes are needed for Phase 1).
+
+  // codeIntelligence: always builds index on loop start when shadowContext is
+  // ready — zero cost since buildIndex is a no-op when the index is fresh.
+  codeIntelligence: {
+    enabled:          true,     // index builds passively; tools available any time
+    buildOnLoopStart: true,     // refresh index at the start of each agent loop
+    maxSymbolsPerFile: 200,     // mirrors CODE_INTEL_MAX_SYMBOLS_PER_FILE constant
+  },
+
+  // patchValidator: always active; cannot be disabled since it only prevents
+  // provably bad writes.  The syntaxCheck sub-feature can be turned off.
+  patchValidator: {
+    enabled:        true,
+    fuzzyThreshold: 0.65,   // min Levenshtein similarity to surface a nearest-match hint
+    syntaxCheck:    true,   // run bracket-balance check after a successful exact match
   },
 }
 

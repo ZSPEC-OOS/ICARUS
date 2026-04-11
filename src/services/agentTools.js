@@ -534,6 +534,48 @@ export const AGENT_TOOLS = [
       required: [],
     },
   },
+
+  // ── Phase 1 enhancements ────────────────────────────────────────────────────
+  {
+    name: 'find_symbol',
+    description: 'Search the code intelligence index for a symbol (function, class, or variable) by name. Returns definition locations (file + line + signature) and optionally usages. More precise than grep for navigating to a specific symbol.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name:        { type: 'string',  description: 'Exact or partial symbol name to look up' },
+        mode:        { type: 'string',  description: '"definition" (default) | "usages" | "callgraph" | "query" — "query" does a fuzzy substring search across all indexed symbol names' },
+        max_depth:   { type: 'number',  description: 'Call graph traversal depth (default 3, max 5). Only used when mode="callgraph"' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'find_usages',
+    description: 'Find every file and line that references a symbol by name (whole-word match). Faster than grep for symbol-level reference searches. Returns file path, line number, and the matching line of code.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name:  { type: 'string', description: 'Symbol name to search for (exact, whole-word)' },
+        limit: { type: 'number', description: 'Maximum results to return (default 60)'        },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'run_tdd_loop',
+    description: 'Run a closed Test-Driven Development loop: (1) optionally write a failing-test scaffold, (2) execute the test command, (3) parse pass/fail, (4) append a fix hint to the implementation file, (5) repeat until green or maxIterations. Returns the final status (green/red/no_output) and per-iteration metrics. Requires the exec bridge.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        spec:            { type: 'string', description: 'Feature or behaviour description driving the tests' },
+        test_cmd:        { type: 'string', description: 'Shell command to run tests, e.g. "npm test" or "pytest tests/"' },
+        test_file_path:  { type: 'string', description: 'Path to generate the test scaffold (optional — skip to use existing tests)' },
+        impl_file_path:  { type: 'string', description: 'Path of the implementation file to fix when tests fail (optional)' },
+        max_iterations:  { type: 'number', description: `Max run→fix cycles before giving up (default ${5})` },
+      },
+      required: ['spec', 'test_cmd'],
+    },
+  },
 ]
 
 for (const tool of AGENT_TOOLS) {
