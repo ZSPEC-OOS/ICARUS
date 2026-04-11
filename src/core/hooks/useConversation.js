@@ -9,7 +9,6 @@ import { CONV_MAX_MESSAGES } from '../../config/constants.js'
 import { compressToMemoryBlock, buildMemoryDigest } from '../../services/interactivePipeline.js'
 import {
   getCurrentUser,
-  loadUserConversation,
   saveUserConversation,
 } from '../../services/firebaseService.js'
 import { KEYS } from '../../shared/storageKeys.js'
@@ -17,7 +16,7 @@ import { KEYS } from '../../shared/storageKeys.js'
 const CONV_KEY = KEYS.LS.CONV
 
 function loadConversation() {
-  try { return JSON.parse(localStorage.getItem(CONV_KEY)) || [] } catch { return [] }
+  return []
 }
 
 function persistConversation(messages) {
@@ -29,22 +28,10 @@ export function useConversation() {
   const [turnCount,    setTurnCount]    = useState(0)
   const [hydratedCloud, setHydratedCloud] = useState(false)
 
-  // Load cloud chat history at session start if a user is signed in and local is empty.
+  // Always start fresh on page load; prior sessions are archived into Task History.
   useEffect(() => {
-    if (hydratedCloud) return
-    let cancelled = false
-    ;(async () => {
-      const user = getCurrentUser()
-      if (!user?.uid) { if (!cancelled) setHydratedCloud(true); return }
-      if (conversation.length > 0) { if (!cancelled) setHydratedCloud(true); return }
-      const remote = await loadUserConversation(user.uid)
-      if (!cancelled && remote.length > 0) {
-        setConversation(remote.slice(-CONV_MAX_MESSAGES))
-      }
-      if (!cancelled) setHydratedCloud(true)
-    })()
-    return () => { cancelled = true }
-  }, [hydratedCloud, conversation.length])
+    if (!hydratedCloud) setHydratedCloud(true)
+  }, [hydratedCloud])
 
   // Debounce saves: only write to localStorage 500ms after the last update.
   useEffect(() => {
@@ -55,6 +42,7 @@ export function useConversation() {
   // Persist to Firebase immediately once the session is hydrated.
   useEffect(() => {
     if (!hydratedCloud) return
+    if (conversation.length === 0) return
     const user = getCurrentUser()
     if (!user?.uid) return
     saveUserConversation(user.uid, conversation.slice(-CONV_MAX_MESSAGES))

@@ -111,7 +111,16 @@ export default function WorkspaceShell(props) {
             : <div className="lk-sidebar-nav-history">
                 {history.slice(0, 20).map(e => (
                   <button key={e.id} className="lk-sidebar-nav-history-item"
-                    onClick={() => { ws.setPrompt(e.prompt); setMobileDrawerOpen(false) }}>
+                    onClick={() => {
+                      if (Array.isArray(e.conversation) && e.conversation.length > 0) {
+                        ws.setConversation(e.conversation)
+                        ws.setTurnCount(e.conversation.filter(m => m.role === 'user').length)
+                        ws.setHistoryOpen(false)
+                        setMobileDrawerOpen(false)
+                        return
+                      }
+                      ws.setPrompt(e.prompt); setMobileDrawerOpen(false)
+                    }}>
                     <div className="lk-sidebar-nav-history-icon">⚡</div>
                     <div className="lk-sidebar-nav-history-body">
                       <span className="lk-sidebar-nav-history-text">{e.prompt}</span>
@@ -258,7 +267,15 @@ export default function WorkspaceShell(props) {
               : <div className="lk-task-history-list">
                   {history.map(e => (
                     <button key={e.id} className="lk-task-history-item"
-                      onClick={() => { ws.setPrompt(e.prompt); ws.setHistoryOpen(false) }}>
+                      onClick={() => {
+                        if (Array.isArray(e.conversation) && e.conversation.length > 0) {
+                          ws.setConversation(e.conversation)
+                          ws.setTurnCount(e.conversation.filter(m => m.role === 'user').length)
+                          ws.setHistoryOpen(false)
+                          return
+                        }
+                        ws.setPrompt(e.prompt); ws.setHistoryOpen(false)
+                      }}>
                       <div className="lk-task-history-icon">⚡</div>
                       <div className="lk-task-history-body">
                         <span className="lk-task-history-title">{e.prompt}</span>
