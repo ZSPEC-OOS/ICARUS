@@ -122,6 +122,9 @@ const BluswanSettings = memo(function BluswanSettings({
   const [modularInstallMsg, setModularInstallMsg] = useState(null)
   const [isModularDragging, setIsModularDragging] = useState([false, false, false])
   const [modularTools, setModularTools] = useState(() => getAllTools().filter(t => !t._builtin).slice(0, 3))
+  const [slotPasteOpen,  setSlotPasteOpen]  = useState([false, false, false])
+  const [slotPasteText,  setSlotPasteText]  = useState(['', '', ''])
+  const [slotPasteTitle, setSlotPasteTitle] = useState(['', '', ''])
 
   // ── Web Search collapse / save state ───────────────────────────────────────
   // webSearchApiKey loads asynchronously in the parent (AES-GCM decrypt), so we
@@ -279,6 +282,44 @@ export async function test() { return { passed: true, message: "Smoke test passe
     uninstallTool(toolId)
     await persistModularTools()
     refreshModularTools()
+  }
+
+  async function handleInstallModularPaste(text, title, slotIndex) {
+    const trimmed = text.trim()
+    if (!trimmed) {
+      setModularInstallMsg({ type: 'error', text: 'Nothing to load — paste JSON first.' })
+      return
+    }
+    let descriptor
+    try { descriptor = JSON.parse(trimmed) } catch {
+      setModularInstallMsg({ type: 'error', text: 'Invalid JSON — could not parse pasted text.' })
+      return
+    }
+    const meta = { ...(descriptor.toolMeta || descriptor) }
+    if (title.trim()) meta.name = title.trim()
+    const source = `export const toolMeta = ${JSON.stringify(meta, null, 2)};\nexport async function execute(input, config) {\n  return { message: 'JSON tool loaded', input };\n}\nexport async function test() {\n  return { passed: true, message: 'JSON descriptor loaded.' };\n}\n`
+    const result = installToolAtSlot(source, slotIndex, 3)
+    if (!result.ok) {
+      setModularInstallMsg({ type: 'error', text: `Install failed: ${result.errors.join(' · ')}` })
+      return
+    }
+    await persistModularTools()
+    refreshModularTools()
+    setSlotPasteOpen(prev => prev.map((v, i) => i === slotIndex ? false : v))
+    setSlotPasteText(prev => prev.map((v, i) => i === slotIndex ? '' : v))
+    setSlotPasteTitle(prev => prev.map((v, i) => i === slotIndex ? '' : v))
+    setModularInstallMsg({ type: 'success', text: `Installed: ${result.tool.name}` })
+  }
+
+  function handleExportTool(tool) {
+    const data = JSON.stringify(tool.toolMeta || { name: tool.name, version: tool.version }, null, 2)
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(tool.name || 'tool').replace(/\s+/g, '-').toLowerCase()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   // ── Test connection ─────────────────────────────────────────────────────────
@@ -486,10 +527,11 @@ export async function test() { return { passed: true, message: "Smoke test passe
           <div className="lk-modular-slots">
             {[0, 1, 2].map(slot => {
               const tool = modularTools[slot]
+              const pasteOpen = slotPasteOpen[slot]
               return (
                 <div
                   key={slot}
-                  className={`lk-modular-slot${isModularDragging[slot] ? ' lk-modular-slot--drag' : ''}`}
+                  className={`lk-modular-slot${tool ? ' lk-modular-slot--filled' : ''}${isModularDragging[slot] ? ' lk-modular-slot--drag' : ''}`}
                   onDragOver={e => {
                     e.preventDefault()
                     setIsModularDragging(prev => prev.map((v, i) => i === slot ? true : v))
@@ -501,27 +543,75 @@ export async function test() { return { passed: true, message: "Smoke test passe
                     await handleInstallModularFile(e.dataTransfer.files?.[0], slot)
                   }}
                 >
-                  <div className="lk-modular-slot-title">Slot {slot + 1}</div>
                   {tool ? (
-                    <div className="lk-modular-slot-tool">
-                      <div>{tool.name} <span className="lk-hint-inline">v{tool.version}</span></div>
-                      <button className="lk-btn lk-btn--small lk-btn--warn" onClick={() => handleRemoveModularTool(tool.id)}>Remove</button>
-                    </div>
+                    <>
+                      <div className="lk-modular-slot-header">
+                        <span className="lk-modular-slot-indicator" />
+                        <span className="lk-modular-slot-name">{tool.name}</span>
+                        <span className="lk-hint-inline">v{tool.version}</span>
+                      </div>
+                      <div className="lk-modular-slot-actions">
+                        <button className="lk-btn lk-btn--small lk-btn--warn" onClick={() => handleRemoveModularTool(tool.id)}>Remove</button>
+                        <button className="lk-btn lk-btn--small" onClick={() => handleExportTool(tool)}>Export</button>
+                      </div>
+                    </>
                   ) : (
-                    <div className="lk-modular-slot-empty">Drop .js/.json here</div>
+                    <>
+                      <div className="lk-modular-slot-title">Slot {slot + 1}</div>
+                      {pasteOpen ? (
+                        <div className="lk-modular-slot-paste-area">
+                          <input
+                            className="lk-modular-slot-title-input"
+                            placeholder="Label (optional)"
+                            value={slotPasteTitle[slot]}
+                            onChange={e => setSlotPasteTitle(prev => prev.map((v, i) => i === slot ? e.target.value : v))}
+                          />
+                          <textarea
+                            className="lk-modular-slot-paste-text"
+                            placeholder="Paste JSON here…"
+                            value={slotPasteText[slot]}
+                            onChange={e => setSlotPasteText(prev => prev.map((v, i) => i === slot ? e.target.value : v))}
+                          />
+                          <div className="lk-modular-slot-paste-btns">
+                            <button
+                              className="lk-btn lk-btn--small lk-btn--primary"
+                              onClick={() => handleInstallModularPaste(slotPasteText[slot], slotPasteTitle[slot], slot)}
+                            >Load</button>
+                            <button
+                              className="lk-btn lk-btn--small"
+                              onClick={() => {
+                                setSlotPasteOpen(prev => prev.map((v, i) => i === slot ? false : v))
+                                setSlotPasteText(prev => prev.map((v, i) => i === slot ? '' : v))
+                                setSlotPasteTitle(prev => prev.map((v, i) => i === slot ? '' : v))
+                              }}
+                            >Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="lk-modular-slot-empty">Drop .js/.json here</div>
+                      )}
+                      <div className="lk-modular-slot-actions">
+                        <label className="lk-btn lk-btn--small">
+                          Attach file
+                          <input
+                            type="file"
+                            accept=".js,.json"
+                            style={{ display: 'none' }}
+                            onChange={async e => {
+                              await handleInstallModularFile(e.target.files?.[0], slot)
+                              e.target.value = ''
+                            }}
+                          />
+                        </label>
+                        {!pasteOpen && (
+                          <button
+                            className="lk-btn lk-btn--small"
+                            onClick={() => setSlotPasteOpen(prev => prev.map((v, i) => i === slot ? true : v))}
+                          >Paste</button>
+                        )}
+                      </div>
+                    </>
                   )}
-                  <label className="lk-btn lk-btn--small">
-                    Attach file
-                    <input
-                      type="file"
-                      accept=".js,.json"
-                      style={{ display: 'none' }}
-                      onChange={async e => {
-                        await handleInstallModularFile(e.target.files?.[0], slot)
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
                 </div>
               )
             })}
