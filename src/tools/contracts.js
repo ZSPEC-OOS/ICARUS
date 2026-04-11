@@ -164,6 +164,22 @@ export const TOOL_CONTRACTS = {
     },
     output: { type: 'string' },
   },
+  git_log: {
+    input: { type: 'object', additionalProperties: false, properties: { path: baseString, branch: baseString, limit: baseNumber }, required: [] },
+    output: { type: 'string' },
+  },
+  check_ci_status: {
+    input: { type: 'object', additionalProperties: false, properties: { branch: baseString }, required: [] },
+    output: { type: 'string' },
+  },
+  create_github_issue: {
+    input: { type: 'object', additionalProperties: false, properties: { title: baseString, body: baseString, labels: { type: 'array', items: baseString } }, required: ['title'] },
+    output: { type: 'string' },
+  },
+  resolve_merge_conflict: {
+    input: { type: 'object', additionalProperties: false, properties: { path: baseString, resolution: { type: 'string', enum: ['ours', 'theirs', 'manual'] }, manual_content: baseString, message: baseString }, required: ['path', 'resolution'] },
+    output: { type: 'string' },
+  },
   get_diff: {
     input: { type: 'object', additionalProperties: false, properties: { base: baseString, head: baseString, path: baseString }, required: [] },
     output: { type: 'string' },

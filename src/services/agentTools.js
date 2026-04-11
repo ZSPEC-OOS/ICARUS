@@ -347,6 +347,59 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ── Phase 3: Repository intelligence ────────────────────────────────────────
+  {
+    name: 'git_log',
+    description: 'Fetch commit history for a branch or a specific file. Returns commits with SHA, short message, author, and date. Use this to understand when a bug was introduced, trace the evolution of a file, or find the commit that last changed a function.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path:   { type: 'string', description: 'Limit log to commits that touched this file path (optional)' },
+        branch: { type: 'string', description: 'Branch to query (default: current working branch)'           },
+        limit:  { type: 'number', description: 'Max commits to return (default 10, max 50)'                  },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'check_ci_status',
+    description: 'Check the latest GitHub Actions CI status for a branch. Returns the status (queued / in_progress / completed) and conclusion (success / failure / cancelled) of recent workflow runs. Use this to verify CI passes before considering a task done, or to diagnose a failing build.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        branch: { type: 'string', description: 'Branch to check (default: current working branch)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'create_github_issue',
+    description: 'Open a GitHub issue in the repository. Use this to log a bug, track a future improvement, or flag a discovered problem without derailing the current task. The issue is created immediately and the URL is returned.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title:  { type: 'string', description: 'Issue title (required)'                                },
+        body:   { type: 'string', description: 'Issue body in Markdown (optional)'                    },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Label names to apply (optional, labels must already exist in the repo)' },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'resolve_merge_conflict',
+    description: 'Resolve git merge conflict markers (<<<<<<<, =======, >>>>>>>) in a file. Choose "ours" to keep the HEAD version, "theirs" to keep the incoming branch version, or "manual" to supply the fully resolved content yourself. Writes the clean file back and returns how many conflicts were resolved.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path:           { type: 'string', description: 'File path containing conflict markers'                                                              },
+        resolution:     { type: 'string', enum: ['ours', 'theirs', 'manual'], description: '"ours" = keep HEAD, "theirs" = keep incoming, "manual" = use manual_content' },
+        manual_content: { type: 'string', description: 'Fully resolved file content — required when resolution is "manual"'                                 },
+        message:        { type: 'string', description: 'Commit message (optional)'                                                                          },
+      },
+      required: ['path', 'resolution'],
+    },
+  },
+
   // ── Phase 2: Precision editing ───────────────────────────────────────────────
   {
     name: 'multi_edit_file',
@@ -498,6 +551,10 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
     !planMode ? `Use run_tests to verify your changes pass the test suite before finishing.` : null,
     !planMode ? `Use get_diff to review everything you changed on this branch before creating a PR.` : null,
     planMode  ? `Use get_diff to inspect existing branch changes during analysis.` : null,
+    `Use git_log to trace commit history for a branch or file — useful for finding when a bug was introduced.`,
+    !planMode ? `Use check_ci_status to verify CI passes on your branch before considering a task done.` : null,
+    !planMode ? `Use create_github_issue to log discovered bugs or future improvements without interrupting the current task.` : null,
+    !planMode ? `Use resolve_merge_conflict to clean up conflict markers (<<<<<<< / ======= / >>>>>>>) in a file.` : null,
     `Use token_io_optimizer for long/complex requests to reduce unnecessary token spend while preserving implementation quality.`,
     `Use update_memory to append important facts to BLUSWAN.md so they persist across sessions.`,
     `Use the todo tool to track tasks when working on complex multi-step operations.`,
