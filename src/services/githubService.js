@@ -189,6 +189,16 @@ export async function fetchContextFiles(token, owner, repo, targetPath, branch =
 // ── GitHub Actions CI monitoring ─────────────────────────────────────────────
 // Returns the most recent workflow runs for a branch (requires actions:read, usually
 // included in repo-scoped PATs). Returns null on any error (e.g. no Actions enabled).
+// Compare two refs (branch, tag, or SHA) and return file-level diffs.
+// GitHub Docs: GET /repos/{owner}/{repo}/compare/{basehead}
+export async function compareCommits(token, owner, repo, base, head) {
+  try {
+    return await ghFetch(token, `/repos/${owner}/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`)
+  } catch (err) {
+    throw new Error(`compareCommits failed (${base}...${head}): ${err.message}`)
+  }
+}
+
 export async function getWorkflowRuns(token, owner, repo, branch, perPage = 3, workflowId) {
   try {
     const params = new URLSearchParams({ branch, per_page: String(perPage), event: 'push' })

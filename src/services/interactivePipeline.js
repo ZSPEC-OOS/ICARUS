@@ -166,6 +166,9 @@ export function toolToLogMessage(name, input = {}) {
     case 'grep':                return `Grepping for \`${(input.pattern || '').slice(0, 40)}\`…`
     case 'run_command':         return `Running: ${(input.cmd || '').slice(0, 60)}…`
     case 'lint_file':           return `Linting ${input.path || 'file'}…`
+    case 'get_diff':            return input.path ? `Diffing ${input.path}…` : `Reviewing branch diff (${input.base || 'main'}...${input.head || 'HEAD'})…`
+    case 'type_check':          return input.path ? `Type-checking ${input.path}…` : 'Running TypeScript type check…'
+    case 'run_tests':           return input.path ? `Running tests in ${input.path}…` : 'Running test suite…'
     case 'web_search':          return `Searching web: "${(input.query || '').slice(0, 40)}"…`
     case 'hybrid_search':       return `Running hybrid retrieval for "${(input.query || '').slice(0, 40)}"…`
     case 'retrieve_context':    return `Retrieving grounded context for "${(input.query || '').slice(0, 40)}"…`

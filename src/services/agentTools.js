@@ -346,6 +346,44 @@ export const AGENT_TOOLS = [
       required: ['task'],
     },
   },
+
+  // ── Phase 1: Self-verification loop ─────────────────────────────────────────
+  {
+    name: 'get_diff',
+    description: 'Show a unified diff of changes between two git refs (branches, tags, or SHAs) in the repository. Defaults to comparing the current working branch against the base branch. Use path to limit the diff to a single file. Essential for reviewing your own changes before creating a PR.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        base: { type: 'string', description: 'Base ref to diff from (default: repo default branch, e.g. "main")' },
+        head: { type: 'string', description: 'Head ref to diff to (default: current working branch)'             },
+        path: { type: 'string', description: 'Limit diff to this file path (optional)'                           },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'type_check',
+    description: 'Run the TypeScript compiler (tsc --noEmit) on the project and return structured type errors with file, line, and message. Pass an optional path to filter results to a specific file. Returns "TypeScript check passed ✓" when there are no errors. Requires the exec bridge (npm run dev).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Optional file path to filter errors to (e.g. src/services/agentLoop.ts)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'run_tests',
+    description: 'Detect the project test runner (Vitest, Jest, or npm test) from package.json and execute the test suite. Returns a structured summary (passed / failed / skipped) plus the raw output tail. Pass path to run only tests in a specific file or directory, and test_pattern to filter by test name. Requires the exec bridge (npm run dev).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path:         { type: 'string', description: 'Test file or directory to run (optional, e.g. tests/unit)' },
+        test_pattern: { type: 'string', description: 'Filter tests by name pattern (optional, passed as -t flag)'  },
+      },
+      required: [],
+    },
+  },
 ]
 
 for (const tool of AGENT_TOOLS) {
@@ -383,6 +421,10 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
     `Use grep to search file contents by regex — far faster than opening files one by one.`,
     `Use read_many_files to read several files in one call.`,
     `Use lint_file after editing JS/TS files to catch errors before moving on.`,
+    !planMode ? `Use type_check to catch TypeScript type errors across the project after making changes.` : null,
+    !planMode ? `Use run_tests to verify your changes pass the test suite before finishing.` : null,
+    !planMode ? `Use get_diff to review everything you changed on this branch before creating a PR.` : null,
+    planMode  ? `Use get_diff to inspect existing branch changes during analysis.` : null,
     `Use token_io_optimizer for long/complex requests to reduce unnecessary token spend while preserving implementation quality.`,
     `Use update_memory to append important facts to BLUSWAN.md so they persist across sessions.`,
     `Use the todo tool to track tasks when working on complex multi-step operations.`,
@@ -398,8 +440,13 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
       ? `3. Analyse the relevant code and produce a clear, actionable plan or explanation.`
       : `3. Read relevant files before modifying them.`,
     !planMode ? `4. Make changes using edit_file (for small changes) or write_file (for new files or rewrites).` : null,
-    !planMode ? `5. Run tests or lint if available to verify correctness.` : null,
+    !planMode ? `5. VERIFICATION LOOP — run after every set of edits (skip steps that are unavailable):` : null,
+    !planMode ? `   a. lint_file on each changed .js/.jsx/.ts/.tsx file` : null,
+    !planMode ? `   b. type_check to surface TypeScript errors across the project` : null,
+    !planMode ? `   c. run_tests to confirm the test suite passes` : null,
+    !planMode ? `   Fix any errors found before moving on.` : null,
     `${planMode ? '4' : '6'}. Mark tasks done with todo(done) and summarise what you found${planMode ? '' : ' / changed'}.`,
+    !planMode ? `7. Call get_diff to review the full branch diff, then create the PR.` : null,
     ``,
     `RULES:`,
     !planMode ? `- Always read a file before editing it.` : null,
