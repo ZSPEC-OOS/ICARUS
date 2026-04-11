@@ -44,6 +44,8 @@ export const KEYS = Object.freeze({
     AI_MODELS:          'wrkflow:models',
     /** AES-GCM-encrypted API key backup for iOS resilience (primary: sessionStorage). */
     AI_KEYS_BACKUP:     'wrkflow:keysbak',
+    /** Prompt template registry: per-variant win/loss stats for A/B testing. */
+    PROMPT_REGISTRY_STATS: 'bluswan:prompt-registry:stats',
   }),
 
   // ── sessionStorage ───────────────────────────────────────────────────────────

@@ -17,6 +17,8 @@ import { createTaskDecomposer } from './orchestration/taskDecomposer.js'
 import { retrieveContext } from './enhancers/ragService.js'
 import { shadowContext } from './shadowContext.js'
 import { codeIntelligence } from './codeIntelligence.js'
+import { createContextCompressor } from './contextCompressor.js'
+import { promptRegistry } from './promptRegistry.js'
 
 export function makeSessionDiary() {
   const filesRead = new Set()
@@ -160,8 +162,18 @@ export async function runAgentLoop({
   const isAnthropic = activeModelConfig.provider === 'anthropic' || (!activeModelConfig.provider && activeModelConfig.baseUrl?.includes('api.anthropic.com'))
 
   const filesChanged = []
-  const diary = makeSessionDiary()
+  const compressor = createContextCompressor({ memoryGraphService })
   const recentSigs = []
+  // Track which prompt registry variants are active this session
+  const _registryVariants = {}
+  try {
+    const identityV  = promptRegistry.get('agent.identity',     taskId)
+    const narrationV = promptRegistry.get('agent.narration',    taskId)
+    const verifyV    = promptRegistry.get('agent.verification', taskId)
+    if (identityV)  _registryVariants['agent.identity']     = identityV.id
+    if (narrationV) _registryVariants['agent.narration']    = narrationV.id
+    if (verifyV)    _registryVariants['agent.verification'] = verifyV.id
+  } catch { /* non-fatal */ }
   const taskId = `agent-${Date.now()}`
   const executionTrace = { mutations: [], commandRuns: [] }
   let finalText = ''
@@ -321,7 +333,7 @@ export async function runAgentLoop({
             outputTokens: response.usage?.output || 0,
             meta: { role: routing.role, modelId: activeModelConfig.modelId || activeModelConfig.id, strategy: routing.strategy },
           })
-          if (response.text) diary.onModelText(response.text)
+          if (response.text) compressor.onModelText(response.text)
 
           // Per-turn critique: run mid-session when the model produces substantial
           // narration before tool calls.  Only emits an event when issues are found
@@ -395,7 +407,7 @@ export async function runAgentLoop({
                 if (!filesChanged.includes(path)) filesChanged.push(path)
                 const action = tc.name === 'write_file' ? 'write' : tc.name === 'delete_file' ? 'delete' : 'edit'
                 onEvent({ type: 'file_write', path, action })
-                diary.onFileWrite(path, action)
+                compressor.onFileWrite(path, action)
                 semanticCacheService.clearNamespace('file_content')
 
                 let afterContent = null
@@ -416,22 +428,24 @@ export async function runAgentLoop({
                 memoryGraphService.ingestFileChange({ path, action, content: String(result || '').slice(0, 500), source: 'agent_loop' })
               } else if (tc.name === 'read_file' || tc.name === 'read_many_files') {
                 const paths = tc.name === 'read_many_files' ? (tc.input.paths || []) : [tc.input.path]
-                paths.forEach(p => diary.onFileRead(p))
+                paths.forEach(p => compressor.onFileRead(p))
               }
 
               onEvent({ type: 'tool_done', id, name: tc.name, result, error: null })
+              compressor.onToolResult(tc.name, result)
               efficiencyMetricsService.record({ taskId, stage: `tool:${tc.name}`, cacheHit: false })
               return result
             } catch (err) {
               if (CACHEABLE_TOOLS.has(tc.name)) inFlight.delete(`${tc.name}:${JSON.stringify(tc.input || {})}`)
               onEvent({ type: 'tool_done', id, name: tc.name, result: `ERROR: ${err.message}`, error: err.message })
+              compressor.onToolResult(tc.name, `ERROR: ${err.message}`)
               return `ERROR: ${err.message}`
             }
           }))
 
           const results = settled.map(r => r.status === 'fulfilled' ? r.value : `ERROR: ${r.reason}`)
           const nextMessages = buildToolResultMessages(response.toolCalls, results, isAnthropic, response._raw)
-          messages = pruneMessages([...messages, ...nextMessages], diary, isAnthropic)
+          messages = pruneMessages([...messages, ...nextMessages], compressor, isAnthropic)
 
           const sig = toolSignature(response.toolCalls)
           recentSigs.push(sig)
@@ -491,9 +505,22 @@ export async function runAgentLoop({
   const verification = run.context.verification
 
   if (verification?.passed) {
+    // Record prompt registry outcomes for all active variants (success)
+    try {
+      for (const [name, variantId] of Object.entries(_registryVariants)) {
+        promptRegistry.recordOutcome(name, variantId, true)
+      }
+    } catch { /* non-fatal */ }
     onEvent({ type: 'done', text: finalText, filesChanged })
     return
   }
+
+  // Record prompt registry outcomes (failure)
+  try {
+    for (const [name, variantId] of Object.entries(_registryVariants)) {
+      promptRegistry.recordOutcome(name, variantId, false)
+    }
+  } catch { /* non-fatal */ }
 
   const failedSummary = verification?.failedGateIds?.length
     ? `Reliability gates failed: ${verification.failedGateIds.join(', ')}`

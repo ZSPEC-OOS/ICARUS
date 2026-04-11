@@ -79,3 +79,8 @@ export const PATCH_VALIDATOR_MAX_CONTEXT_LINES  = 8    // context lines shown in
 // ── TDD Loop (Phase 1) ────────────────────────────────────────────────────────
 export const TDD_MAX_ITERATIONS  = 5              // max fix cycles before declaring red
 export const TDD_TEST_TIMEOUT_MS = 60_000         // per-run test command timeout (ms)
+
+// ── Context Compressor (Phase 2) ──────────────────────────────────────────────
+export const COMPRESSOR_MAX_DECISIONS    = 20     // max decision bullets accumulated before elision
+export const COMPRESSOR_MAX_FACTS        = 12     // max key-fact bullets accumulated before elision
+export const COMPRESSOR_DIGEST_MAX_CHARS = 1_200  // max chars in the digest injected into context
