@@ -3,3 +3,6 @@ dist/
 .env
 *.local
 .icarus/
+__pycache__/
+*.pyc
+*.pyo
