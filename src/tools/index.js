@@ -2,6 +2,7 @@
 // All tools shipped with BLUSWAN. Each export must conform to the toolMeta /
 // execute / test contract defined in tool-template.js.
 import * as contracts from './contracts.js'
+import * as AnnasTool from './annas.js'
 
 export * as readFile          from './read-file.js'
 export * as writeFile         from './write-file.js'
@@ -32,6 +33,7 @@ export * as jsonRepair       from './json-repair.js'
 export * as hybridSearch     from './hybrid-search.js'
 export * as retrieveContext  from './retrieve-context.js'
 export * as tokenIoOptimizer from './token-io-optimizer.js'
+export * as annas           from './annas.js'
 
 export const TOOL_SCHEMA_VERSION = contracts.schemaVersion()
 
@@ -49,3 +51,20 @@ export function withToolContractValidation(toolName, execute) {
     return output
   }
 }
+
+// Expose tools globally for ShadowBox dynamic loading.
+// Keep this lightweight: built-ins are still discovered from named exports in
+// toolLoader, while ShadowBox can reference this explicit array directly.
+export const tools = [
+  {
+    meta: AnnasTool.toolMeta,
+    execute: AnnasTool.execute,
+    test: AnnasTool.test,
+  },
+]
+
+if (typeof window !== 'undefined') {
+  window.__bluswanTools = tools
+}
+
+export default tools
