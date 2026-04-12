@@ -295,10 +295,25 @@ function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive'
   }
 }
 
-export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, modelConfig, availableModels, _depth = 0, enhancerConfig: enhancerConfigOverrides, hooksConfig }) {
+export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, modelConfig, availableModels, _depth = 0, enhancerConfig: enhancerConfigOverrides, hooksConfig, modularTools = [] }) {
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
 
   async function rawExecuteTool(name, input) {
+    // ── modular tool dispatch (loadworkflow_ injected tools) ──────────────────
+    if (name.startsWith('modular_') && modularTools.length) {
+      const toolId = name.slice(8)
+      const tool   = modularTools.find(t => t.id === toolId)
+      if (tool?._execute) {
+        try {
+          const result = await tool._execute(input.input ?? '', {})
+          return typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+        } catch (e) {
+          return `Modular tool error: ${e.message}`
+        }
+      }
+      return `Modular tool '${toolId}' not found.`
+    }
+
     switch (name) {
       // ── analyze_codebase ───────────────────────────────────────────────
       case 'analyze_codebase': {
