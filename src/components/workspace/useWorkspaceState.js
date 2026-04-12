@@ -56,7 +56,7 @@ import {
   STYLE_EXAMPLES_LIMIT,
 } from '../../config/constants'
 import { KEYS } from '../../shared/storageKeys.js'
-import { executeTool, getAllTools } from '../../services/toolLoader'
+import { executeTool } from '../../services/toolLoader'
 
 // ─── Persistence helpers ──────────────────────────────────────────────────────
 const SETTINGS_KEY    = KEYS.LS.SETTINGS
@@ -1355,12 +1355,6 @@ export function useWorkspaceState({
       setConversation(prev => [...prev, { role: 'user', content: fullMsg }])
       setError(''); setIsGenerating(true)
       try {
-        // Expose all installed tools to window.__bluswanTools so tools like
-        // ShadowBox that use their own internal registry can find them.
-        window.__bluswanTools = getAllTools().map(t => ({
-          meta:    { id: t.id, name: t.name, version: t.version, description: t.description, category: t.category, author: t.author },
-          execute: t._execute,
-        }))
         const result = await executeTool(toolId, toolInput)
         const out = (result?.ok === false)
           ? `Tool error: ${result.error}`
