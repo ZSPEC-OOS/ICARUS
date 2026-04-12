@@ -92,20 +92,23 @@ function evalToolSource(source) {
   let code = source
     .replace(/^\s*import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '// [import removed]')
 
-  // Transform: export const X = …  → const X = …; __exports__.X = X
-  // Transform: export async function X(  → async function X(  then __exports__.X = X
-  code = code
-    .replace(/\bexport\s+(const|let|var)\s+(\w+)/g, (_, kw, name) => `${kw} ${name}; __exports__['${name}'] = ${name}; void 0; const __dummy_${name}_`)
-    .replace(/\bexport\s+(async\s+)?function\s+(\w+)/g, (_, asyncKw, name) => `${asyncKw || ''}function ${name}`)
+  // Collect exported names before stripping keywords
+  const varExportNames = []
+  source.replace(/\bexport\s+(?:const|let|var)\s+(\w+)/g, (_, n) => varExportNames.push(n))
 
-  // After replacing, re-attach function names to __exports__
   const fnNames = []
   source.replace(/\bexport\s+(?:async\s+)?function\s+(\w+)/g, (_, n) => fnNames.push(n))
 
-  const assigns = fnNames.map(n => `__exports__['${n}'] = ${n};`).join('\n')
+  // Strip 'export' keyword, leaving declarations intact
+  code = code
+    .replace(/\bexport\s+(?:const|let|var)\s+/g, m => m.replace('export ', ''))
+    .replace(/\bexport\s+(async\s+)?function\s+/g, (_, asyncKw) => `${asyncKw || ''}function `)
 
-  // Remove the broken const __dummy_ lines we inserted
-  code = code.replace(/;\s*const __dummy_\w+_/g, '')
+  // Assign all exports to __exports__ after declarations have run
+  const assigns = [
+    ...varExportNames.map(n => `__exports__['${n}'] = ${n};`),
+    ...fnNames.map(n => `__exports__['${n}'] = ${n};`),
+  ].join('\n')
 
   const wrapped = `
     const __exports__ = {};
