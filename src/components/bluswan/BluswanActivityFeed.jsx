@@ -128,6 +128,16 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     ? [...conversation].reverse().find(m => m.role === 'assistant')
     : null
 
+  const hasStreamContent =
+    narrationThread.length > 0 ||
+    activityLog.length > 0 ||
+    amplifierDecisions.length > 0 ||
+    filePlan.length > 0 ||
+    !!executedPlan?.summary ||
+    !!summaryMsg ||
+    !!planApproval ||
+    (isAgentRunning && !!agentStreamText)
+
   // ── Output line renderers — branch on tuiMode ────────────────────────────
   // Tool event (narration chip or ⎿ line)
   const renderToolLine = (key, status, logMsg) => {
@@ -305,6 +315,12 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                       </div>
                     )}
                   </>
+                )}
+
+                {!hasStreamContent && boxState === 'processing' && (
+                  <div className="lk-tool-active">
+                    <BrailleSpinner /> Preparing task…
+                  </div>
                 )}
 
                 {/* Failure reason */}
