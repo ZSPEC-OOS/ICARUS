@@ -6784,6 +6784,40 @@ kbd {
   width: 1ch;
 }
 
+/* ── Output style toggle (Classic ↔ TUI) ────────────────────────────────────
+   Pill-style button row above the developing box. Appears only while the
+   box is visible so it never clutters idle state.                            */
+.lk-ost-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  width: 100%;
+  max-width: 900px;
+  margin-bottom: 6px;
+}
+.lk-ost-btn {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 2px 9px;
+  border-radius: 3px;
+  border: 1px solid rgba(176, 186, 208, 0.14);
+  background: transparent;
+  color: rgba(176, 186, 208, 0.38);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  user-select: none;
+}
+.lk-ost-btn:hover {
+  color: rgba(176, 186, 208, 0.65);
+  border-color: rgba(176, 186, 208, 0.28);
+}
+.lk-ost-btn--active {
+  background: rgba(116, 192, 252, 0.09);
+  border-color: rgba(116, 192, 252, 0.38);
+  color: rgba(116, 192, 252, 0.90);
+}
+
 /* Blinking cursor inside live narration text */
 .lk-stream-cursor {
   display: inline-block;
