@@ -160,6 +160,28 @@ const BluswanSettings = memo(function BluswanSettings({
     saveEnhancerConfig({ deepReasoning: { enabled } })
   }
 
+  // ── Model 2 Attachment ───────────────────────────────────────────────────
+  const [m2Config, setM2Config] = useState(() => {
+    const cfg = loadEnhancerConfig()
+    return { enabled: false, escalateOnError: true, escalateOnQualityFail: false, modelId: null, ...cfg.model2Attachment }
+  })
+
+  function handleM2Toggle(enabled) {
+    const next = { ...m2Config, enabled }
+    setM2Config(next)
+    saveEnhancerConfig({ model2Attachment: next })
+  }
+  function handleM2ModelSelect(modelId) {
+    const next = { ...m2Config, modelId: modelId || null }
+    setM2Config(next)
+    saveEnhancerConfig({ model2Attachment: next })
+  }
+  function handleM2QualityToggle(escalateOnQualityFail) {
+    const next = { ...m2Config, escalateOnQualityFail }
+    setM2Config(next)
+    saveEnhancerConfig({ model2Attachment: next })
+  }
+
   function updateModelKey(id, key) {
     const updated = (models || []).map(m => m.id === id ? { ...m, apiKey: key } : m)
     setModels(updated)
@@ -518,7 +540,83 @@ export async function test() { return { passed: true, message: "Smoke test passe
         </div>
       </div>
 
-      {/* ── Modular Tools ─────────────────────────────────────────────────── */} 
+      {/* ── Model 2 Attachment ────────────────────────────────────────────── */}
+      <div className="lk-settings-section">
+        <div className="lk-settings-section-hd">
+          <span className="lk-settings-section-icon">⬆</span>
+          Model 2 Attachment
+          {m2Config.enabled && m2Config.modelId && (
+            <span className="lk-settings-badge lk-settings-badge--ok">● active</span>
+          )}
+        </div>
+        <div className="lk-settings-section-body">
+          <span className="lk-hint">
+            When Model 1 fails or errors out, BLUSWAN automatically re-runs the full task
+            using this backup model. Attach a more powerful model as your safety net.
+          </span>
+          <label className="lk-toggle">
+            <input
+              type="checkbox"
+              checked={m2Config.enabled}
+              onChange={e => handleM2Toggle(e.target.checked)}
+            />
+            <span>Enable Model 2 Attachment</span>
+          </label>
+
+          {m2Config.enabled && (
+            <>
+              <div style={{ marginTop: '0.75rem' }}>
+                <div className="lk-hint" style={{ marginBottom: '0.35rem' }}>Escalation Model</div>
+                <select
+                  className="lk-input"
+                  value={m2Config.modelId || ''}
+                  onChange={e => handleM2ModelSelect(e.target.value)}
+                >
+                  <option value="">— Select a model —</option>
+                  {(models || []).map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}{!m.apiKey ? ' (no key)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="lk-toggle" style={{ marginTop: '0.75rem' }}>
+                <input
+                  type="checkbox"
+                  checked={!!m2Config.escalateOnQualityFail}
+                  onChange={e => handleM2QualityToggle(e.target.checked)}
+                />
+                <span>
+                  Also escalate on quality gate failures
+                  <span className="lk-hint-inline"> (reruns the full task when reliability checks fail — slower)</span>
+                </span>
+              </label>
+
+              {m2Config.modelId && (() => {
+                const m2 = (models || []).find(m => m.id === m2Config.modelId)
+                if (!m2) return (
+                  <div className="lk-settings-model-save-error" style={{ marginTop: '0.5rem' }}>
+                    Model not found — select a configured model above.
+                  </div>
+                )
+                if (!m2.apiKey) return (
+                  <div className="lk-settings-model-save-error" style={{ marginTop: '0.5rem' }}>
+                    ⚠ {m2.name} has no API key — add one in the AI Models section.
+                  </div>
+                )
+                return (
+                  <div className="lk-settings-m2-ready" style={{ marginTop: '0.5rem', fontSize: '0.82rem', color: 'var(--lk-color-ok, #3fb950)' }}>
+                    ● Ready — {m2.name} will take over if Model 1 fails
+                  </div>
+                )
+              })()}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Modular Tools ─────────────────────────────────────────────────── */}
       <div className="lk-settings-section">
         <div className="lk-settings-section-hd">
           <span className="lk-settings-section-icon">🧩</span>
