@@ -40,6 +40,7 @@ const ENHANCER_CFG_KEY = KEYS.LS.ENHANCER_CONFIG
  * @property {{enabled:boolean,complexityThreshold:number,maxSubtasks:number}} taskDecomposer
  * @property {{enabled:boolean,buildOnLoopStart:boolean,maxSymbolsPerFile:number}} codeIntelligence
  * @property {{enabled:boolean,fuzzyThreshold:number,syntaxCheck:boolean}} patchValidator
+ * @property {{enabled:boolean,escalateOnError:boolean,escalateOnQualityFail:boolean,modelId:string|null}} model2Attachment
  */
 
 /** @type {EnhancerConfig} */
@@ -117,6 +118,19 @@ export const DEFAULT_ENHANCER_CONFIG = {
     enabled:        true,
     fuzzyThreshold: 0.65,   // min Levenshtein similarity to surface a nearest-match hint
     syntaxCheck:    true,   // run bracket-balance check after a successful exact match
+  },
+
+  // model2Attachment: optional escalation model that takes over when Model 1
+  // fails or produces a response that doesn't pass reliability gates.
+  // modelId must match an id in the loaded model list (aiService loadModels).
+  // escalateOnError     — triggers when the primary model API call throws (default on).
+  // escalateOnQualityFail — triggers when reliability gates fail after a full run
+  //                         (more expensive: the whole task runs twice).
+  model2Attachment: {
+    enabled:               false,
+    escalateOnError:       true,
+    escalateOnQualityFail: false,
+    modelId:               null,
   },
 }
 

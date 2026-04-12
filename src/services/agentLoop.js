@@ -108,9 +108,22 @@ export async function runAgentLoop({
   enhancerConfig: enhancerConfigOverrides,
   availableModels,
   executionMode = 'default',
+  _escalated = false,   // internal guard — prevents infinite escalation chain
 }) {
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
   memoryGraphService.init()
+
+  // ── Model 2 Attachment: resolve escalation model from enhancer config ─────
+  // Resolved once at loop start.  If _escalated is true we are already running
+  // as the backup model, so set model2Config to null to prevent re-escalation.
+  const m2Cfg = enhancerConfig.model2Attachment
+  const model2Config = (!_escalated && m2Cfg?.enabled && m2Cfg?.modelId)
+    ? ((availableModels || []).find(m => m.id === m2Cfg.modelId && m.apiKey) ?? null)
+    : null
+
+  // Mutable flag set by the execute FSM handler when escalation should fire
+  // after the FSM completes (avoids returning from inside a nested async handler).
+  let needsModel2Escalation = false
 
   // ── Code Intelligence: build / refresh symbol index from shadow context ───
   // Zero-cost when the index is current (TTL + size guard in buildIndex).
@@ -345,6 +358,13 @@ export async function runAgentLoop({
               finalText = 'Agent stopped.'
               return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
             }
+            // Model 2 Attachment — escalate to backup model on primary error
+            if (model2Config && m2Cfg?.escalateOnError !== false) {
+              needsModel2Escalation = true
+              onEvent?.({ type: 'model2_escalation', reason: 'primary_error', error: err.message, model2Id: model2Config.modelId || model2Config.id })
+              finalText = `Primary model error: ${err.message}. Escalating to backup model…`
+              return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
+            }
             onEvent({ type: 'error', message: err.message })
             finalText = `Agent error: ${err.message}`
             return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
@@ -530,6 +550,18 @@ export async function runAgentLoop({
   }
   const verification = run.context.verification
 
+  // ── Model 2 Attachment: fire escalation if primary model errored ──────────
+  if (needsModel2Escalation && model2Config) {
+    return runAgentLoop({
+      task, systemPrompt, tools, executeTool,
+      modelConfig: model2Config,
+      onEvent, signal, conversationHistory,
+      enhancerConfig: enhancerConfigOverrides,
+      availableModels, executionMode,
+      _escalated: true,
+    })
+  }
+
   if (verification?.passed) {
     // Record prompt registry outcomes for all active variants (success)
     try {
@@ -551,6 +583,19 @@ export async function runAgentLoop({
   const failedSummary = verification?.failedGateIds?.length
     ? `Reliability gates failed: ${verification.failedGateIds.join(', ')}`
     : 'Reliability verification failed.'
+
+  // ── Model 2 Attachment: escalate on quality-gate failure (opt-in) ─────────
+  if (model2Config && m2Cfg?.escalateOnQualityFail) {
+    onEvent?.({ type: 'model2_escalation', reason: 'quality_gates', failedGates: verification?.failedGateIds, model2Id: model2Config.modelId || model2Config.id })
+    return runAgentLoop({
+      task, systemPrompt, tools, executeTool,
+      modelConfig: model2Config,
+      onEvent, signal, conversationHistory,
+      enhancerConfig: enhancerConfigOverrides,
+      availableModels, executionMode,
+      _escalated: true,
+    })
+  }
 
   const rollbackResult = run.context.rollback
   const rollbackSucceeded = !!rollbackResult?.rolledBack

@@ -323,6 +323,13 @@ export function useAgentSession({
             setOrchLanes(prev => applyLaneEvent(prev, ev))
             break
 
+          case 'model2_escalation': {
+            const reasonLabel = ev.reason === 'quality_gates' ? 'quality gates failed' : 'primary model error'
+            logActivity('warn', `⬆ Model 2 escalation triggered (${reasonLabel}) — retrying with ${ev.model2Id || 'backup model'}`)
+            updateActivity(startId, { msg: `⚡ Escalating to backup model…` })
+            break
+          }
+
           case 'orchestration_ensemble':
             setOrchLanes(prev => applyLaneEvent(prev, ev))
             logActivity('agent', `≡ ensemble: [${(ev.modelsUsed || []).join(', ')}]`)
