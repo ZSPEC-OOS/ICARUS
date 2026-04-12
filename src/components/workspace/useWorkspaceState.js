@@ -1350,11 +1350,17 @@ export function useWorkspaceState({
     // ── load_ — direct modular tool execution, bypasses all AI/GitHub logic ────
     const loadMatch = fullMsg.match(/^load_(\S+)(?:\s+([\s\S]*))?$/)
     if (loadMatch) {
-      const toolId   = loadMatch[1]
+      const toolId    = loadMatch[1].toLowerCase()
       const toolInput = (loadMatch[2] || '').trim()
       setConversation(prev => [...prev, { role: 'user', content: fullMsg }])
       setError(''); setIsGenerating(true)
       try {
+        // Expose all installed tools to window.__bluswanTools so tools like
+        // ShadowBox that use their own internal registry can find them.
+        window.__bluswanTools = getAllTools().map(t => ({
+          meta:    { id: t.id, name: t.name, version: t.version, description: t.description, category: t.category, author: t.author },
+          execute: t._execute,
+        }))
         const result = await executeTool(toolId, toolInput)
         const out = (result?.ok === false)
           ? `Tool error: ${result.error}`
