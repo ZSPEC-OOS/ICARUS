@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect } from 'react'
+import { memo, useRef, useEffect, useState } from 'react'
 import BluswanPhasePlan from './BluswanPhasePlan'
 
 // ─── Inline markdown (for stream text and summaries) ─────────────────────────
@@ -39,6 +39,17 @@ function renderMarkdown(text) {
   })
   flushList()
   return blocks
+}
+
+// ─── Braille spinner (mirrors BLUSWAN TUI: ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏) ─────────────
+const BRAILLE = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+function BrailleSpinner() {
+  const [frame, setFrame] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setFrame(f => (f + 1) % BRAILLE.length), 80)
+    return () => clearInterval(id)
+  }, [])
+  return <span className="lk-braille-spinner">{BRAILLE[frame]}</span>
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -136,9 +147,8 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
 
                 {/* LRM: generating plan status */}
                 {lrmGeneratingPlan && (
-                  <div className="lk-stream-line lk-stream-line--live">
-                    <span className="lk-gh-flow-spinner" style={{marginRight:'6px'}}>◌</span>
-                    Analysing request and building phase plan…
+                  <div className="lk-tool-active">
+                    <BrailleSpinner /> Analysing request and building phase plan…
                   </div>
                 )}
 
@@ -154,18 +164,14 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                         )
                       }
                       if (entry.kind === 'tool') {
+                        const cls = entry.status === 'done'  ? 'lk-tool-result'
+                                  : entry.status === 'error' ? 'lk-tool-error'
+                                  :                            'lk-tool-active'
                         return (
-                          <div
-                            key={`t-${i}`}
-                            className={[
-                              'lk-narration-chip',
-                              entry.status === 'done'  ? 'lk-narration-chip--done'  : '',
-                              entry.status === 'error' ? 'lk-narration-chip--error' : '',
-                              entry.status === 'active'? 'lk-narration-chip--active': '',
-                            ].filter(Boolean).join(' ')}
-                          >
-                            {entry.status === 'done'  ? '✓' :
-                             entry.status === 'error' ? '✗' : '◌'} {entry.logMsg}
+                          <div key={`t-${i}`} className={cls}>
+                            {entry.status === 'done'  ? '⎿' :
+                             entry.status === 'error' ? '✗' : <BrailleSpinner />}
+                            {' '}{entry.logMsg}
                           </div>
                         )
                       }
@@ -184,51 +190,44 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                     {/* Fallback: raw activity log when no narration yet */}
                     {activityLog.map(entry => {
                       const text = [entry.msg, entry.detail].filter(Boolean).join(' — ')
-                      const done = entry.status === 'done' || entry.status === 'skip'
+                      const done   = entry.status === 'done' || entry.status === 'skip'
+                      const err    = entry.status === 'error'
                       const active = entry.status === 'active'
                       return (
                         <div
                           key={entry.id}
-                          className={[
-                            'lk-stream-line',
-                            done   ? 'lk-stream-line--dim'  : '',
-                            active ? 'lk-stream-line--live' : '',
-                          ].filter(Boolean).join(' ')}
+                          className={done ? 'lk-tool-result' : err ? 'lk-tool-error' : active ? 'lk-tool-active' : 'lk-stream-line'}
                         >
-                          {text}
+                          {done && '⎿ '}{err && '✗ '}{active && <><BrailleSpinner />{' '}</>}{text}
                         </div>
                       )
                     })}
 
                     {/* Amplifier decisions */}
                     {amplifierDecisions.map((d, i) => (
-                      <div key={`amp-${i}`} className="lk-stream-line">{d}</div>
+                      <div key={`amp-${i}`} className="lk-tool-result">⎿ {d}</div>
                     ))}
 
                     {/* Status lines */}
-                    {isAmplifying    && <div className="lk-stream-line lk-stream-line--live">Amplifying intent</div>}
-                    {isPlanning      && <div className="lk-stream-line lk-stream-line--live">Planning across repo</div>}
-                    {remediationStatus && <div className="lk-stream-line lk-stream-line--live">{remediationStatus}</div>}
-                    {isGenerating    && <div className="lk-stream-line lk-stream-line--live">Generating</div>}
-                    {isPushing       && <div className="lk-stream-line lk-stream-line--live">{pushStep || 'Pushing'}</div>}
+                    {isAmplifying    && <div className="lk-tool-active"><BrailleSpinner /> Amplifying intent</div>}
+                    {isPlanning      && <div className="lk-tool-active"><BrailleSpinner /> Planning across repo</div>}
+                    {remediationStatus && <div className="lk-tool-active"><BrailleSpinner /> {remediationStatus}</div>}
+                    {isGenerating    && <div className="lk-tool-active"><BrailleSpinner /> Generating</div>}
+                    {isPushing       && <div className="lk-tool-active"><BrailleSpinner /> {pushStep || 'Pushing'}</div>}
 
                     {/* File plan */}
                     {filePlan.map(entry => {
-                      const action = entry.action === 'modify' ? 'editing' : 'writing'
+                      const action = entry.action === 'modify' ? 'Edit' : 'Write'
                       const done   = entry.status === 'done'
                       const err    = entry.status === 'error'
                       const live   = !done && !err
                       return (
                         <div
                           key={`fp-${entry.path}`}
-                          className={[
-                            'lk-stream-line',
-                            done ? 'lk-stream-line--dim'   : '',
-                            err  ? 'lk-stream-line--error' : '',
-                            live ? 'lk-stream-line--live'  : '',
-                          ].filter(Boolean).join(' ')}
+                          className={done ? 'lk-tool-result' : err ? 'lk-tool-error' : 'lk-tool-active'}
                         >
-                          {action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
+                          {done && '⎿'}{err && '✗'}{live && <BrailleSpinner />}
+                          {' '}{action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
                         </div>
                       )
                     })}

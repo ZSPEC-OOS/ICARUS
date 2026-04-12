@@ -6743,6 +6743,47 @@ kbd {
   background: rgba(255, 107, 107, 0.05);
 }
 
+/* ── TUI-style tool output lines ────────────────────────────────────────────
+   Mirrors BLUSWAN terminal output: ⎿ prefix for completed, Braille spinner
+   for active, ✗ for errors. Replaces rapid stream-line badge chips.          */
+.lk-tool-result,
+.lk-tool-active,
+.lk-tool-error {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+/* Completed — dimmed, ⎿ prefix */
+.lk-tool-result {
+  color: rgba(176, 186, 208, 0.32);
+}
+
+/* Active — bright, spinner prefix */
+.lk-tool-active {
+  color: rgba(176, 186, 208, 0.82);
+}
+
+/* Error — danger tint, ✗ prefix */
+.lk-tool-error {
+  color: rgba(255, 145, 145, 0.78);
+}
+
+/* Braille spinner character */
+.lk-braille-spinner {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+  color: rgba(116, 192, 252, 0.80);
+  flex-shrink: 0;
+  display: inline-block;
+  width: 1ch;
+}
+
 /* Blinking cursor inside live narration text */
 .lk-stream-cursor {
   display: inline-block;
