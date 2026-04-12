@@ -21,6 +21,7 @@ import {
   toolToLogMessage,
 } from '../../services/interactivePipeline.js'
 import { applyLaneEvent } from '../../components/bluswan/BluswanTaskLanes.jsx'
+import { getAllTools } from '../../services/toolLoader.js'
 
 // Read-only tools — used when planMode is active (no writes, no shell exec)
 const PLAN_MODE_TOOLS = new Set([
@@ -75,7 +76,7 @@ export function useAgentSession({
   const runningRef      = useRef(false)   // guard against concurrent runs
   const pendingToolsRef = useRef(new Map()) // Map<toolId, activityId> for matching tool_start/done
 
-  const run = useCallback(async (task, conversationHistory = [], { forceBuildMode = false, skipAgentStart = false, branchOverride = null, executionMode = 'default' } = {}) => {
+  const run = useCallback(async (task, conversationHistory = [], { forceBuildMode = false, skipAgentStart = false, branchOverride = null, executionMode = 'default', modularToolId = null } = {}) => {
     if (!task?.trim()) { onSetError?.('Enter a task for the agent.'); return }
     if (!modelConfig)        { onSetError?.('Select a model.'); return }
     if (!modelConfig.apiKey) { onSetError?.(`No API key for "${modelConfig.name}". Open Admin Panel.`); return }
@@ -119,6 +120,7 @@ export function useAgentSession({
       modelConfig,
       availableModels: availableModels || [],
       hooksConfig:     hooksConfig || null,
+      modularTools:    modularTool ? [modularTool] : [],
       onFileWrite: (path, action) => {
         setAgentFiles(prev => prev.includes(path) ? prev : [...prev, path])
         onFileWrite?.(path, action)
@@ -127,9 +129,28 @@ export function useAgentSession({
 
     // In plan mode only include read-only tools so the model can't accidentally
     // write files even if it tries to call a mutating tool.
-    const tools = (planMode && !forceBuildMode)
+    let tools = (planMode && !forceBuildMode)
       ? AGENT_TOOLS.filter(t => PLAN_MODE_TOOLS.has(t.name))
       : AGENT_TOOLS
+
+    // Inject a modular tool if requested via loadworkflow_
+    let modularTool = null
+    if (modularToolId) {
+      modularTool = getAllTools().find(t => t.id === modularToolId) || null
+      if (modularTool) {
+        tools = [...tools, {
+          name: `modular_${modularToolId}`,
+          description: `[Modular Tool: ${modularTool.name}] ${modularTool.description || ''} Use this when the task requires ${modularTool.name} functionality.`,
+          input_schema: {
+            type: 'object',
+            properties: {
+              input: { type: 'string', description: 'Input to pass to the tool' },
+            },
+            required: ['input'],
+          },
+        }]
+      }
+    }
 
     const systemPrompt = buildAgentSystemPrompt(
       shadowContext.getConventions(),

@@ -56,6 +56,7 @@ import {
   STYLE_EXAMPLES_LIMIT,
 } from '../../config/constants'
 import { KEYS } from '../../shared/storageKeys.js'
+import { executeTool, getAllTools } from '../../services/toolLoader'
 
 // ─── Persistence helpers ──────────────────────────────────────────────────────
 const SETTINGS_KEY    = KEYS.LS.SETTINGS
@@ -1346,20 +1347,53 @@ export function useWorkspaceState({
     const fileContext = attachedFiles.length > 0 ? `\n\n[Attached files: ${attachedFiles.map(f => f.name).join(', ')}]` : ''
     const fullMsg = (userMsg + fileContext).trim()
     setPrompt(''); setAttachedFiles([])
-    if (longRequestMode && !lrmPlan && !isConversationalPrompt(fullMsg)) { handleLrmGeneratePlan(fullMsg); return }
-    if (isConversationalPrompt(fullMsg)) { handleConversationalReply(fullMsg); return }
-    if (shouldUseAgent) {
+    // ── load_ — direct modular tool execution, bypasses all AI/GitHub logic ────
+    const loadMatch = fullMsg.match(/^load_(\S+)(?:\s+([\s\S]*))?$/)
+    if (loadMatch) {
+      const toolId   = loadMatch[1]
+      const toolInput = (loadMatch[2] || '').trim()
+      setConversation(prev => [...prev, { role: 'user', content: fullMsg }])
+      setError(''); setIsGenerating(true)
+      try {
+        const result = await executeTool(toolId, toolInput)
+        const out = (result?.ok === false)
+          ? `Tool error: ${result.error}`
+          : typeof result?.data !== 'undefined'
+            ? (typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2))
+            : JSON.stringify(result, null, 2)
+        setConversation(prev => [...prev, { role: 'assistant', content: `[${toolId}]\n${out}` }])
+      } catch (e) {
+        setConversation(prev => [...prev, { role: 'assistant', content: `Tool execution failed: ${e.message}` }])
+      } finally {
+        setIsGenerating(false)
+      }
+      return
+    }
+
+    // ── loadworkflow_ — inject modular tool into agent workflow ──────────────
+    let modularToolId = null
+    let effectiveMsg  = fullMsg
+    const workflowMatch = fullMsg.match(/^loadworkflow_(\S+)(?:\s+([\s\S]*))?$/)
+    if (workflowMatch) {
+      modularToolId = workflowMatch[1]
+      effectiveMsg  = (workflowMatch[2] || '').trim()
+      if (!effectiveMsg) { setError('Add a task after loadworkflow_<toolname>.'); return }
+    }
+
+    if (longRequestMode && !lrmPlan && !isConversationalPrompt(effectiveMsg)) { handleLrmGeneratePlan(effectiveMsg); return }
+    if (isConversationalPrompt(effectiveMsg)) { handleConversationalReply(effectiveMsg); return }
+    if (shouldUseAgent || modularToolId) {
       let branchOverride = null
       if (hasGithub && !dryRun) {
         try {
           const branchData = await getBranch(githubToken, repoOwner, repoName, baseBranch)
-          const newBranch  = generateBranchName(fullMsg)
+          const newBranch  = generateBranchName(effectiveMsg)
           await createBranch(githubToken, repoOwner, repoName, newBranch, branchData.commit.sha)
           branchOverride = newBranch; agentBranchRef.current = newBranch
         } catch (err) { setError(`Failed to create branch: ${err.message}`); return }
       }
-      agentSession.run(fullMsg, conversation.slice(-10), { branchOverride, executionMode })
-    } else { handleGenerate(fullMsg) }
+      agentSession.run(effectiveMsg, conversation.slice(-10), { branchOverride, executionMode, modularToolId })
+    } else { handleGenerate(effectiveMsg) }
   }, [prompt, attachedFiles, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleKeyDown = useCallback((e) => {
