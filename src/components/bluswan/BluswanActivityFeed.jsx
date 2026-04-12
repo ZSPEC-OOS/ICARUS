@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect } from 'react'
+import { memo, useRef, useEffect, useState } from 'react'
 import BluswanPhasePlan from './BluswanPhasePlan'
 
 // ─── Inline markdown (for stream text and summaries) ─────────────────────────
@@ -41,6 +41,17 @@ function renderMarkdown(text) {
   return blocks
 }
 
+// ─── Braille spinner (mirrors BLUSWAN TUI: ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏) ─────────────
+const BRAILLE = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+function BrailleSpinner() {
+  const [frame, setFrame] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setFrame(f => (f + 1) % BRAILLE.length), 80)
+    return () => clearInterval(id)
+  }, [])
+  return <span className="lk-braille-spinner">{BRAILLE[frame]}</span>
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 const BluswanActivityFeed = memo(function BluswanActivityFeed({
   activityLog,
@@ -72,6 +83,9 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   onLrmCancel,
 }) {
   const streamBoxRef = useRef(null)
+
+  // ── Output style: true = TUI (Braille spinner + ⎿), false = Classic (◌/✓ chips)
+  const [tuiMode, setTuiMode] = useState(true)
 
   // Auto-scroll to bottom on every render so new lines stay visible
   useEffect(() => {
@@ -114,6 +128,58 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     ? [...conversation].reverse().find(m => m.role === 'assistant')
     : null
 
+  // ── Output line renderers — branch on tuiMode ────────────────────────────
+  // Tool event (narration chip or ⎿ line)
+  const renderToolLine = (key, status, logMsg) => {
+    if (tuiMode) {
+      const cls = status === 'done'  ? 'lk-tool-result'
+                : status === 'error' ? 'lk-tool-error'
+                :                      'lk-tool-active'
+      return (
+        <div key={key} className={cls}>
+          {status === 'done' ? '⎿' : status === 'error' ? '✗' : <BrailleSpinner />}
+          {' '}{logMsg}
+        </div>
+      )
+    }
+    return (
+      <div key={key} className={[
+        'lk-narration-chip',
+        status === 'done'  ? 'lk-narration-chip--done'  : '',
+        status === 'error' ? 'lk-narration-chip--error' : '',
+        (!status || status === 'active') ? 'lk-narration-chip--active' : '',
+      ].filter(Boolean).join(' ')}>
+        {status === 'done' ? '✓' : status === 'error' ? '✗' : '◌'} {logMsg}
+      </div>
+    )
+  }
+
+  // Raw activity-log or file-plan stream line
+  const renderStreamEntry = (key, { done, err, active, text }) => {
+    if (tuiMode) {
+      return (
+        <div key={key} className={done ? 'lk-tool-result' : err ? 'lk-tool-error' : active ? 'lk-tool-active' : 'lk-stream-line'}>
+          {done && '⎿ '}{err && '✗ '}{active && <><BrailleSpinner />{' '}</>}{text}
+        </div>
+      )
+    }
+    return (
+      <div key={key} className={[
+        'lk-stream-line',
+        done   ? 'lk-stream-line--dim'   : '',
+        err    ? 'lk-stream-line--error' : '',
+        active ? 'lk-stream-line--live'  : '',
+      ].filter(Boolean).join(' ')}>
+        {text}
+      </div>
+    )
+  }
+
+  // Single-line status (Amplifying / Planning / Generating / Pushing / LRM)
+  const renderStatusLine = (key, label) => tuiMode
+    ? <div key={key} className="lk-tool-active"><BrailleSpinner /> {label}</div>
+    : <div key={key} className="lk-stream-line lk-stream-line--live">{label}</div>
+
   return (
     <div className="lk-output lk-activity-output" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="lk-activity-feed" ref={feedRef}>
@@ -121,6 +187,19 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
         {/* ── Single developing stream box ───────────────────────────────── */}
         {isDeveloping && (
           <div className="lk-developing-box-center">
+
+            {/* ── Output style toggle ──────────────────────────────────── */}
+            <div className="lk-ost-row">
+              <button
+                className={`lk-ost-btn${!tuiMode ? ' lk-ost-btn--active' : ''}`}
+                onClick={() => setTuiMode(false)}
+              >Classic</button>
+              <button
+                className={`lk-ost-btn${tuiMode ? ' lk-ost-btn--active' : ''}`}
+                onClick={() => setTuiMode(true)}
+              >TUI</button>
+            </div>
+
             <div className={['lk-developing-box-wrap', boxState && `lk-developing-box-wrap--${boxState}`].filter(Boolean).join(' ')}>
               <div className="lk-developing-box" ref={streamBoxRef}>
 
@@ -135,12 +214,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                 )}
 
                 {/* LRM: generating plan status */}
-                {lrmGeneratingPlan && (
-                  <div className="lk-stream-line lk-stream-line--live">
-                    <span className="lk-gh-flow-spinner" style={{marginRight:'6px'}}>◌</span>
-                    Analysing request and building phase plan…
-                  </div>
-                )}
+                {lrmGeneratingPlan && renderStatusLine('lrm-gen', 'Analysing request and building phase plan…')}
 
                 {/* ── Narration thread (agent mode) ─────────────────────── */}
                 {narrationThread.length > 0 ? (
@@ -154,20 +228,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                         )
                       }
                       if (entry.kind === 'tool') {
-                        return (
-                          <div
-                            key={`t-${i}`}
-                            className={[
-                              'lk-narration-chip',
-                              entry.status === 'done'  ? 'lk-narration-chip--done'  : '',
-                              entry.status === 'error' ? 'lk-narration-chip--error' : '',
-                              entry.status === 'active'? 'lk-narration-chip--active': '',
-                            ].filter(Boolean).join(' ')}
-                          >
-                            {entry.status === 'done'  ? '✓' :
-                             entry.status === 'error' ? '✗' : '◌'} {entry.logMsg}
-                          </div>
-                        )
+                        return renderToolLine(`t-${i}`, entry.status, entry.logMsg)
                       }
                       return null
                     })}
@@ -183,41 +244,44 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                   <>
                     {/* Fallback: raw activity log when no narration yet */}
                     {activityLog.map(entry => {
-                      const text = [entry.msg, entry.detail].filter(Boolean).join(' — ')
-                      const done = entry.status === 'done' || entry.status === 'skip'
+                      const text   = [entry.msg, entry.detail].filter(Boolean).join(' — ')
+                      const done   = entry.status === 'done' || entry.status === 'skip'
+                      const err    = entry.status === 'error'
                       const active = entry.status === 'active'
-                      return (
-                        <div
-                          key={entry.id}
-                          className={[
-                            'lk-stream-line',
-                            done   ? 'lk-stream-line--dim'  : '',
-                            active ? 'lk-stream-line--live' : '',
-                          ].filter(Boolean).join(' ')}
-                        >
-                          {text}
-                        </div>
-                      )
+                      return renderStreamEntry(entry.id, { done, err, active, text })
                     })}
 
                     {/* Amplifier decisions */}
-                    {amplifierDecisions.map((d, i) => (
-                      <div key={`amp-${i}`} className="lk-stream-line">{d}</div>
-                    ))}
+                    {amplifierDecisions.map((d, i) => tuiMode
+                      ? <div key={`amp-${i}`} className="lk-tool-result">⎿ {d}</div>
+                      : <div key={`amp-${i}`} className="lk-stream-line">{d}</div>
+                    )}
 
                     {/* Status lines */}
-                    {isAmplifying    && <div className="lk-stream-line lk-stream-line--live">Amplifying intent</div>}
-                    {isPlanning      && <div className="lk-stream-line lk-stream-line--live">Planning across repo</div>}
-                    {remediationStatus && <div className="lk-stream-line lk-stream-line--live">{remediationStatus}</div>}
-                    {isGenerating    && <div className="lk-stream-line lk-stream-line--live">Generating</div>}
-                    {isPushing       && <div className="lk-stream-line lk-stream-line--live">{pushStep || 'Pushing'}</div>}
+                    {isAmplifying    && renderStatusLine('amp',  'Amplifying intent')}
+                    {isPlanning      && renderStatusLine('plan', 'Planning across repo')}
+                    {remediationStatus && renderStatusLine('rem', remediationStatus)}
+                    {isGenerating    && renderStatusLine('gen',  'Generating')}
+                    {isPushing       && renderStatusLine('push', pushStep || 'Pushing')}
 
                     {/* File plan */}
                     {filePlan.map(entry => {
+                      const done = entry.status === 'done'
+                      const err  = entry.status === 'error'
+                      const live = !done && !err
+                      if (tuiMode) {
+                        const action = entry.action === 'modify' ? 'Edit' : 'Write'
+                        return (
+                          <div
+                            key={`fp-${entry.path}`}
+                            className={done ? 'lk-tool-result' : err ? 'lk-tool-error' : 'lk-tool-active'}
+                          >
+                            {done && '⎿'}{err && '✗'}{live && <BrailleSpinner />}
+                            {' '}{action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
+                          </div>
+                        )
+                      }
                       const action = entry.action === 'modify' ? 'editing' : 'writing'
-                      const done   = entry.status === 'done'
-                      const err    = entry.status === 'error'
-                      const live   = !done && !err
                       return (
                         <div
                           key={`fp-${entry.path}`}
