@@ -43,7 +43,7 @@ import { AGENT_TOOLS } from './agentTools.js'
 import { fetchNpmMeta } from './libraryContextService.js'
 import { validatePatch } from './patchValidator.js'
 import { codeIntelligence } from './codeIntelligence.js'
-import { runTDDLoop } from './tddLoop.js'
+import { runTDDLoop, parseTestOutput } from './tddLoop.js'
 
 // ── Exec bridge call ──────────────────────────────────────────────────────────
 async function execBridge(cmd, cwd) {
@@ -458,6 +458,92 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         const results = shadowContext.findRelevantFiles(input.query, input.limit || 8)
         if (results.length === 0) return `No files found matching: ${input.query}`
         return results.map(f => `${f.path} (score: ${f.score})`).join('\n')
+      }
+
+      // ── generate_pr_description ───────────────────────────────────────
+      case 'generate_pr_description': {
+        const baseBranch = (input.base_branch || 'main').trim()
+        const headBranch = (input.head_branch || branch || '').trim()
+        if (!headBranch) return 'generate_pr_description: no head branch — configure a working branch in Settings.'
+
+        let comparison
+        try {
+          comparison = await compareCommits(token, owner, repo, baseBranch, headBranch)
+        } catch (err) {
+          return `generate_pr_description: branch comparison failed — ${err.message}`
+        }
+
+        const aheadBy = comparison.ahead_by || 0
+        if (aheadBy === 0) return `No commits ahead of ${baseBranch}. Nothing to generate a PR for.`
+
+        const commits = (comparison.commits || []).slice(0, 30)
+        const files   = (comparison.files   || []).slice(0, 60)
+
+        // Group files by area (top-level dir)
+        const areas = {}
+        for (const f of files) {
+          const parts = f.filename.split('/')
+          const area  = parts.length > 1 ? parts[0] : '(root)'
+          if (!areas[area]) areas[area] = []
+          areas[area].push(f.filename)
+        }
+
+        const totalAdds = files.reduce((s, f) => s + (f.additions || 0), 0)
+        const totalDels = files.reduce((s, f) => s + (f.deletions || 0), 0)
+
+        // Commit bullets (most recent last = bottom of git log = oldest context first)
+        const commitBullets = commits
+          .map(c => `- ${(c.commit?.message || c.message || '').split('\n')[0].slice(0, 100)}`)
+          .join('\n')
+
+        // Area bullets
+        const areaBullets = Object.entries(areas)
+          .sort((a, b) => b[1].length - a[1].length)
+          .map(([area, aFiles]) => `- \`${area}/\` — ${aFiles.length} file${aFiles.length > 1 ? 's' : ''} changed`)
+          .join('\n')
+
+        // Test plan heuristics
+        const hasTestFiles  = files.some(f => /test|spec/i.test(f.filename))
+        const hasStyleFiles = files.some(f => /\.(css|scss|less|svg)$/.test(f.filename))
+        const testPlanLines = [
+          hasTestFiles  ? '- [ ] All tests pass: `npm test`' : '- [ ] Add tests for the changed logic',
+          hasStyleFiles ? '- [ ] Visually verify UI changes at different screen sizes' : null,
+          '- [ ] No console errors or warnings in the browser',
+          '- [ ] CI checks pass',
+        ].filter(Boolean).join('\n')
+
+        // PR title from the most descriptive commit (last one = tip of branch)
+        const tipMsg    = (commits.at(-1)?.commit?.message || commits.at(-1)?.message || '').split('\n')[0]
+        const prTitle   = (tipMsg || `Changes from ${headBranch}`).slice(0, 72)
+
+        const prBody = [
+          '## Summary',
+          '',
+          areaBullets,
+          '',
+          `${aheadBy} commit${aheadBy > 1 ? 's' : ''} · +${totalAdds} / -${totalDels} lines · ${files.length} file${files.length > 1 ? 's' : ''} changed`,
+          '',
+          '## Commits',
+          '',
+          commitBullets,
+          '',
+          '## Test plan',
+          '',
+          testPlanLines,
+        ].join('\n')
+
+        if (input.create) {
+          try {
+            const pr = await createPullRequest(token, owner, repo, prTitle, headBranch, baseBranch, prBody)
+            return pr?.html_url
+              ? `PR created: ${pr.html_url} (#${pr.number})\n\nTitle: ${prTitle}\n\n${prBody}`
+              : `PR creation failed — here is the generated description:\n\nTitle: ${prTitle}\n\n${prBody}`
+          } catch (err) {
+            return `PR creation failed: ${err.message}\n\nGenerated description:\n\nTitle: ${prTitle}\n\n${prBody}`
+          }
+        }
+
+        return `Title: ${prTitle}\n\n${prBody}`
       }
 
       // ── install_package ────────────────────────────────────────────────
@@ -1539,6 +1625,23 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
               const tcOut = await rawExecuteTool('type_check', { path: changedPath })
               hookLines.push(`\n[hook: type_check] ${tcOut.slice(0, 600)}`)
             } catch { /* type-check hook errors are non-fatal */ }
+          }
+
+          // Auto-debug: run test suite after every write and surface failures inline.
+          // The model sees pass/fail counts on the same turn it made the edit and
+          // will naturally call edit_file again to fix any failures — no extra loop needed.
+          if (hooksConfig.autoTestAfterWrite) {
+            try {
+              const cmd = (hooksConfig.testCmd?.trim()) || 'npm test -- --passWithNoTests 2>&1 | tail -60'
+              const testOut = await execBridge(cmd, null)
+              const metrics = parseTestOutput(testOut)
+              const badge   = metrics.passRate >= 1 && metrics.total > 0
+                ? `✓ ${metrics.passed}/${metrics.total} tests passing`
+                : metrics.total > 0
+                  ? `✗ ${metrics.failed}/${metrics.total} failing — ${metrics.failures.slice(0, 2).map(f => f.name).join(', ')}`
+                  : `(no test results — check test command in Settings)`
+              hookLines.push(`\n[hook: auto-test] ${badge}\n${testOut.slice(-600)}`)
+            } catch { /* auto-test hook errors are non-fatal */ }
           }
 
           if (hookLines.length) output = output + hookLines.join('')

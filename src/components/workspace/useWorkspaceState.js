@@ -203,6 +203,8 @@ export function useWorkspaceState({
   const [hooksConfig,    setHooksConfig]    = useState({
     autoLintAfterWrite:     saved.hooksConfig?.autoLintAfterWrite     ?? false,
     autoTypeCheckAfterEdit: saved.hooksConfig?.autoTypeCheckAfterEdit ?? false,
+    autoTestAfterWrite:     saved.hooksConfig?.autoTestAfterWrite     ?? false,
+    testCmd:                saved.hooksConfig?.testCmd                ?? '',
   })
   const planMode = true
   const [planApproval,    setPlanApproval]    = useState(null)

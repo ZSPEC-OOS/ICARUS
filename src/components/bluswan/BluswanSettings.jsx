@@ -947,6 +947,24 @@ export async function test() { return { passed: true, message: "Smoke test passe
         <label className="lk-toggle"><input type="checkbox" checked={deepReasoningEnabled} onChange={handleDeepReasoningToggle} /><span>Deep reasoning pipeline <span className="lk-hint-inline">(structured plan → RAG retrieval → critique loop)</span></span></label>
         <label className="lk-toggle"><input type="checkbox" checked={hooksConfig?.autoLintAfterWrite ?? false} onChange={e => setHooksConfig(h => ({ ...h, autoLintAfterWrite: e.target.checked }))} /><span>Auto-lint after write <span className="lk-hint-inline">(run ESLint on every edited .js/.ts file)</span></span></label>
         <label className="lk-toggle"><input type="checkbox" checked={hooksConfig?.autoTypeCheckAfterEdit ?? false} onChange={e => setHooksConfig(h => ({ ...h, autoTypeCheckAfterEdit: e.target.checked }))} /><span>Auto type-check after edit <span className="lk-hint-inline">(run tsc on each changed file — requires bridge)</span></span></label>
+        <label className="lk-toggle"><input type="checkbox" checked={hooksConfig?.autoTestAfterWrite ?? false} onChange={e => setHooksConfig(h => ({ ...h, autoTestAfterWrite: e.target.checked }))} /><span>Auto-debug loop <span className="lk-hint-inline">(run tests after every file write — model sees failures inline and self-corrects)</span></span></label>
+        {hooksConfig?.autoTestAfterWrite && (
+          <input
+            className="lk-input"
+            placeholder="Test command (default: npm test -- --passWithNoTests)"
+            value={hooksConfig?.testCmd ?? ''}
+            onChange={e => setHooksConfig(h => ({ ...h, testCmd: e.target.value }))}
+            style={{ marginTop: '0.35rem' }}
+          />
+        )}
+        <label className="lk-toggle" style={{ marginTop: '0.35rem' }}>
+          <input
+            type="checkbox"
+            checked={(() => { try { return loadEnhancerConfig().crossSessionMemory?.enabled ?? false } catch { return false } })()}
+            onChange={e => saveEnhancerConfig({ crossSessionMemory: { enabled: e.target.checked } })}
+          />
+          <span>Cross-session memory <span className="lk-hint-inline">(auto-log each task + changed files to BLUSWAN.md so future sessions remember what was done)</span></span>
+        </label>
       </div>
 
       {/* Thinking budget slider — only shown when extended thinking is enabled */}

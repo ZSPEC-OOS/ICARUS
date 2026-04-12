@@ -349,6 +349,30 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ── PR workflow ──────────────────────────────────────────────────────────────
+  {
+    name: 'generate_pr_description',
+    description: 'Generate a complete pull request title and body by comparing the current branch against a base branch. Analyses commit history, changed files, and line diffs to produce a structured PR description with a summary, change areas, and a test plan. Optionally creates the PR immediately.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        base_branch: {
+          type: 'string',
+          description: 'Branch to compare against (default: main)',
+        },
+        head_branch: {
+          type: 'string',
+          description: 'Branch to describe (default: current working branch)',
+        },
+        create: {
+          type: 'boolean',
+          description: 'If true, immediately create the PR after generating the description (default: false)',
+        },
+      },
+      required: [],
+    },
+  },
+
   // ── Library / package management ────────────────────────────────────────────
   {
     name: 'install_package',

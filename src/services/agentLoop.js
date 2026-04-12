@@ -580,6 +580,18 @@ export async function runAgentLoop({
   }
 
   if (verification?.passed) {
+    // Cross-session memory: auto-log this task + changed files to BLUSWAN.md so
+    // future sessions can see what was done (only when files were actually changed).
+    if (enhancerConfig.crossSessionMemory?.enabled && filesChanged.length > 0 && !_escalated) {
+      try {
+        const today      = new Date().toISOString().slice(0, 10)
+        const taskSnip   = String(task || '').slice(0, 110)
+        const fileList   = filesChanged.slice(0, 8).join(', ')
+        await executeTool('update_memory', {
+          note: `[Auto ${today}] ${taskSnip} | Changed: ${fileList}`,
+        })
+      } catch { /* non-fatal — never block the done event */ }
+    }
     // Record prompt registry outcomes for all active variants (success)
     try {
       for (const [name, variantId] of Object.entries(_registryVariants)) {

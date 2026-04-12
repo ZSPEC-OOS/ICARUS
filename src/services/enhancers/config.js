@@ -41,6 +41,7 @@ const ENHANCER_CFG_KEY = KEYS.LS.ENHANCER_CONFIG
  * @property {{enabled:boolean,buildOnLoopStart:boolean,maxSymbolsPerFile:number}} codeIntelligence
  * @property {{enabled:boolean,fuzzyThreshold:number,syntaxCheck:boolean}} patchValidator
  * @property {{enabled:boolean,escalateOnError:boolean,escalateOnQualityFail:boolean,modelId:string|null}} model2Attachment
+ * @property {{enabled:boolean}} crossSessionMemory
  */
 
 /** @type {EnhancerConfig} */
@@ -131,6 +132,14 @@ export const DEFAULT_ENHANCER_CONFIG = {
     escalateOnError:       true,
     escalateOnQualityFail: false,
     modelId:               null,
+  },
+
+  // crossSessionMemory: after each successful task that changes files, auto-append
+  // a one-line session summary to BLUSWAN.md so future sessions see what was done.
+  // Since BLUSWAN.md is already injected into every system prompt, this gives the
+  // model institutional memory across sessions with zero extra tooling.
+  crossSessionMemory: {
+    enabled: false,
   },
 }
 
