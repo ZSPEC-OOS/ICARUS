@@ -290,14 +290,19 @@ export async function test() { return { passed: true, message: "Smoke test passe
       setModularInstallMsg({ type: 'error', text: 'Nothing to load — paste JSON first.' })
       return
     }
-    let descriptor
-    try { descriptor = JSON.parse(trimmed) } catch {
-      setModularInstallMsg({ type: 'error', text: 'Invalid JSON — could not parse pasted text.' })
-      return
+    let source
+    try {
+      const descriptor = JSON.parse(trimmed)
+      const meta = { ...(descriptor.toolMeta || descriptor) }
+      if (title.trim()) meta.name = title.trim()
+      source = `export const toolMeta = ${JSON.stringify(meta, null, 2)};\nexport async function execute(input, config) {\n  return { message: 'JSON tool loaded', input };\n}\nexport async function test() {\n  return { passed: true, message: 'JSON descriptor loaded.' };\n}\n`
+    } catch {
+      if (!trimmed.includes('export')) {
+        setModularInstallMsg({ type: 'error', text: 'Invalid input — paste a JS module (with export statements) or a JSON descriptor.' })
+        return
+      }
+      source = trimmed
     }
-    const meta = { ...(descriptor.toolMeta || descriptor) }
-    if (title.trim()) meta.name = title.trim()
-    const source = `export const toolMeta = ${JSON.stringify(meta, null, 2)};\nexport async function execute(input, config) {\n  return { message: 'JSON tool loaded', input };\n}\nexport async function test() {\n  return { passed: true, message: 'JSON descriptor loaded.' };\n}\n`
     const result = installToolAtSlot(source, slotIndex, 3)
     if (!result.ok) {
       setModularInstallMsg({ type: 'error', text: `Install failed: ${result.errors.join(' · ')}` })
