@@ -111,7 +111,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
     amplifierDecisions.length > 0 ||
     filePlan.length > 0 ||
     isAmplifying || isPlanning || isGenerating || isPushing ||
-    remediationStatus || (isAgentRunning && agentStreamText) ||
+    remediationStatus || isAgentRunning ||
     !!planApproval || !!executedPlan || wasTerminated || hasError ||
     lrmGeneratingPlan || !!lrmPlan
 
