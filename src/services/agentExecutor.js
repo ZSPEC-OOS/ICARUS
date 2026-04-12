@@ -40,6 +40,7 @@ import { validateToolInput, validateToolOutput, schemaVersion } from '../tools/c
 import { beginToolTrace, endToolTrace, replayTrace, setTraceLoopState } from './toolTraceStore.js'
 import { runAgentLoop } from './agentLoop.js'
 import { AGENT_TOOLS } from './agentTools.js'
+import { fetchNpmMeta } from './libraryContextService.js'
 import { validatePatch } from './patchValidator.js'
 import { codeIntelligence } from './codeIntelligence.js'
 import { runTDDLoop } from './tddLoop.js'
@@ -457,6 +458,61 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         const results = shadowContext.findRelevantFiles(input.query, input.limit || 8)
         if (results.length === 0) return `No files found matching: ${input.query}`
         return results.map(f => `${f.path} (score: ${f.score})`).join('\n')
+      }
+
+      // ── install_package ────────────────────────────────────────────────
+      case 'install_package': {
+        if (!bridgeAvailable) return 'install_package requires the exec bridge (run with npm run dev).'
+
+        const pkgs = (input.packages || [])
+          .map(p => String(p).trim())
+          .filter(Boolean)
+          .slice(0, 8)
+
+        if (!pkgs.length) return 'install_package: no packages specified.'
+
+        // Reject names that look like shell injection attempts
+        const SAFE_PKG = /^(@[\w-]+\/[\w-]+|[\w][\w\-./]*)$/
+        const bad = pkgs.filter(p => !SAFE_PKG.test(p))
+        if (bad.length) return `install_package: rejected — invalid package name(s): ${bad.join(', ')}`
+
+        const mgr = input.manager || 'npm'
+        const devFlag = input.dev
+          ? mgr === 'yarn' ? '--dev ' : '--save-dev '
+          : ''
+
+        let cmd
+        if      (mgr === 'pip')  cmd = `pip install ${pkgs.join(' ')}`
+        else if (mgr === 'yarn') cmd = `yarn add ${devFlag}${pkgs.join(' ')}`
+        else if (mgr === 'pnpm') cmd = `pnpm add ${devFlag}${pkgs.join(' ')}`
+        else                     cmd = `npm install ${devFlag}${pkgs.join(' ')}`
+
+        const installOut = await execBridge(cmd, input.cwd)
+
+        // Fetch docs for installed npm packages (best-effort, silent on failure)
+        const docsLines = []
+        if (mgr !== 'pip') {
+          const fetched = await Promise.allSettled(pkgs.slice(0, 3).map(p => fetchNpmMeta(p, 600)))
+          for (const r of fetched) {
+            const m = r.status === 'fulfilled' ? r.value : null
+            if (!m) continue
+            const lines = [
+              `\n## ${m.name} v${m.version}`,
+              m.description,
+              m.keywords   ? `Keywords: ${m.keywords}` : null,
+              m.hasTypes   ? 'TypeScript types: yes' : null,
+              m.homepage   ? `Docs: ${m.homepage}` : null,
+              m.readmeExcerpt ? `\n${m.readmeExcerpt}` : null,
+            ].filter(Boolean)
+            docsLines.push(lines.join('\n'))
+          }
+        }
+
+        const docsBlock = docsLines.length
+          ? `\n\n--- Package docs ---${docsLines.join('\n\n---\n')}`
+          : ''
+
+        return `${installOut}${docsBlock}`
       }
 
       // ── run_command ────────────────────────────────────────────────────

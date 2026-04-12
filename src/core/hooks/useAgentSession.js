@@ -339,6 +339,10 @@ export function useAgentSession({
             logActivity('agent', `◎ RAG: injected ${ev.count} context chunk${ev.count !== 1 ? 's' : ''} (${ev.totalCandidates} candidates)`)
             break
 
+          case 'library_context':
+            logActivity('agent', `◎ Library docs: fetched ${ev.count} package${ev.count !== 1 ? 's' : ''} (${(ev.packages || []).join(', ')})`)
+            break
+
           case 'verification':
             setLastVerification(ev.verification || null)
             break
