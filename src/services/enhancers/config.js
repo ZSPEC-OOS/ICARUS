@@ -42,6 +42,7 @@ const ENHANCER_CFG_KEY = KEYS.LS.ENHANCER_CONFIG
  * @property {{enabled:boolean,fuzzyThreshold:number,syntaxCheck:boolean}} patchValidator
  * @property {{enabled:boolean,escalateOnError:boolean,escalateOnQualityFail:boolean,modelId:string|null}} model2Attachment
  * @property {{enabled:boolean}} crossSessionMemory
+ * @property {{enabled:boolean,maxPagesPerSite:number,maxCharsPerPage:number}} docsCrawler
  */
 
 /** @type {EnhancerConfig} */
@@ -140,6 +141,15 @@ export const DEFAULT_ENHANCER_CONFIG = {
   // model institutional memory across sessions with zero extra tooling.
   crossSessionMemory: {
     enabled: false,
+  },
+
+  // docsCrawler: controls the on-demand documentation site crawler.
+  // maxPagesPerSite caps browser-side fetch cost per crawl_docs call.
+  // maxCharsPerPage truncates each page before chunking to limit memory graph growth.
+  docsCrawler: {
+    enabled:          true,
+    maxPagesPerSite:  20,
+    maxCharsPerPage:  8000,
   },
 }
 

@@ -325,6 +325,71 @@ export async function getAuthenticatedUser(token) {
   return ghFetch(token, '/user')
 }
 
+// ── Issues API ────────────────────────────────────────────────────────────────
+
+// List issues (excludes pull requests).  state: 'open' | 'closed' | 'all'
+export async function listIssues(token, owner, repo, state = 'open', labels = [], limit = 20) {
+  try {
+    const params = new URLSearchParams({
+      state,
+      per_page: String(Math.min(limit, 50)),
+      sort: 'updated',
+      direction: 'desc',
+    })
+    if (labels.length) params.set('labels', labels.join(','))
+    const data = await ghFetch(token, `/repos/${owner}/${repo}/issues?${params.toString()}`)
+    if (!Array.isArray(data)) return []
+    return data
+      .filter(i => !i.pull_request)
+      .map(i => ({
+        number:    i.number,
+        title:     i.title,
+        state:     i.state,
+        body:      (i.body || '').slice(0, 1000),
+        labels:    (i.labels || []).map(l => l.name),
+        assignees: (i.assignees || []).map(a => a.login),
+        comments:  i.comments,
+        createdAt: i.created_at,
+        updatedAt: i.updated_at,
+        url:       i.html_url,
+      }))
+  } catch { return [] }
+}
+
+// Fetch a single issue by number (raw GitHub response).
+export async function getIssue(token, owner, repo, number) {
+  return ghFetch(token, `/repos/${owner}/${repo}/issues/${number}`)
+}
+
+// Fetch comments on an issue (newest first, capped at limit).
+export async function getIssueComments(token, owner, repo, number, limit = 20) {
+  try {
+    const data = await ghFetch(token, `/repos/${owner}/${repo}/issues/${number}/comments?per_page=${Math.min(limit, 50)}`)
+    if (!Array.isArray(data)) return []
+    return data.map(c => ({
+      author:    c.user?.login || 'unknown',
+      body:      (c.body || '').slice(0, 2000),
+      createdAt: c.created_at,
+    }))
+  } catch { return [] }
+}
+
+// Post a comment on an issue.
+export async function addIssueComment(token, owner, repo, number, body) {
+  return ghFetch(token, `/repos/${owner}/${repo}/issues/${number}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+}
+
+// Close an issue.
+export async function closeIssue(token, owner, repo, number) {
+  return ghFetch(token, `/repos/${owner}/${repo}/issues/${number}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ state: 'closed' }),
+  })
+}
+
 // Generate a branch name: bluswan/{timestamp}-{slug}-{shortId}
 export function generateBranchName(prompt) {
   const ts = Date.now()

@@ -29,6 +29,8 @@ const PLAN_MODE_TOOLS = new Set([
   'grep', 'read_many_files', 'web_fetch', 'web_search',
   'read_source_file', 'list_source_directory',
   'lint_file', 'todo', 'get_diff', 'git_log', 'check_ci_status',
+  'list_github_issues', 'get_github_issue',
+  'hybrid_search', 'retrieve_context',
 ])
 
 export function useAgentSession({
