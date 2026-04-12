@@ -349,6 +349,32 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ── Library / package management ────────────────────────────────────────────
+  {
+    name: 'install_package',
+    description: 'Install one or more npm or pip packages into the project using the exec bridge, then automatically fetch and return each package\'s README / API summary so you know how to use it before writing code. Requires the exec bridge (npm run dev).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        packages: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Package names to install, e.g. ["axios", "zod"] or ["@tanstack/react-query"]',
+        },
+        manager: {
+          type: 'string',
+          enum: ['npm', 'yarn', 'pnpm', 'pip'],
+          description: 'Package manager to use (default: npm)',
+        },
+        dev: {
+          type: 'boolean',
+          description: 'Install as a dev dependency — npm --save-dev / yarn --dev / pnpm --save-dev (default: false)',
+        },
+      },
+      required: ['packages'],
+    },
+  },
+
   // ── Phase 5: Environment feedback ───────────────────────────────────────────
   {
     name: 'watch_process',

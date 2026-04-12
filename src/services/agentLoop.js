@@ -20,6 +20,7 @@ import { codeIntelligence } from './codeIntelligence.js'
 import { createContextCompressor } from './contextCompressor.js'
 import { promptRegistry } from './promptRegistry.js'
 import { runDrctPipeline } from './creative/drctPipeline.js'
+import { fetchLibraryContext } from './libraryContextService.js'
 
 export function makeSessionDiary() {
   const filesRead = new Set()
@@ -241,6 +242,21 @@ export async function runAgentLoop({
     }
   }
 
+  // ── Library Context: auto-fetch docs for detected packages ───────────────
+  // Scans the task text for npm/pip package references and injects a concise
+  // README + API summary so the model has accurate signatures before writing code.
+  // Failures are silently ignored — zero impact on the main loop.
+  let libraryContextBlock = ''
+  try {
+    const libResult = await fetchLibraryContext(task, { maxPackages: 4 })
+    if (libResult.contextBlock) {
+      libraryContextBlock = libResult.contextBlock
+      if (orchCfg?.logDecisions) {
+        onEvent?.({ type: 'library_context', packages: libResult.packages, count: libResult.packages.length })
+      }
+    }
+  } catch { /* non-fatal */ }
+
   // ── Task Decomposer: parallel multi-role pre-analysis ─────────────────────
   // When plannerExecutor is enabled, complex compound tasks trigger lightweight
   // parallel model calls for each specialist role before the main loop starts.
@@ -266,8 +282,9 @@ export async function runAgentLoop({
   const taskText = enhancerConfig.structuredPrompting.enabled ? enforceStructuredPrompt(task).promptText : task
 
   const contextSections = [
-    ragContextBlock   ? { heading: 'RELEVANT CONTEXT (auto-retrieved)', content: ragContextBlock }   : null,
-    decompositionBlock ? { heading: 'MULTI-ROLE PRE-ANALYSIS',           content: decompositionBlock } : null,
+    ragContextBlock      ? { heading: 'RELEVANT CONTEXT (auto-retrieved)',  content: ragContextBlock }      : null,
+    libraryContextBlock  ? { heading: 'LIBRARY DOCS (auto-fetched)',        content: libraryContextBlock }  : null,
+    decompositionBlock   ? { heading: 'MULTI-ROLE PRE-ANALYSIS',            content: decompositionBlock }   : null,
     { heading: 'TASK', content: taskText },
   ].filter(Boolean)
 
