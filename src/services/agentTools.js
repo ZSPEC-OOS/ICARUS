@@ -399,6 +399,49 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ── GitHub Issues ────────────────────────────────────────────────────────────
+  {
+    name: 'list_github_issues',
+    description: 'List open (or closed) issues from the connected GitHub repository. Returns issue numbers, titles, labels, assignees, and comment counts. Use this to discover work items and run them as agent tasks.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        state:  { type: 'string', enum: ['open', 'closed', 'all'], description: 'Issue state filter (default: open)' },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Filter by label names (optional)' },
+        limit:  { type: 'number', description: 'Max issues to return (default 20, max 50)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_github_issue',
+    description: 'Fetch a single GitHub issue by number including its full description and all comments, formatted as a ready-to-run task context. Use this before implementing a fix to get full context. Optionally post a comment and/or close the issue.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        number:        { type: 'number', description: 'Issue number, e.g. 42' },
+        post_comment:  { type: 'string', description: 'Optional comment to post on the issue (e.g. "Working on this…")' },
+        close_on_done: { type: 'boolean', description: 'If true, close the issue after fetching (default: false)' },
+      },
+      required: ['number'],
+    },
+  },
+
+  // ── Docs crawler ─────────────────────────────────────────────────────────────
+  {
+    name: 'crawl_docs',
+    description: 'Crawl a documentation website and store all retrieved text in the RAG index so it can be searched via hybrid_search and retrieve_context. Use before writing code that depends on an unfamiliar library or API. Crawls up to 20 pages on the same domain by following links automatically.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url:       { type: 'string', description: 'Documentation root URL, e.g. https://axios-http.com/docs or https://docs.python.org/3/library/json.html' },
+        max_pages: { type: 'number', description: 'Max pages to crawl on the same domain (default 20, max 40)' },
+        force:     { type: 'boolean', description: 'Re-crawl even if this domain was already indexed (default: false)' },
+      },
+      required: ['url'],
+    },
+  },
+
   // ── Phase 5: Environment feedback ───────────────────────────────────────────
   {
     name: 'watch_process',

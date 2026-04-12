@@ -30,7 +30,14 @@ import {
   listCommits,
   createIssue,
   getWorkflowRuns,
+  listIssues,
+  getIssue,
+  getIssueComments,
+  addIssueComment,
+  closeIssue,
 } from './githubService.js'
+import { memoryGraphService } from './memoryGraphService.js'
+import { crawlDocsSite, isAlreadyCrawled, listCrawledSites } from './docsCrawlerService.js'
 import { decodeBase64 } from '../utils/base64.js'
 import { shadowContext } from './shadowContext.js'
 import { EXEC_BRIDGE_TIMEOUT_MS } from '../config/constants.js'
@@ -1571,6 +1578,117 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
           'Last test output (tail):',
           result.lastOutput.slice(-600),
         ].filter(Boolean).join('\n')
+      }
+
+      // ── list_github_issues ─────────────────────────────────────────────
+      case 'list_github_issues': {
+        const state  = ['open', 'closed', 'all'].includes(input.state) ? input.state : 'open'
+        const labels = Array.isArray(input.labels) ? input.labels : []
+        const limit  = Math.max(1, Math.min(Number(input.limit) || 20, 50))
+        const issues = await listIssues(token, owner, repo, state, labels, limit)
+
+        if (issues.length === 0) {
+          return `No ${state} issues found in ${owner}/${repo}${labels.length ? ` with labels: ${labels.join(', ')}` : ''}.`
+        }
+        const rows = issues.map(i => {
+          const labelStr  = i.labels.length  ? ` [${i.labels.join(', ')}]` : ''
+          const assignStr = i.assignees.length ? ` → ${i.assignees.join(', ')}` : ''
+          const cmtStr    = i.comments > 0 ? ` (${i.comments} comments)` : ''
+          return `#${String(i.number).padEnd(5)}  ${i.title.slice(0, 70)}${labelStr}${assignStr}${cmtStr}`
+        })
+        return [
+          `${issues.length} ${state} issue(s) in ${owner}/${repo}:`,
+          '',
+          ...rows,
+          '',
+          'Use get_github_issue with a number to fetch full details and begin implementation.',
+        ].join('\n')
+      }
+
+      // ── get_github_issue ───────────────────────────────────────────────
+      case 'get_github_issue': {
+        const num = Number(input.number)
+        if (!num || num < 1) return 'get_github_issue: number must be a positive integer.'
+
+        let issue
+        try {
+          issue = await getIssue(token, owner, repo, num)
+        } catch (err) {
+          return `get_github_issue failed: ${err.message}`
+        }
+        if (!issue) return `Issue #${num} not found in ${owner}/${repo}.`
+        if (issue.pull_request) return `#${num} is a pull request, not an issue. Use get_diff or compare_commits instead.`
+
+        const comments = issue.comments > 0
+          ? await getIssueComments(token, owner, repo, num, 20)
+          : []
+
+        if (input.post_comment?.trim()) {
+          try { await addIssueComment(token, owner, repo, num, input.post_comment.trim()) } catch { /* non-fatal */ }
+        }
+        if (input.close_on_done) {
+          try { await closeIssue(token, owner, repo, num) } catch { /* non-fatal */ }
+        }
+
+        const labelStr  = (issue.labels   || []).map(l => l.name || l).join(', ')
+        const assignStr = (issue.assignees || []).map(a => a.login || a).join(', ')
+        const cmtBlock  = comments.length
+          ? '\n\n### Comments\n\n' + comments.map(c =>
+              `**${c.author}** (${(c.createdAt || '').slice(0, 10)}):\n${c.body}`
+            ).join('\n\n---\n\n')
+          : ''
+
+        return [
+          `## Issue #${num}: ${issue.title}`,
+          `State: ${issue.state} | Labels: ${labelStr || 'none'} | Assigned: ${assignStr || 'none'}`,
+          `URL: ${issue.html_url}`,
+          '',
+          '### Description',
+          '',
+          (issue.body || '*(no description)*').trim(),
+          cmtBlock,
+          '',
+          '---',
+          `Ready to implement. After making changes, call create_pull_request with "Fixes #${num}" in the body to auto-close this issue on merge.`,
+        ].join('\n')
+      }
+
+      // ── crawl_docs ─────────────────────────────────────────────────────
+      case 'crawl_docs': {
+        if (!input.url?.trim()) return 'crawl_docs: url is required.'
+
+        let domain
+        try {
+          domain = new URL(input.url.trim()).hostname
+        } catch {
+          return `crawl_docs: invalid URL — ${input.url}`
+        }
+
+        if (!input.force && isAlreadyCrawled(memoryGraphService, domain)) {
+          const sites = listCrawledSites(memoryGraphService)
+          const entry = sites.find(s => s.domain === domain)
+          return [
+            `Docs for ${domain} are already in the RAG index (${entry?.chunks ?? '?'} chunks, last crawled ${(entry?.lastCrawled || '').slice(0, 10) || 'unknown'}).`,
+            'The index is immediately searchable via hybrid_search and retrieve_context.',
+            'Pass force: true to re-crawl.',
+          ].join('\n')
+        }
+
+        const maxPages = Math.max(1, Math.min(Number(input.max_pages) || 20, 40))
+        const result   = await crawlDocsSite(input.url.trim(), memoryGraphService, { maxPages })
+
+        const lines = [
+          `Docs crawl complete: ${result.domain}`,
+          `Pages fetched: ${result.pagesFetched} / ${maxPages}`,
+          `Chunks ingested into RAG index: ${result.chunksIngested}`,
+        ]
+        if (result.errors.length) {
+          lines.push(`Fetch errors (${result.errors.length}): ${result.errors.slice(0, 5).join('; ')}`)
+        }
+        lines.push('')
+        lines.push('The documentation is now searchable via hybrid_search and retrieve_context.')
+        lines.push(`Example: hybrid_search("${domain} API reference")`)
+        return lines.join('\n')
       }
 
       default:
