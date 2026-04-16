@@ -569,7 +569,7 @@ export async function runAgentLoop({
 
   // ── Model 2 Attachment: fire escalation if primary model errored ──────────
   if (needsModel2Escalation && model2Config) {
-    return runAgentLoop({
+    return await runAgentLoop({
       task, systemPrompt, tools, executeTool,
       modelConfig: model2Config,
       onEvent, signal, conversationHistory,
@@ -616,7 +616,7 @@ export async function runAgentLoop({
   // ── Model 2 Attachment: escalate on quality-gate failure (opt-in) ─────────
   if (model2Config && m2Cfg?.escalateOnQualityFail) {
     onEvent?.({ type: 'model2_escalation', reason: 'quality_gates', failedGates: verification?.failedGateIds, model2Id: model2Config.modelId || model2Config.id })
-    return runAgentLoop({
+    return await runAgentLoop({
       task, systemPrompt, tools, executeTool,
       modelConfig: model2Config,
       onEvent, signal, conversationHistory,
