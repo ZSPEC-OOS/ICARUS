@@ -111,6 +111,12 @@ export function useAgentSession({
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
+    // Inject a modular tool if requested via loadworkflow_
+    let modularTool = null
+    if (modularToolId) {
+      modularTool = getAllTools().find(t => t.id === modularToolId) || null
+    }
+
     const executor = makeExecutor({
       token:           githubConfig.token,
       owner:           githubConfig.owner,
@@ -134,24 +140,18 @@ export function useAgentSession({
     let tools = (planMode && !forceBuildMode)
       ? AGENT_TOOLS.filter(t => PLAN_MODE_TOOLS.has(t.name))
       : AGENT_TOOLS
-
-    // Inject a modular tool if requested via loadworkflow_
-    let modularTool = null
-    if (modularToolId) {
-      modularTool = getAllTools().find(t => t.id === modularToolId) || null
-      if (modularTool) {
-        tools = [...tools, {
-          name: `modular_${modularToolId}`,
-          description: `[Modular Tool: ${modularTool.name}] ${modularTool.description || ''} Use this when the task requires ${modularTool.name} functionality.`,
-          input_schema: {
-            type: 'object',
-            properties: {
-              input: { type: 'string', description: 'Input to pass to the tool' },
-            },
-            required: ['input'],
+    if (modularTool) {
+      tools = [...tools, {
+        name: `modular_${modularToolId}`,
+        description: `[Modular Tool: ${modularTool.name}] ${modularTool.description || ''} Use this when the task requires ${modularTool.name} functionality.`,
+        input_schema: {
+          type: 'object',
+          properties: {
+            input: { type: 'string', description: 'Input to pass to the tool' },
           },
-        }]
-      }
+          required: ['input'],
+        },
+      }]
     }
 
     const systemPrompt = buildAgentSystemPrompt(
