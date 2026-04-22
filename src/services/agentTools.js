@@ -20,6 +20,18 @@ export const AGENT_TOOLS = [
     },
   },
   {
+    name: 'discover_skills',
+    description: 'Discover SKILL.md manifests in the repository and summarize available skill packages (roots + script/reference/assets presence).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Maximum number of skill manifests to return (default 50, max 200)' },
+        include_frontmatter: { type: 'boolean', description: 'Parse and include YAML-like frontmatter keys from each SKILL.md when available' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'read_file',
     description: 'Read the contents of a file from the connected GitHub repository. For large files use start_line/end_line to read only the relevant section.',
     input_schema: {

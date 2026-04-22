@@ -356,6 +356,34 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         return lines.join('\n')
       }
 
+      // ── discover_skills ───────────────────────────────────────────────
+      case 'discover_skills': {
+        if (!shadowContext.isReady) {
+          return `Codebase index not ready (${shadowContext.indexedFileCount()} files indexed).`
+        }
+        const limit = Math.max(1, Math.min(Number(input.limit) || 50, 200))
+        const includeFrontmatter = !!input.include_frontmatter
+        const skills = shadowContext.listSkillFiles?.(limit) || []
+
+        if (!skills.length) return 'No SKILL.md files discovered in the indexed repository.'
+
+        const lines = [`Discovered ${skills.length} skill manifest(s):`, '']
+        for (const s of skills) {
+          lines.push(`- ${s.path}`)
+          lines.push(`  root: ${s.skillRoot}`)
+          lines.push(`  scripts: ${s.hasScripts ? 'yes' : 'no'} · references: ${s.hasReferences ? 'yes' : 'no'} · assets: ${s.hasAssets ? 'yes' : 'no'}`)
+          if (includeFrontmatter) {
+            const full = shadowContext._contentIndex?.[s.path]?.full || ''
+            const m = String(full).match(/^---\n([\s\S]*?)\n---\n?/)
+            if (m) {
+              const kvs = m[1].split('\n').map(line => line.trim()).filter(Boolean).slice(0, 8)
+              if (kvs.length) lines.push(`  frontmatter: ${kvs.join(' | ')}`)
+            }
+          }
+        }
+        return lines.join('\n')
+      }
+
       // ── read_file (with optional line range) ───────────────────────────
       case 'read_file': {
         const file = await getFileContent(token, owner, repo, input.path, branch)
@@ -928,7 +956,7 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
         // Read-only tool set (research/investigation mode)
         const READ_ONLY_TOOLS = new Set([
-          'analyze_codebase', 'read_file', 'list_directory', 'search_files',
+          'analyze_codebase', 'discover_skills', 'read_file', 'list_directory', 'search_files',
           'glob', 'grep', 'read_many_files', 'web_fetch', 'web_search',
           'hybrid_search', 'retrieve_context', 'check_url_health',
           'git_log', 'check_ci_status', 'get_diff',
