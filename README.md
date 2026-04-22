@@ -330,10 +330,33 @@ The exec bridge is automatically excluded from production builds. All AI calls g
 Run BLUSWAN without a browser:
 
 ```bash
-node src/cli/bluswan-cli.mjs --task "Refactor auth module to use async/await" --model claude-3-5-sonnet-20241022
+node src/cli/bluswan-cli.mjs run "Refactor auth module to use async/await" --model=claude-3-5-sonnet-20241022
 ```
 
 The CLI uses the same agent loop, tool set, and enhancer pipeline as the UI.
+
+Portable CLI configuration (new):
+
+- Global defaults: `~/.bluswan/settings.json`
+- Project overrides: `.bluswan/settings.json`
+- Legacy fallback (still supported): `.bluswan/config.json`
+
+Example:
+
+```json
+{
+  "apiKey": "sk-...",
+  "baseUrl": "https://api.anthropic.com/v1",
+  "modelId": "claude-sonnet-4-6"
+}
+```
+
+CI/headless-friendly flags:
+
+- `--json` machine-readable summary output
+- `--max-turns=<n>` deterministic turn budget
+- `--timeout=<ms>` hard timeout for run/plan
+- `--fail-on-quality-gate` exit non-zero when quality floor fails
 
 ---
 

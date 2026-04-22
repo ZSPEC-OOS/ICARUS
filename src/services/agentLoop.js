@@ -109,6 +109,7 @@ export async function runAgentLoop({
   enhancerConfig: enhancerConfigOverrides,
   availableModels,
   executionMode = 'default',
+  maxTurns = AGENT_MAX_TURNS,
   _escalated = false,   // internal guard — prevents infinite escalation chain
 }) {
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
@@ -319,7 +320,8 @@ export async function runAgentLoop({
         }
       },
       execute: async () => {
-        for (let turn = 1; turn <= AGENT_MAX_TURNS; turn++) {
+        const turnLimit = Number.isFinite(Number(maxTurns)) ? Math.max(1, Number(maxTurns)) : AGENT_MAX_TURNS
+        for (let turn = 1; turn <= turnLimit; turn++) {
           if (signal?.aborted) {
             finalText = 'Agent stopped.'
             return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
@@ -520,7 +522,7 @@ export async function runAgentLoop({
           }
         }
 
-        finalText = `Reached maximum turn limit (${AGENT_MAX_TURNS}).`
+        finalText = `Reached maximum turn limit (${turnLimit}).`
         return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
       },
       verify: async ({ execution }) => {

@@ -13,6 +13,10 @@
 //   --base-url=<url>       API base URL     (default: env BLUSWAN_BASE_URL)
 //   --dir=<path>           Working directory for file ops (default: cwd)
 //   --config=<path>        JSON config file: { apiKey, baseUrl, modelId }
+//   --max-turns=<n>        Cap agent loop turn count (default: service constant)
+//   --timeout=<ms>         Abort run/plan after timeout in milliseconds
+//   --json                 Emit machine-readable JSON summary output
+//   --fail-on-quality-gate Exit non-zero if quality floor fails (run mode)
 //   --dry-run              Print plan only — do not execute file writes
 //   --no-color             Disable ANSI colours
 //
@@ -27,6 +31,7 @@ import { existsSync } from 'node:fs'
 import { resolve, join, dirname, relative } from 'node:path'
 import { createInterface } from 'node:readline'
 import process from 'node:process'
+import os from 'node:os'
 
 // ── Dynamic imports (services use browser-compatible exports) ─────────────────
 // We load services dynamically so path resolution works from any cwd.
@@ -82,25 +87,62 @@ function parseArgs(argv) {
 
 // ── Config resolution ─────────────────────────────────────────────────────────
 async function resolveModelConfig(args) {
-  // 1. Explicit config file
-  if (args.opts.config) {
-    const raw = await readFile(resolve(args.opts.config), 'utf8')
+  const readJsonIfExists = async (path) => {
+    if (!path || !existsSync(path)) return null
+    const raw = await readFile(path, 'utf8')
     return JSON.parse(raw)
   }
 
-  // 2. Auto-detect .bluswan/config.json in cwd or ancestors
+  // 1. Explicit config file
+  if (args.opts.config) {
+    const explicit = await readJsonIfExists(resolve(args.opts.config))
+    if (explicit) return explicit
+  }
+
+  // 2. Portable config layering:
+  //    ~/.bluswan/settings.json (global)
+  //    .bluswan/settings.json   (project)
+  //    .bluswan/config.json     (legacy project)
+  //    nearest file wins for collisions.
+  const globalSettingsPath = join(os.homedir(), '.bluswan', 'settings.json')
+  const globalSettings = await readJsonIfExists(globalSettingsPath)
+
+  let projectSettings = null
+  let legacyProjectConfig = null
   let dir = process.cwd()
   for (let i = 0; i < 5; i++) {
-    const candidate = join(dir, '.bluswan', 'config.json')
-    if (existsSync(candidate)) {
-      const raw = await readFile(candidate, 'utf8')
-      const cfg = JSON.parse(raw)
-      process.stderr.write(fmt.dim(`[config] loaded ${candidate}\n`))
-      return cfg
+    const settingsCandidate = join(dir, '.bluswan', 'settings.json')
+    const legacyCandidate = join(dir, '.bluswan', 'config.json')
+    if (existsSync(settingsCandidate) || existsSync(legacyCandidate)) {
+      projectSettings = await readJsonIfExists(settingsCandidate)
+      legacyProjectConfig = await readJsonIfExists(legacyCandidate)
+      const loaded = [
+        globalSettings ? globalSettingsPath : null,
+        projectSettings ? settingsCandidate : null,
+        legacyProjectConfig ? legacyCandidate : null,
+      ].filter(Boolean)
+      if (loaded.length > 0) process.stderr.write(fmt.dim(`[config] loaded ${loaded.join(' -> ')}\n`))
+      break
     }
     const parent = dirname(dir)
     if (parent === dir) break
     dir = parent
+  }
+  const layered = {
+    ...(globalSettings || {}),
+    ...(projectSettings || {}),
+    ...(legacyProjectConfig || {}),
+  }
+  if (Object.keys(layered).length > 0) {
+    const apiKey  = args.opts['api-key']  || layered.apiKey  || process.env.BLUSWAN_API_KEY  || ''
+    const baseUrl = args.opts['base-url'] || layered.baseUrl || process.env.BLUSWAN_BASE_URL || 'https://api.anthropic.com/v1'
+    const modelId = args.opts['model']    || layered.modelId || process.env.BLUSWAN_MODEL_ID || 'claude-sonnet-4-6'
+    if (!apiKey) {
+      console.error(fmt.err('Error: No API key found. Set BLUSWAN_API_KEY or use --api-key=<key>.'))
+      console.error(fmt.dim('  Alternatively set apiKey in ~/.bluswan/settings.json or .bluswan/settings.json.'))
+      process.exit(1)
+    }
+    return { ...layered, apiKey, baseUrl, modelId }
   }
 
   // 3. CLI flags / environment variables
@@ -115,6 +157,12 @@ async function resolveModelConfig(args) {
   }
 
   return { apiKey, baseUrl, modelId }
+}
+
+function parsePositiveInt(raw, fallback = null) {
+  if (raw == null || raw === '') return fallback
+  const value = Number.parseInt(String(raw), 10)
+  return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
 // ── Local file executor ───────────────────────────────────────────────────────
@@ -287,17 +335,36 @@ async function cmdRun(task, args) {
   const modelConfig = await resolveModelConfig(args)
   const workDir     = resolve(args.opts.dir || process.env.BLUSWAN_WORK_DIR || process.cwd())
   const isDryRun    = args.flags['dry-run']
+  const jsonMode    = Boolean(args.flags.json)
   const verbosity   = args.flags.quiet ? 'quiet' : args.flags.verbose ? 'verbose' : 'normal'
+  const timeoutMs   = parsePositiveInt(args.opts.timeout, 0) || 0
+  const maxTurns    = parsePositiveInt(args.opts['max-turns'], null)
+  const failOnQualityGate = Boolean(args.flags['fail-on-quality-gate'])
+  let timedOut = false
+  let qualityFloorPassed = true
+  let donePayload = null
+  const errors = []
 
-  console.log(`${fmt.bold('Bluswan CLI')} — ${fmt.info('run')} mode`)
-  console.log(`  Task:  ${task.slice(0, 120)}`)
-  console.log(`  Model: ${modelConfig.modelId}`)
-  console.log(`  Dir:   ${workDir}`)
-  if (isDryRun) console.log(`  ${fmt.warn('DRY RUN — file writes will be skipped')}`)
-  console.log('')
+  if (!jsonMode) {
+    console.log(`${fmt.bold('Bluswan CLI')} — ${fmt.info('run')} mode`)
+    console.log(`  Task:  ${task.slice(0, 120)}`)
+    console.log(`  Model: ${modelConfig.modelId}`)
+    console.log(`  Dir:   ${workDir}`)
+    if (isDryRun) console.log(`  ${fmt.warn('DRY RUN — file writes will be skipped')}`)
+    if (maxTurns) console.log(`  Max turns: ${maxTurns}`)
+    if (timeoutMs > 0) console.log(`  Timeout: ${timeoutMs}ms`)
+    console.log('')
+  }
 
   const ctrl = new AbortController()
-  process.on('SIGINT', () => { ctrl.abort(); process.stdout.write('\n[aborted]\n') })
+  process.on('SIGINT', () => { ctrl.abort(); if (!jsonMode) process.stdout.write('\n[aborted]\n') })
+  let timeoutHandle = null
+  if (timeoutMs > 0) {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true
+      ctrl.abort()
+    }, timeoutMs)
+  }
 
   const executor = makeLocalExecutor(workDir)
   const wrappedExecutor = isDryRun
@@ -312,6 +379,13 @@ async function cmdRun(task, args) {
 
   const tools = AGENT_TOOLS
   const systemPrompt = `You are Bluswan, an expert coding assistant. Work in the directory: ${workDir}. Follow project conventions.`
+  const renderer = makeEventRenderer(verbosity)
+  const onEvent = (ev) => {
+    if (ev?.type === 'quality_floor') qualityFloorPassed = qualityFloorPassed && Boolean(ev.qualityFloor?.passed)
+    if (ev?.type === 'done') donePayload = ev
+    if (ev?.type === 'error' && ev.message) errors.push(ev.message)
+    if (!jsonMode) renderer(ev)
+  }
 
   await runAgentLoop({
     task,
@@ -319,20 +393,47 @@ async function cmdRun(task, args) {
     tools,
     executeTool: wrappedExecutor,
     modelConfig,
-    onEvent: makeEventRenderer(verbosity),
+    onEvent,
     signal: ctrl.signal,
+    maxTurns,
   })
+
+  if (timeoutHandle) clearTimeout(timeoutHandle)
+  if (jsonMode) {
+    process.stdout.write(`${JSON.stringify({
+      ok: !timedOut && errors.length === 0,
+      mode: 'run',
+      timedOut,
+      maxTurns: maxTurns || null,
+      qualityFloorPassed,
+      filesChanged: donePayload?.filesChanged || [],
+      errorCount: errors.length,
+      errors,
+    }, null, 2)}\n`)
+  }
+  if (failOnQualityGate && !qualityFloorPassed) process.exit(2)
+  if (timedOut) process.exit(124)
 }
 
 async function cmdPlan(task, args) {
   // Plan mode: agent may only read files, not write them
   const modelConfig = await resolveModelConfig(args)
   const workDir     = resolve(args.opts.dir || process.env.BLUSWAN_WORK_DIR || process.cwd())
+  const jsonMode    = Boolean(args.flags.json)
+  const timeoutMs   = parsePositiveInt(args.opts.timeout, 0) || 0
+  const maxTurns    = parsePositiveInt(args.opts['max-turns'], null)
+  let timedOut = false
+  let donePayload = null
+  const errors = []
 
-  console.log(`${fmt.bold('Bluswan CLI')} — ${fmt.info('plan')} mode`)
-  console.log(`  Task:  ${task.slice(0, 120)}`)
-  console.log(`  Model: ${modelConfig.modelId}`)
-  console.log('')
+  if (!jsonMode) {
+    console.log(`${fmt.bold('Bluswan CLI')} — ${fmt.info('plan')} mode`)
+    console.log(`  Task:  ${task.slice(0, 120)}`)
+    console.log(`  Model: ${modelConfig.modelId}`)
+    if (maxTurns) console.log(`  Max turns: ${maxTurns}`)
+    if (timeoutMs > 0) console.log(`  Timeout: ${timeoutMs}ms`)
+    console.log('')
+  }
 
   const READONLY_TOOLS = new Set([
     'read_file', 'read_many_files', 'list_directory', 'search_files', 'grep',
@@ -341,6 +442,19 @@ async function cmdPlan(task, args) {
   const executor = makeLocalExecutor(workDir)
   const ctrl = new AbortController()
   process.on('SIGINT', () => ctrl.abort())
+  let timeoutHandle = null
+  if (timeoutMs > 0) {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true
+      ctrl.abort()
+    }, timeoutMs)
+  }
+  const renderer = makeEventRenderer('normal')
+  const onEvent = (ev) => {
+    if (ev?.type === 'done') donePayload = ev
+    if (ev?.type === 'error' && ev.message) errors.push(ev.message)
+    if (!jsonMode) renderer(ev)
+  }
 
   await runAgentLoop({
     task: `[PLAN MODE — analysis only, no file writes]\n${task}`,
@@ -348,9 +462,23 @@ async function cmdPlan(task, args) {
     tools: readonlyTools,
     executeTool: executor,
     modelConfig,
-    onEvent: makeEventRenderer('normal'),
+    onEvent,
     signal: ctrl.signal,
+    maxTurns,
   })
+  if (timeoutHandle) clearTimeout(timeoutHandle)
+  if (jsonMode) {
+    process.stdout.write(`${JSON.stringify({
+      ok: !timedOut && errors.length === 0,
+      mode: 'plan',
+      timedOut,
+      maxTurns: maxTurns || null,
+      filesChanged: donePayload?.filesChanged || [],
+      errorCount: errors.length,
+      errors,
+    }, null, 2)}\n`)
+  }
+  if (timedOut) process.exit(124)
 }
 
 async function cmdReplay(traceId, args) {
@@ -410,6 +538,10 @@ ${fmt.bold('OPTIONS')}
   --base-url=<url>      API base URL     (env: BLUSWAN_BASE_URL)
   --dir=<path>          Working directory (env: BLUSWAN_WORK_DIR, default: cwd)
   --config=<path>       JSON config file { apiKey, baseUrl, modelId }
+  --max-turns=<n>       Cap agent turns (run/plan)
+  --timeout=<ms>        Abort after timeout in milliseconds (run/plan)
+  --json                Emit machine-readable JSON summary
+  --fail-on-quality-gate  Exit 2 when quality floor fails (run)
   --dry-run             Skip file writes (run mode only)
   --verbose             Extra token usage output
   --quiet               Suppress tool call lines
@@ -417,7 +549,7 @@ ${fmt.bold('OPTIONS')}
   --limit=N             Max traces to show (traces command, default: 20)
 
 ${fmt.bold('ZERO-CONFIG ONBOARDING')}
-  1. Create .bluswan/config.json in your project root:
+  1. Create .bluswan/settings.json in your project root:
      ${fmt.dim('{ "apiKey": "sk-...", "baseUrl": "https://api.anthropic.com/v1", "modelId": "claude-sonnet-4-6" }')}
   2. Run: ${fmt.info('bluswan-cli run "add error handling to utils/api.js"')}
 
