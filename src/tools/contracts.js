@@ -8,6 +8,10 @@ export const TOOL_CONTRACTS = {
     input: { type: 'object', additionalProperties: false, properties: { top_hubs: baseNumber, max_chars: baseNumber }, required: [] },
     output: { type: 'string' },
   },
+  discover_skills: {
+    input: { type: 'object', additionalProperties: false, properties: { limit: baseNumber, include_frontmatter: { type: 'boolean' } }, required: [] },
+    output: { type: 'string' },
+  },
   read_file: {
     input: { type: 'object', additionalProperties: false, properties: { path: baseString, start_line: baseNumber, end_line: baseNumber }, required: ['path'] },
     output: { type: 'string' },

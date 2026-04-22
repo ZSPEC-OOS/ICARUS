@@ -151,6 +151,33 @@ class ShadowContextStore {
   // Number of files in the content index (for diagnostics)
   indexedFileCount() { return Object.keys(this._contentIndex).length }
 
+  // Discover skill manifests (SKILL.md) in the indexed repository.
+  // Returns compact metadata for skill-aware orchestration tooling.
+  listSkillFiles(limit = 100) {
+    if (!this.isReady || this._fileIndex.length === 0) return []
+    const max = Math.max(1, Math.min(Number(limit) || 100, 300))
+
+    const skillEntries = this._fileIndex
+      .filter(f => /(^|\/)SKILL\.md$/i.test(f.path))
+      .map(f => {
+        const path = f.path
+        const root = path.replace(/\/SKILL\.md$/i, '')
+        const hasScripts = this._fileIndex.some(e => e.path.startsWith(`${root}/scripts/`))
+        const hasAssets = this._fileIndex.some(e => e.path.startsWith(`${root}/assets/`))
+        const hasReferences = this._fileIndex.some(e => e.path.startsWith(`${root}/references/`))
+        return {
+          path,
+          skillRoot: root,
+          hasScripts,
+          hasAssets,
+          hasReferences,
+        }
+      })
+      .sort((a, b) => a.path.localeCompare(b.path))
+
+    return skillEntries.slice(0, max)
+  }
+
   // Aider-style repo map: a compact symbol index ranked by import-graph centrality.
   // Returns a string like:
   //   src/services/agentLoop.js: runAgentLoop, pruneMessages

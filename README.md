@@ -161,6 +161,15 @@ An async background indexer that builds a queryable map of your connected reposi
 - Powers RAG retrieval and the `analyze_codebase` tool
 - Index refreshes at the start of each agent loop when stale
 
+### Skills Discovery (SKILL.md Runtime Bootstrap)
+
+BLUSWAN can now discover skill manifests across the indexed repository to support skill-aware orchestration:
+
+- Scans indexed paths for `SKILL.md` files
+- Returns each skill root plus `scripts/`, `references/`, and `assets/` presence
+- Optional frontmatter extraction for quick metadata routing
+- Exposed through the `discover_skills` tool for both primary and spawned read-only agents
+
 ### TDD Loop
 
 A closed-loop test orchestrator that drives the agent to green:
@@ -200,7 +209,7 @@ A/B variant tracking for system prompts. Win/loss signals are recorded so you ca
 |---|---|
 | **File I/O** | `read_file`, `write_file`, `edit_file`, `delete_file`, `revert_file`, `read_many_files` |
 | **Navigation** | `list_directory`, `list_source_directory`, `glob`, `search_files` |
-| **Code Analysis** | `grep`, `analyze_codebase`, `analyze_stacktrace`, `find_tech_debt`, `lint_file` |
+| **Code Analysis** | `grep`, `analyze_codebase`, `discover_skills`, `analyze_stacktrace`, `find_tech_debt`, `lint_file` |
 | **RAG** | `hybrid_search`, `retrieve_context` |
 | **Web** | `web_search`, `web_fetch`, `check_url_health` |
 | **GitHub** | `create_pull_request`, `generate_pr_description` |
