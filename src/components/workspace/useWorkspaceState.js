@@ -1136,14 +1136,16 @@ export function useWorkspaceState({
     const iframe = sandboxRef.current
     if (!iframe) { setIsRunning(false); return }
     const guardMs = isPython ? 25000 : 9000
+    let guardTimer = null
     const onMessage = (e) => {
       if (e.data?.done) {
+        clearTimeout(guardTimer)
         setSandboxOutput(e.data.log?.length ? e.data.log : [{ level: 'info', text: '(no output)' }])
         setIsRunning(false); window.removeEventListener('message', onMessage)
       }
     }
     window.addEventListener('message', onMessage)
-    setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunning(false) }, guardMs)
+    guardTimer = setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunning(false) }, guardMs)
     iframe.srcdoc = isPython ? buildPyodideSandboxHtml(generatedCode) : buildSandboxHtml(generatedCode, sandboxSetup)
   }, [generatedCode, sandboxSetup, language])
 
@@ -1155,14 +1157,16 @@ export function useWorkspaceState({
     const iframe = sandboxRef.current
     if (!iframe) { setIsRunningTests(false); return }
     const guardMs = isPython ? 25000 : 9000
+    let guardTimer = null
     const onMessage = (e) => {
       if (e.data?.done) {
+        clearTimeout(guardTimer)
         setSandboxOutput(e.data.log?.length ? e.data.log : [{ level: 'info', text: '(no output)' }])
         setIsRunningTests(false); window.removeEventListener('message', onMessage)
       }
     }
     window.addEventListener('message', onMessage)
-    setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunningTests(false) }, guardMs)
+    guardTimer = setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunningTests(false) }, guardMs)
     iframe.srcdoc = isPython ? buildPyodideSandboxHtml(testCode) : buildSandboxHtml(testCode, sandboxSetup)
   }, [testCode, sandboxSetup, language])
 
