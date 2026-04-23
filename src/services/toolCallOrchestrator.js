@@ -36,7 +36,7 @@ export class EventBus {
     return (this._subs[event] || []).length
   }
 
-  drainEvents(event, handler) {
+  drainEvents(event, data) {
     // Returns count of subscribers that received the event
     const subs = this._subs[event] || []
     let received = 0

@@ -172,7 +172,7 @@ class MemoryGraphService {
     if (this.nodes.size <= MEMORY_MAX_NODES) return
     const evictCount = Math.ceil(MEMORY_MAX_NODES * 0.1)
     const sorted = [...this.nodes.values()].sort((a, b) =>
-      Date.parse(a.updatedAt || 0) - Date.parse(b.updatedAt || 0)
+      (a.updatedAt ? Date.parse(a.updatedAt) : 0) - (b.updatedAt ? Date.parse(b.updatedAt) : 0)
     )
     for (let i = 0; i < evictCount && i < sorted.length; i++) {
       this.nodes.delete(sorted[i].id)
@@ -184,7 +184,7 @@ class MemoryGraphService {
     if (this.edges.size <= MEMORY_MAX_EDGES) return
     const evictCount = Math.ceil(MEMORY_MAX_EDGES * 0.1)
     const sorted = [...this.edges.values()].sort((a, b) =>
-      Date.parse(a.updatedAt || 0) - Date.parse(b.updatedAt || 0)
+      (a.updatedAt ? Date.parse(a.updatedAt) : 0) - (b.updatedAt ? Date.parse(b.updatedAt) : 0)
     )
     for (let i = 0; i < evictCount && i < sorted.length; i++) {
       this.edges.delete(sorted[i].id)
