@@ -305,6 +305,7 @@ export function useWorkspaceState({
   // ── Misc refs ────────────────────────────────────────────────────────────
   const abortRef            = useRef(null)
   const agentBranchRef      = useRef(null)
+  const agentMutatedRef     = useRef(false)   // true if agent wrote/edited/deleted a file this session
   const generationStartRef  = useRef(null)
   const onSettingsChangedRef = useRef(onSettingsChanged)
   const activityFeedRef      = useRef(null)
@@ -437,13 +438,15 @@ export function useWorkspaceState({
     onSetActiveTab:  setActiveTab,
     onSetError:      setError,
     onPromptClear:   useCallback(() => setPrompt(''), []),
+    onFileWrite:     useCallback(() => { agentMutatedRef.current = true }, []),
     onPlanDone:      (task, summary) => setPlanApproval({ task, summary }),
     onAgentStart:    (task) => setConversation(prev => [...prev, { role: 'user', content: task }]),
     onAgentComplete: async (task, text) => {
       if (text?.trim()) setConversation(prev => [...prev, { role: 'assistant', content: text }])
-      if (hasGithub && !dryRun && agentBranchRef.current && agentBranchRef.current !== baseBranch) {
+      if (hasGithub && !dryRun && agentBranchRef.current && agentBranchRef.current !== baseBranch && agentMutatedRef.current) {
         const branch = agentBranchRef.current
         agentBranchRef.current = null
+        agentMutatedRef.current = false
         try {
           const prBody = [
             `## BLUSWAN AI Generated Code`, ``,
@@ -1390,6 +1393,7 @@ export function useWorkspaceState({
     if (isConversationalPrompt(effectiveMsg)) { handleConversationalReply(effectiveMsg); return }
     if (shouldUseAgent || modularToolId) {
       let branchOverride = null
+      agentMutatedRef.current = false
       if (hasGithub && !dryRun) {
         try {
           const branchData = await getBranch(githubToken, repoOwner, repoName, baseBranch)
