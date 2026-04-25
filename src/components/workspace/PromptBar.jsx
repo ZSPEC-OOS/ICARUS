@@ -29,6 +29,8 @@ export default function PromptBar({
   longRequestMode, setLongRequestMode,
   executionMode, setExecutionMode,
   lrmPlan, setLrmPlan,
+  // chat mode
+  chatMode, setChatMode,
   // model selector
   models,
   activeModelId, setActiveModelId,
@@ -130,6 +132,11 @@ export default function PromptBar({
                 title={executionMode === 'drct' ? 'DRCT Creative Mode ON — click to disable' : 'Enable DRCT Creative Mode'}
                 onClick={() => setExecutionMode(prev => prev === 'drct' ? 'default' : 'drct')}
               >🎨 DRCT</button>
+              <button
+                className={`lk-toolbar-btn--chat${chatMode ? ' lk-toolbar-btn--chat-on' : ''}`}
+                title={chatMode ? 'Chat Mode ON — messages go straight to chat, no coding or planning' : 'Enable Chat Mode — discuss the repo without triggering code changes'}
+                onClick={() => setChatMode(v => !v)}
+              >💬 Chat</button>
             </div>
 
             <div className="lk-input-toolbar-right">
