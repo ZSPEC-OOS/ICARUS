@@ -22,6 +22,80 @@ import {
   uninstallTool,
 } from '../../services/toolLoader.js'
 
+// ─── ModelCard ────────────────────────────────────────────────────────────────
+function ModelCard({ m, isCollapsed, onExpand, onRemove, saveError, isSaving, testResult, onTest, onSave, onUpdateKey, onUpdateField }) {
+  if (isCollapsed) {
+    return (
+      <div className="lk-settings-model-row--saved" onClick={onExpand} title="Click to edit">
+        <span className="lk-settings-model-name">{m.name}</span>
+        <span className="lk-settings-badge lk-settings-badge--ok">● saved</span>
+        <span className="lk-settings-collapse-arrow" style={{ marginLeft: 'auto' }}>▸</span>
+      </div>
+    )
+  }
+  return (
+    <div className="lk-settings-model-row">
+      <div className="lk-settings-model-row-hd">
+        {m.id.startsWith('custom-') ? (
+          <input
+            className="lk-input lk-settings-model-name-input"
+            placeholder="Model name"
+            value={m.name || ''}
+            onChange={e => onUpdateField('name', e.target.value)}
+          />
+        ) : (
+          <span className="lk-settings-model-name">{m.name}</span>
+        )}
+        <div className="lk-settings-model-row-actions">
+          <button className="lk-btn lk-btn--small lk-btn--primary" disabled={isSaving} onClick={onSave}>
+            {isSaving ? 'Saving…' : 'Save'}
+          </button>
+          <button className="lk-settings-model-remove" onClick={onRemove} title="Remove model">×</button>
+        </div>
+      </div>
+      <input
+        className="lk-input"
+        type="password"
+        placeholder={`API key for ${m.name || 'this model'}`}
+        value={m.apiKey || ''}
+        onChange={e => onUpdateKey(e.target.value)}
+        autoComplete="off"
+      />
+      {m.id.startsWith('custom-') && (
+        <>
+          <input className="lk-input" placeholder="Model ID (e.g. gpt-4o)" value={m.modelId || ''}
+            onChange={e => onUpdateField('modelId', e.target.value)} />
+          <input className="lk-input" placeholder="Base URL" value={m.baseUrl || ''}
+            onChange={e => onUpdateField('baseUrl', e.target.value)} />
+        </>
+      )}
+      {!m.id.startsWith('custom-') && <span className="lk-hint">{m.baseUrl}</span>}
+      {saveError && <div className="lk-settings-model-save-error">{saveError}</div>}
+      <div className="lk-settings-model-test">
+        <button
+          className="lk-btn lk-btn--small"
+          disabled={!m.apiKey || testResult?.testing}
+          onClick={onTest}
+        >
+          {testResult?.testing ? '…Testing' : 'Test Connection'}
+        </button>
+        {testResult && !testResult.testing && (
+          <>
+            <span className={`lk-settings-test-result lk-settings-test-result--${testResult.ok ? 'ok' : 'fail'}`}>
+              {testResult.ok ? `● Connected (${testResult.ms}ms)` : `✗ ${testResult.error}`}
+            </span>
+            {testResult.ok && testResult.warning && (
+              <span className="lk-settings-test-result lk-settings-test-result--warn">
+                ⚠ {testResult.warning}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── BluswanSettings ────────────────────────────────────────────────────────────
 // Settings drawer: GitHub credentials, theme picker, fine-tune sliders,
 // permission mode, and BLUSWAN.md editor.
@@ -430,98 +504,22 @@ export async function test() { return { passed: true, message: "Smoke test passe
             Keys are encrypted and saved to your account — restored automatically when you sign in on any device.
           </span>
 
-          {(models || []).map(m => {
-            const isCollapsed = collapsedModels.has(m.id)
-
-            // ── Collapsed / saved view ──────────────────────────────────────
-            if (isCollapsed) {
-              return (
-                <div
-                  key={m.id}
-                  className="lk-settings-model-row--saved"
-                  onClick={() => setCollapsedModels(c => { const n = new Set(c); n.delete(m.id); return n })}
-                  title="Click to edit"
-                >
-                  <span className="lk-settings-model-name">{m.name}</span>
-                  <span className="lk-settings-badge lk-settings-badge--ok">● saved</span>
-                  <span className="lk-settings-collapse-arrow" style={{ marginLeft: 'auto' }}>▸</span>
-                </div>
-              )
-            }
-
-            // ── Expanded / editing view ─────────────────────────────────────
-            return (
-              <div key={m.id} className="lk-settings-model-row">
-                {/* Header row — Save (top-right) is diagonally opposite Test Connection (bottom-left) */}
-                <div className="lk-settings-model-row-hd">
-                  {m.id.startsWith('custom-') ? (
-                    <input
-                      className="lk-input lk-settings-model-name-input"
-                      placeholder="Model name"
-                      value={m.name || ''}
-                      onChange={e => updateModelField(m.id, 'name', e.target.value)}
-                    />
-                  ) : (
-                    <span className="lk-settings-model-name">{m.name}</span>
-                  )}
-                  <div className="lk-settings-model-row-actions">
-                    <button
-                      className="lk-btn lk-btn--small lk-btn--primary"
-                      disabled={savingModels[m.id]}
-                      onClick={() => handleSaveModel(m)}
-                    >
-                      {savingModels[m.id] ? 'Saving…' : 'Save'}
-                    </button>
-                    <button className="lk-settings-model-remove" onClick={() => removeModel(m.id)} title="Remove model">×</button>
-                  </div>
-                </div>
-                <input
-                  className="lk-input"
-                  type="password"
-                  placeholder={`API key for ${m.name || 'this model'}`}
-                  value={m.apiKey || ''}
-                  onChange={e => updateModelKey(m.id, e.target.value)}
-                  autoComplete="off"
-                />
-                {m.id.startsWith('custom-') && (
-                  <>
-                    <input className="lk-input" placeholder="Model ID (e.g. gpt-4o)" value={m.modelId || ''}
-                      onChange={e => updateModelField(m.id, 'modelId', e.target.value)} />
-                    <input className="lk-input" placeholder="Base URL" value={m.baseUrl || ''}
-                      onChange={e => updateModelField(m.id, 'baseUrl', e.target.value)} />
-                  </>
-                )}
-                {!m.id.startsWith('custom-') && <span className="lk-hint">{m.baseUrl}</span>}
-                {saveErrors[m.id] && (
-                  <div className="lk-settings-model-save-error">{saveErrors[m.id]}</div>
-                )}
-                {/* Test connection — bottom-left (diagonally opposite Save at top-right) */}
-                <div className="lk-settings-model-test">
-                  <button
-                    className="lk-btn lk-btn--small"
-                    disabled={!m.apiKey || testResults[m.id]?.testing}
-                    onClick={() => handleTestConnection(m)}
-                  >
-                    {testResults[m.id]?.testing ? '…Testing' : 'Test Connection'}
-                  </button>
-                  {testResults[m.id] && !testResults[m.id].testing && (
-                    <>
-                      <span className={`lk-settings-test-result lk-settings-test-result--${testResults[m.id].ok ? 'ok' : 'fail'}`}>
-                        {testResults[m.id].ok
-                          ? `● Connected (${testResults[m.id].ms}ms)`
-                          : `✗ ${testResults[m.id].error}`}
-                      </span>
-                      {testResults[m.id].ok && testResults[m.id].warning && (
-                        <span className="lk-settings-test-result lk-settings-test-result--warn">
-                          ⚠ {testResults[m.id].warning}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+          {(models || []).map(m => (
+            <ModelCard
+              key={m.id}
+              m={m}
+              isCollapsed={collapsedModels.has(m.id)}
+              onExpand={() => setCollapsedModels(c => { const n = new Set(c); n.delete(m.id); return n })}
+              onRemove={() => removeModel(m.id)}
+              saveError={saveErrors[m.id]}
+              isSaving={savingModels[m.id]}
+              testResult={testResults[m.id]}
+              onTest={() => handleTestConnection(m)}
+              onSave={() => handleSaveModel(m)}
+              onUpdateKey={key => updateModelKey(m.id, key)}
+              onUpdateField={(field, val) => updateModelField(m.id, field, val)}
+            />
+          ))}
 
           {/* Add Model */}
           {addModelOpen ? (

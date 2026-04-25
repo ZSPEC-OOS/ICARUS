@@ -20,11 +20,8 @@ import {
   createOrUpdateFile,
   createPullRequest,
   generateBranchName,
-  listWorkflows,
-  dispatchWorkflow,
   getWorkflowRuns,
   getWorkflowRun,
-  listUserRepos,
 } from '../../services/githubService'
 import { estimateCost } from '../../utils/tokenEstimator'
 import { shadowContext } from '../../services/shadowContext'
@@ -40,10 +37,13 @@ import {
   createStreamEvent,
   applyStreamEvent,
 } from '../../services/interactivePipeline'
-import { useConversation }   from '../../core/hooks/useConversation'
-import { useExecBridge }     from '../../core/hooks/useExecBridge'
-import { useActivityLog }    from '../../core/hooks/useActivityLog'
-import { useAgentSession }   from '../../core/hooks/useAgentSession'
+import { useConversation }    from '../../core/hooks/useConversation'
+import { useExecBridge }      from '../../core/hooks/useExecBridge'
+import { useActivityLog }     from '../../core/hooks/useActivityLog'
+import { useAgentSession }    from '../../core/hooks/useAgentSession'
+import { useRepoPicker }      from '../../core/hooks/useRepoPicker'
+import { useGithubActions }   from '../../core/hooks/useGithubActions'
+import { useSandboxRunner }   from '../../core/hooks/useSandboxRunner'
 import {
   detectLanguage, extractCode, applyEditBlocks,
   buildSandboxHtml, buildPyodideSandboxHtml, isCodeComplete,
@@ -224,21 +224,8 @@ export function useWorkspaceState({
   const [activeTab,     setActiveTab]     = useState('code')
   const [gitStatus,     setGitStatus]     = useState(null)
   const [prResult,      setPrResult]      = useState(null)
-  const [workflows,     setWorkflows]     = useState([])
-  const [workflowRuns,  setWorkflowRuns]  = useState([])
-  const [isPollingCI,   setIsPollingCI]   = useState(false)
 
-  // ── Sandbox ──────────────────────────────────────────────────────────────
-  const [sandboxOutput,   setSandboxOutput]   = useState([])
-  const [sandboxSetup,    setSandboxSetup]    = useState('')
-  const [isRunning,       setIsRunning]       = useState(false)
-  const [isRunningTests,  setIsRunningTests]  = useState(false)
-  const sandboxRef = useRef(null)
-
-  // ── Terminal ─────────────────────────────────────────────────────────────
-  const [terminalInput,     setTerminalInput]     = useState('')
-  const [terminalLog,       setTerminalLog]       = useState([])
-  const [isTerminalRunning, setIsTerminalRunning] = useState(false)
+  // ── Sandbox + Terminal (moved to useSandboxRunner — wired after derived values) ─
 
   // ── Permission mode ──────────────────────────────────────────────────────
   const [permissionMode, setPermissionMode] = useState(
@@ -258,12 +245,12 @@ export function useWorkspaceState({
   const fileInputRef = useRef(null)
 
   // ── Repo picker ──────────────────────────────────────────────────────────
-  const [repoPickerOpen,    setRepoPickerOpen]    = useState(false)
-  const [repoPickerSearch,  setRepoPickerSearch]  = useState('')
-  const [userRepos,         setUserRepos]         = useState([])
-  const [repoPickerLoading, setRepoPickerLoading] = useState(false)
-  const [repoPickerError,   setRepoPickerError]   = useState(null)
-  const repoPickerRef = useRef(null)
+  const {
+    repoPickerOpen, setRepoPickerOpen,
+    repoPickerSearch, setRepoPickerSearch,
+    userRepos, repoPickerLoading, repoPickerError, repoPickerRef,
+    loadRepos, openRepoPicker,
+  } = useRepoPicker(githubToken)
 
   // ── UI state ─────────────────────────────────────────────────────────────
   const [isGenerating,     setIsGenerating]     = useState(false)
@@ -498,6 +485,21 @@ export function useWorkspaceState({
     planRef.current = planRef.current.map((e, i) => i === index ? { ...e, ...updates } : e)
     setFilePlan([...planRef.current])
   }, [])
+
+  // ── Sub-hooks requiring derived values ───────────────────────────────────
+  const {
+    sandboxRef,
+    sandboxOutput, setSandboxOutput, sandboxSetup, setSandboxSetup,
+    isRunning, isRunningTests,
+    terminalInput, setTerminalInput,
+    terminalLog, setTerminalLog,
+    isTerminalRunning,
+    handleRunInSandbox, handleRunTests, runTerminalCommand,
+  } = useSandboxRunner({ generatedCode, testCode, language, bridgeAvailable, callExecBridgeStream })
+
+  const { workflows, workflowRuns, isPollingCI, loadWorkflows, triggerWorkflow } = useGithubActions({
+    hasGithub, githubToken, repoOwner, repoName, baseBranch, logActivity, updateActivity,
+  })
 
   // ── Generation helpers ────────────────────────────────────────────────────
   const setActivePhase = useCallback((phase) => {
@@ -976,23 +978,6 @@ export function useWorkspaceState({
   }, [agentSession])
 
   // ── Repo picker ───────────────────────────────────────────────────────────
-  const loadRepos = useCallback(async () => {
-    if (!githubToken) return
-    setRepoPickerLoading(true); setRepoPickerError(null)
-    try {
-      const repos = await listUserRepos(githubToken)
-      setUserRepos(repos)
-      if (repos.length === 0) setRepoPickerError('No repositories returned. Check token scopes (needs repo).')
-    } catch (err) { setRepoPickerError(err.message || 'Failed to load repositories') }
-    finally { setRepoPickerLoading(false) }
-  }, [githubToken])
-
-  const openRepoPicker = useCallback(async () => {
-    setRepoPickerOpen(true); setRepoPickerSearch('')
-    if (userRepos.length > 0) return
-    await loadRepos()
-  }, [userRepos.length, loadRepos])
-
   const handlePickRepo = useCallback((repo) => {
     setRepoOwner(repo.owner.login); setRepoName(repo.name)
     setBaseBranch(repo.default_branch || 'main'); setRepoPickerOpen(false); setLastBranchName('')
@@ -1004,37 +989,6 @@ export function useWorkspaceState({
     try { await shadowContext.reindex(); setShadowStatus(shadowContext.statusSummary()) }
     catch { setShadowStatus('reindex failed') }
   }, [hasGithub])
-
-  // ── GitHub Actions ────────────────────────────────────────────────────────
-  const loadWorkflows = useCallback(async () => {
-    if (!hasGithub) return
-    try { const res = await listWorkflows(githubToken, repoOwner, repoName); setWorkflows(res?.workflows || []) }
-    catch { setWorkflows([]) }
-  }, [hasGithub, githubToken, repoOwner, repoName])
-
-  const triggerWorkflow = useCallback(async () => {
-    if (!hasGithub) return
-    const wf = workflows.find(w => w.events?.includes('workflow_dispatch')) || workflows[0]
-    if (!wf) return
-    setIsPollingCI(true)
-    const id = logActivity('ci', `⊙ Triggering workflow ${wf.name || wf.path}`)
-    try {
-      const dispatch = await dispatchWorkflow(githubToken, repoOwner, repoName, wf.id, baseBranch)
-      if (!dispatch) { updateActivity(id, { status: 'error', msg: `⊙ Failed to trigger ${wf.name || wf.path}` }); return }
-      updateActivity(id, { status: 'done', msg: `⊙ Workflow triggered: ${wf.name || wf.path}` })
-      for (let i = 0; i < 18; i++) {
-        await new Promise(r => setTimeout(r, 5000))
-        const runs = await getWorkflowRuns(githubToken, repoOwner, repoName, baseBranch, 5, wf.id)
-        const run  = runs?.workflow_runs?.find(r => r.workflow_id === wf.id)
-        if (run && run.status !== 'queued' && run.status !== 'in_progress') {
-          setWorkflowRuns([run])
-          updateActivity(id, { status: run.conclusion === 'success' ? 'done' : 'error', msg: `⊙ Workflow ${run.name} ${run.conclusion || run.status}`, detail: run.html_url })
-          break
-        }
-      }
-    } catch (e) { updateActivity(id, { status: 'error', msg: `⊙ Workflow trigger failed: ${e.message}` }) }
-    finally { setIsPollingCI(false) }
-  }, [hasGithub, workflows, githubToken, repoOwner, repoName, baseBranch, logActivity, updateActivity])
 
   // ── handlePush ────────────────────────────────────────────────────────────
   const confirmAction = useCallback((description) => {
@@ -1139,116 +1093,6 @@ export function useWorkspaceState({
     } catch (err) { log(`✗ ${err.message}`, false); logActivity('error', `✗ Push failed: ${err.message}`); setError(`Push failed: ${err.message}`) }
     finally { setIsPushing(false); setPushStep('') }
   }, [filePlan, githubToken, repoOwner, repoName, baseBranch, dryRun, history, prompt, models, activeModelId, turnCount, hasGithub, confirmAction, logActivity, updateActivity]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Sandbox run handlers ──────────────────────────────────────────────────
-  const handleRunInSandbox = useCallback(() => {
-    if (!generatedCode) return
-    const isPython = language === 'python'
-    setIsRunning(true)
-    setSandboxOutput([{ level: 'info', text: isPython ? '▶ Loading Python runtime (Pyodide)…' : '▶ Running in isolated sandbox…' }])
-    const iframe = sandboxRef.current
-    if (!iframe) { setIsRunning(false); return }
-    const guardMs = isPython ? 25000 : 9000
-    let guardTimer = null
-    const onMessage = (e) => {
-      if (e.data?.done) {
-        clearTimeout(guardTimer)
-        setSandboxOutput(e.data.log?.length ? e.data.log : [{ level: 'info', text: '(no output)' }])
-        setIsRunning(false); window.removeEventListener('message', onMessage)
-      }
-    }
-    window.addEventListener('message', onMessage)
-    guardTimer = setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunning(false) }, guardMs)
-    iframe.srcdoc = isPython ? buildPyodideSandboxHtml(generatedCode) : buildSandboxHtml(generatedCode, sandboxSetup)
-  }, [generatedCode, sandboxSetup, language])
-
-  const handleRunTests = useCallback(() => {
-    if (!testCode) return
-    const isPython = language === 'python'
-    setIsRunningTests(true)
-    setSandboxOutput([{ level: 'info', text: isPython ? '▶ Loading Python runtime (Pyodide)…' : '▶ Running tests in isolated sandbox…' }])
-    const iframe = sandboxRef.current
-    if (!iframe) { setIsRunningTests(false); return }
-    const guardMs = isPython ? 25000 : 9000
-    let guardTimer = null
-    const onMessage = (e) => {
-      if (e.data?.done) {
-        clearTimeout(guardTimer)
-        setSandboxOutput(e.data.log?.length ? e.data.log : [{ level: 'info', text: '(no output)' }])
-        setIsRunningTests(false); window.removeEventListener('message', onMessage)
-      }
-    }
-    window.addEventListener('message', onMessage)
-    guardTimer = setTimeout(() => { window.removeEventListener('message', onMessage); setIsRunningTests(false) }, guardMs)
-    iframe.srcdoc = isPython ? buildPyodideSandboxHtml(testCode) : buildSandboxHtml(testCode, sandboxSetup)
-  }, [testCode, sandboxSetup, language])
-
-  // ── Terminal ──────────────────────────────────────────────────────────────
-  const runTerminalCommand = useCallback((cmd) => {
-    const trimmed = cmd.trim()
-    if (!trimmed) return
-    const ts = new Date().toLocaleTimeString()
-    const pushEntry = (output, type = 'output') =>
-      setTerminalLog(prev => [...prev, { cmd: trimmed, output, type, ts }])
-    if (trimmed === 'clear') { setTerminalLog([]); return }
-    if (trimmed === 'help') {
-      pushEntry('Available commands:\n  JS/TS expressions  → executed in browser sandbox\n  python: <code>     → executed via Pyodide\n  clear / help', 'info'); return
-    }
-    if (/^python:/i.test(trimmed)) {
-      const code = trimmed.slice(7).trim()
-      setIsTerminalRunning(true)
-      const iframe = sandboxRef.current
-      if (!iframe) { pushEntry('Sandbox not available', 'error'); setIsTerminalRunning(false); return }
-      const timer = setTimeout(() => { window.removeEventListener('message', onPyMsg); pushEntry('[timeout] 20 s limit reached', 'warn'); setIsTerminalRunning(false) }, 22000)
-      const onPyMsg = (e) => {
-        if (!e.data?.done) return
-        clearTimeout(timer); window.removeEventListener('message', onPyMsg)
-        const lines = e.data.log || []
-        pushEntry(lines.length ? lines.map(l => l.text).join('\n') : '(no output)', lines.some(l => l.level === 'error') ? 'error' : 'output')
-        setIsTerminalRunning(false)
-      }
-      window.addEventListener('message', onPyMsg)
-      iframe.srcdoc = buildPyodideSandboxHtml(code); return
-    }
-    const isJsLike = /^(const |let |var |function |class |console\.|\/\/|import |export |async |await )/.test(trimmed) ||
-      (/[+\-*/%=()[\]{}.`"']/.test(trimmed) && !/^[a-z]+ /.test(trimmed)) || /^\d/.test(trimmed)
-    if (isJsLike) {
-      setIsTerminalRunning(true)
-      const iframe = sandboxRef.current
-      if (!iframe) { pushEntry('Sandbox not available', 'error'); setIsTerminalRunning(false); return }
-      const timer = setTimeout(() => { window.removeEventListener('message', onJsMsg); pushEntry('[timeout] 7 s limit reached', 'warn'); setIsTerminalRunning(false) }, 8000)
-      const onJsMsg = (e) => {
-        if (!e.data?.done) return
-        clearTimeout(timer); window.removeEventListener('message', onJsMsg)
-        const lines = e.data.log || []
-        pushEntry(lines.length ? lines.map(l => l.text).join('\n') : '(no output)', lines.some(l => l.level === 'error') ? 'error' : 'output')
-        setIsTerminalRunning(false)
-      }
-      window.addEventListener('message', onJsMsg)
-      iframe.srcdoc = buildSandboxHtml(trimmed, ''); return
-    }
-    if (/^node( -v|--version)?$/.test(trimmed)) { pushEntry('v20.x (browser JS engine)', 'info'); return }
-    if (/^python3?( --version|-V)?$/.test(trimmed)) { pushEntry('Python 3.12 (Pyodide) — use: python: print("hello")', 'info'); return }
-    if (bridgeAvailable) {
-      setIsTerminalRunning(true)
-      let streamOut = ''
-      const streamId = `stream-${Date.now()}`
-      setTerminalLog(prev => [...prev, { cmd: trimmed, output: '', type: 'output', ts, streamId }])
-      callExecBridgeStream(trimmed, undefined, (chunk) => {
-        streamOut += chunk
-        setTerminalLog(prev => prev.map(e => e.streamId === streamId ? { ...e, output: streamOut } : e))
-      }).then(({ exitCode }) => {
-        setTerminalLog(prev => prev.map(e => e.streamId === streamId ? { ...e, output: streamOut || '(no output)', type: exitCode === 0 ? 'output' : 'error', streamId: undefined } : e))
-        setIsTerminalRunning(false)
-      }); return
-    }
-    const shellCmds = ['npm','yarn','pnpm','git','npx','tsc','eslint','jest','vitest','cargo','go','pip']
-    const base = trimmed.split(/\s+/)[0]
-    if (shellCmds.includes(base)) {
-      pushEntry(`ℹ "${trimmed}" requires the exec bridge (run via \`npm run dev\`).\nBridge not detected — start the Vite dev server to enable real shell execution.`, 'info'); return
-    }
-    pushEntry(`command not found: ${base}\nType "help" for available commands.`, 'error')
-  }, [sandboxRef, bridgeAvailable, callExecBridge, callExecBridgeStream]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Conversational reply ──────────────────────────────────────────────────
 
