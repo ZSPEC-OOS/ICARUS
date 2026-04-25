@@ -8,8 +8,10 @@ import PromptBar          from './PromptBar'
 import BluswanActivityFeed  from '../bluswan/BluswanActivityFeed'
 import BluswanSettings      from '../bluswan/BluswanSettings'
 import BluswanModularTools  from '../bluswan/BluswanModularTools'
+import BluswanOnboarding    from '../bluswan/BluswanOnboarding'
 import { useWorkspaceState } from './useWorkspaceState'
 import { shadowContext } from '../../services/shadowContext'
+import { KEYS } from '../../shared/storageKeys.js'
 import '../Bluswan.css'
 
 export default function WorkspaceShell(props) {
@@ -62,12 +64,31 @@ export default function WorkspaceShell(props) {
     setLrmPlan,
   } = ws
 
+  // Show onboarding if no model has an API key and user hasn't dismissed it before
+  const needsOnboarding = !models?.some(m => m.apiKey?.trim()) &&
+    !(() => { try { return JSON.parse(localStorage.getItem(KEYS.LS.ONBOARDING) || '{}').dismissed || JSON.parse(localStorage.getItem(KEYS.LS.ONBOARDING) || '{}').completed } catch { return false } })()
+
+  function handleOnboardingDone({ models: newModels, githubToken: token, repoOwner: owner, repoName: name } = {}) {
+    if (newModels) ws.setModels(newModels)
+    if (token)     ws.setGithubToken(token)
+    if (owner)     ws.setRepoOwner(owner)
+    if (name)      ws.setRepoName(name)
+  }
+
   return (
     <div
       className={`lk-root lk-theme-bluswan${conversation.length > 0 ? ' lk-root--chatting' : ''}`}
       style={{ filter: ftFilter }}
       onKeyDown={ws.handleKeyDown}
     >
+      {/* First-run onboarding overlay */}
+      {needsOnboarding && (
+        <BluswanOnboarding
+          existingModels={models || []}
+          onDone={handleOnboardingDone}
+        />
+      )}
+
       {/* Aurora background — hidden after first message */}
       {conversation.length === 0 && (
         <Aurora colorStops={['#071630', '#3b8ef0', '#112252']} amplitude={1.0} blend={0.5} speed={1.0} />
@@ -341,6 +362,11 @@ export default function WorkspaceShell(props) {
                   onLrmOverride={handleLrmOverride}
                   onLrmCancel={handleLrmCancel}
                   onLrmSkip={handleLrmSkip}
+                  failedAtPhase={agentSession.failedAtPhase}
+                  onRetry={() => {
+                    const goal = agentSession.agentTask?.goal
+                    if (goal) agentSession.run(goal, conversation.slice(-10), { forceBuildMode: true })
+                  }}
                 />
               </div>
 
