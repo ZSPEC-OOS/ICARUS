@@ -11,6 +11,7 @@ import { useState, useRef, useCallback } from 'react'
 import { runAgentLoop } from '../../services/agentLoop.js'
 import { makeExecutor }  from '../../services/agentExecutor.js'
 import { AGENT_TOOLS, buildAgentSystemPrompt } from '../../services/agentTools.js'
+import { AGENT_SESSION_TIMEOUT_MS } from '../../config/constants.js'
 import { shadowContext } from '../../services/shadowContext.js'
 import { loadEnhancerConfig } from '../../services/enhancers/config.js'
 import {
@@ -110,6 +111,7 @@ export function useAgentSession({
 
     const ctrl = new AbortController()
     abortRef.current = ctrl
+    const sessionTimeoutId = setTimeout(() => ctrl.abort(), AGENT_SESSION_TIMEOUT_MS)
 
     // Inject a modular tool if requested via loadworkflow_
     let modularTool = null
@@ -363,6 +365,7 @@ export function useAgentSession({
       updateActivity(startId, { status: 'error', msg: `⚡ Agent crashed — ${unexpectedErr.message}` })
       onSetError?.(`Agent crashed: ${unexpectedErr.message}`)
     } finally {
+      clearTimeout(sessionTimeoutId)
       runningRef.current = false
       streamTextRef.current = ''
       setAgentStreamText('')

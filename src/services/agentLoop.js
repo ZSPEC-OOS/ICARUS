@@ -1,5 +1,5 @@
 import { callWithToolsStreaming } from './aiService.js'
-import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS, AGENT_LOOP_WINDOW } from '../config/constants.js'
+import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS, AGENT_LOOP_WINDOW, AGENT_LOOP_MAX_RECOVERIES } from '../config/constants.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
 import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
 import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
@@ -94,7 +94,7 @@ export function pruneMessages(messages, diary = null, isAnthropic = false) {
     if (firstNonTool > 0) trimmed = trimmed.slice(firstNonTool)
   }
   if (diary?.hasContent()) return [...head, { role: 'user', content: diary.buildDigest(droppedCount) }, ...trimmed]
-  return [...head, ...trimmed]
+  return [...head, { role: 'user', content: `[${droppedCount} earlier turns pruned to fit context. Original task and system instructions above remain in full.]` }, ...trimmed]
 }
 
 export async function runAgentLoop({
@@ -181,6 +181,7 @@ export async function runAgentLoop({
   const filesChanged = []
   const compressor = createContextCompressor({ memoryGraphService })
   const recentSigs = []
+  let loopRecoveryCount = 0
   // Track which prompt registry variants are active this session
   const _registryVariants = {}
   const taskId = `agent-${Date.now()}`
@@ -428,6 +429,7 @@ export async function runAgentLoop({
           const inFlight = new Map()
 
           const settled = await Promise.allSettled(response.toolCalls.map(async tc => {
+            if (signal?.aborted) return 'Agent stopped.'
             const id = toolCallIds.get(tc)
             const cacheKey = `${tc.name}:${JSON.stringify(tc.input || {})}`
             try {
@@ -517,8 +519,14 @@ export async function runAgentLoop({
           if (recentSigs.length > AGENT_LOOP_WINDOW) recentSigs.shift()
           if (recentSigs.length === AGENT_LOOP_WINDOW && recentSigs.every(s => s === sig)) {
             recentSigs.length = 0
-            messages.push({ role: 'user', content: '⚠ You appear to be repeating the same tool calls. Try a different approach.' })
-            onEvent({ type: 'text_delta', delta: '\n[Loop detected — injecting recovery prompt]\n' })
+            loopRecoveryCount++
+            if (loopRecoveryCount >= AGENT_LOOP_MAX_RECOVERIES) {
+              finalText = 'Agent stopped: repeated the same actions after multiple recovery attempts. Please rephrase or break the task into smaller steps.'
+              onEvent({ type: 'text_delta', delta: '\n[Loop limit reached — stopping agent]\n' })
+              return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
+            }
+            messages.push({ role: 'user', content: `⚠ You are repeating the same tool calls (recovery attempt ${loopRecoveryCount}/${AGENT_LOOP_MAX_RECOVERIES}). Stop, reconsider the approach, and try something genuinely different.` })
+            onEvent({ type: 'text_delta', delta: `\n[Loop detected — recovery attempt ${loopRecoveryCount}]\n` })
           }
         }
 
