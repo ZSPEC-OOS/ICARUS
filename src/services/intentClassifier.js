@@ -1,6 +1,12 @@
 // ─── intentClassifier ─────────────────────────────────────────────────────────
-// Pure, synchronous function. No API calls, no React.
-// Returns { mode, confidence, reason } where mode is one of:
+// Pure, synchronous functions. No API calls, no React.
+//
+// estimateScope(message, shadowContext) → 'single' | 'multi' | 'arch'
+//   Matches identifier-like words in the message against the shadow content
+//   index to estimate how many files the task is likely to touch.
+//
+// classifyIntent(message, repoSignals?) → { mode, confidence, reason }
+//   mode is one of:
 //   'chat'     — question / explanation / discussion, no code action needed
 //   'plan'     — read-only analysis: find, audit, trace, review
 //   'build'    — active code change: add, fix, refactor, implement
@@ -83,9 +89,51 @@ function keywordScore(text, keywords) {
   return keywords.reduce((n, kw) => n + (text.includes(kw) ? 1 : 0), 0)
 }
 
+// ── Scope estimator ───────────────────────────────────────────────────────────
+// Synchronous — scans the in-memory content index; typically <1 ms.
+// Returns 'single' | 'multi' | 'arch'.
+//
+// Thresholds:
+//   0 symbol matches  → single (assume focused task)
+//   1–3 file matches  → single
+//   4–15 file matches → multi  (likely needs LRM decomposition)
+//   >15 file matches  → arch   (cross-cutting — force LRM)
+//
+// Falls back to file-count heuristic when shadowContext isn't ready or
+// the message contains no recognisable identifiers.
+
+export function estimateScope(message, shadow) {
+  if (!shadow?.isReady || !shadow._contentIndex) return 'single'
+
+  const fileCount = shadow._totalRepoFiles || shadow._fileIndex?.length || 0
+
+  // Extract candidate identifier tokens: camelCase, PascalCase, snake_case ≥3 chars
+  const tokens = (message.match(/\b([A-Z][a-zA-Z0-9]{2,}|[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*|[a-z][a-z0-9_]{2,})\b/g) || [])
+    .map(t => t.toLowerCase())
+
+  if (tokens.length === 0) {
+    // No identifiers — fall back to repo size
+    if (fileCount > 400) return 'arch'
+    if (fileCount > 80)  return 'multi'
+    return 'single'
+  }
+
+  const matchedFiles = new Set()
+  for (const [path, entry] of Object.entries(shadow._contentIndex)) {
+    const syms = (entry.symbols || []).map(s => s.toLowerCase())
+    if (tokens.some(tok => syms.some(sym => sym === tok || sym.includes(tok)))) {
+      matchedFiles.add(path)
+      if (matchedFiles.size > 15) return 'arch'  // early exit
+    }
+  }
+
+  if (matchedFiles.size > 3)  return 'multi'
+  return 'single'
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function classifyIntent(message) {
+export function classifyIntent(message, repoSignals = null) {
   const raw  = String(message || '').trim()
   const text = raw.toLowerCase()
 
@@ -115,6 +163,10 @@ export function classifyIntent(message) {
   if (scores.creative >= 4) scores.build = Math.max(0, scores.build - 2)
   if (scores.long     >= 4) scores.build = 0
 
+  // Repo-aware scope boosts — widen to 'long' when symbol search shows broad impact
+  if (repoSignals?.scope === 'arch')  { scores.long += 3; scores.build = 0 }
+  if (repoSignals?.scope === 'multi') { scores.long += 1.5 }
+
   // Find winner — on equal scores build beats plan beats chat
   const ORDER = ['build', 'plan', 'chat', 'long', 'creative']
   const sorted = [...ORDER].sort((a, b) => scores[b] - scores[a])
@@ -137,9 +189,10 @@ export function classifyIntent(message) {
     : topMode === 'creative'                ? CREATIVE_PHRASES
     : LONG_PHRASES
   const hit = allSignals.find(s => text.includes(s)) || ''
+  const scopePart = repoSignals?.scope && repoSignals.scope !== 'single' ? `, scope:${repoSignals.scope}` : ''
   const reason = hit
-    ? `"${hit}" → ${topMode} (score ${topScore})`
-    : `${topMode} (score ${topScore})`
+    ? `"${hit}" → ${topMode} (score ${topScore}${scopePart})`
+    : `${topMode} (score ${topScore}${scopePart})`
 
-  return { mode: topMode, confidence, reason }
+  return { mode: topMode, confidence, reason, scope: repoSignals?.scope ?? 'unknown' }
 }
