@@ -1349,6 +1349,18 @@ export function useWorkspaceState({
 
   const handleLrmCancel = useCallback(() => { setLrmPlan(null); setLrmGeneratingPlan(false) }, [])
 
+  const handleLrmSkip = useCallback(() => {
+    const task = lrmPlan?.originalPrompt
+    setLrmPlan(null)
+    setLrmGeneratingPlan(false)
+    if (!task) return
+    if (shouldUseAgent) {
+      agentSession.run(task, conversation.slice(-10), { executionMode: 'default', forceBuildMode: true })
+    } else {
+      handleGenerate(task)
+    }
+  }, [lrmPlan, shouldUseAgent, agentSession, conversation, handleGenerate])
+
   // ── Submit + keyboard ─────────────────────────────────────────────────────
   const handleSubmitPrompt = useCallback(async () => {
     setHistoryOpen(false); setSettingsOpen(false)
@@ -1518,7 +1530,7 @@ export function useWorkspaceState({
     handleRunInSandbox, handleRunTests,
     runTerminalCommand, confirmAction, handlePush,
     handleConversationalReply,
-    handleLrmGeneratePlan, handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel,
+    handleLrmGeneratePlan, handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel, handleLrmSkip,
     handleSubmitPrompt, handleKeyDown,
     setActivePhase, emitStreamEvent,
     lastBranchName, setLastBranchName,

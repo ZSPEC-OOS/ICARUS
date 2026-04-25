@@ -81,6 +81,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   onLrmProceed,
   onLrmOverride,
   onLrmCancel,
+  onLrmSkip,
 }) {
   const streamBoxRef = useRef(null)
 
@@ -224,7 +225,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                 )}
 
                 {/* LRM: generating plan status */}
-                {lrmGeneratingPlan && renderStatusLine('lrm-gen', 'Analysing request and building phase plan…')}
+                {lrmGeneratingPlan && renderStatusLine('lrm-gen', 'This looks like a multi-phase task — building a breakdown…')}
 
                 {/* ── Narration thread (agent mode) ─────────────────────── */}
                 {narrationThread.length > 0 ? (
@@ -365,6 +366,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                 onProceed={onLrmProceed}
                 onOverride={onLrmOverride}
                 onCancel={onLrmCancel}
+                onSkip={onLrmSkip}
               />
             )}
           </div>

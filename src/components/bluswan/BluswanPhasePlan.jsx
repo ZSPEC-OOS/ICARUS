@@ -36,6 +36,7 @@ export default function BluswanPhasePlan({
   onProceed,     // (idx) → proceed to next phase after idx
   onOverride,    // (idx) → manually override verification
   onCancel,      // () → cancel/dismiss entire plan
+  onSkip,        // () → bypass plan, run original prompt directly in build mode
 }) {
   const [expanded, setExpanded] = useState({ 0: true })
 
@@ -54,11 +55,18 @@ export default function BluswanPhasePlan({
       <div className="lk-phase-plan-hd">
         <div className="lk-phase-plan-hd-left">
           <span className="lk-phase-plan-icon">⇥</span>
-          <span className="lk-phase-plan-title">Long Request Mode</span>
+          <span className="lk-phase-plan-title">Multi-phase task</span>
           <span className="lk-phase-plan-count">{phases.length} phases</span>
         </div>
         {!isGenerating && (
-          <button className="lk-phase-plan-cancel" onClick={onCancel} title="Cancel plan">✕</button>
+          <div className="lk-phase-plan-hd-actions">
+            {onSkip && !Object.values(statuses).some(s => s !== 'pending') && (
+              <button className="lk-btn lk-btn--small lk-phase-skip" onClick={onSkip} title="Skip phase plan and run directly">
+                Run directly →
+              </button>
+            )}
+            <button className="lk-phase-plan-cancel" onClick={onCancel} title="Cancel plan">✕</button>
+          </div>
         )}
       </div>
 

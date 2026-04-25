@@ -54,7 +54,7 @@ export default function WorkspaceShell(props) {
     loadRepos, handlePickRepo,
     // handlers
     handleReset, handleReindex, handleSaveBluswanMd,
-    handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel,
+    handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel, handleLrmSkip,
     saveHistory,
     // sandbox
     sandboxRef,
@@ -338,6 +338,7 @@ export default function WorkspaceShell(props) {
                   onLrmProceed={handleLrmProceed}
                   onLrmOverride={handleLrmOverride}
                   onLrmCancel={handleLrmCancel}
+                  onLrmSkip={handleLrmSkip}
                 />
               </div>
 
