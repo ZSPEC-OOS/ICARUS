@@ -29,6 +29,7 @@ import {
 import { estimateCost } from '../../utils/tokenEstimator'
 import { shadowContext } from '../../services/shadowContext'
 import { isVaguePrompt, amplifyPrompt } from '../../services/intentAmplifier'
+import { classifyIntent } from '../../services/intentClassifier'
 import { buildFilePlan } from '../../services/planner'
 import {
   createPipelineSteps,
@@ -1243,15 +1244,6 @@ export function useWorkspaceState({
   }, [sandboxRef, bridgeAvailable, callExecBridge, callExecBridgeStream]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Conversational reply ──────────────────────────────────────────────────
-  const isConversationalPrompt = useCallback((value) => {
-    const text = String(value || '').trim().toLowerCase()
-    if (!text) return false
-    if (text.length < 80 && /^(hi|hello|hey|thanks|thank you|how are you|what can you do)/i.test(text)) return true
-    const codingSignals = /(create|build|implement|fix|refactor|add|remove|update|generate|write|bug|error|test|repo|file|component|api|function|class|css|ui|database|deploy|pipeline|module|route)/i
-    const chatSignals   = /(explain|what is|why|how does|compare|difference|ideas|brainstorm|summary|summarize|help me understand)/i
-    if (codingSignals.test(text)) return false
-    return chatSignals.test(text) || text.endsWith('?')
-  }, [])
 
   const handleConversationalReply = useCallback(async (userMsg) => {
     const model = models?.find(m => m.id === activeModelId)
@@ -1391,9 +1383,23 @@ export function useWorkspaceState({
       if (!effectiveMsg) { setError('Add a task after loadworkflow_<toolname>.'); return }
     }
 
-    if (chatMode) { handleConversationalReply(effectiveMsg); return }
-    if (longRequestMode && !lrmPlan && !isConversationalPrompt(effectiveMsg)) { handleLrmGeneratePlan(effectiveMsg); return }
-    if (isConversationalPrompt(effectiveMsg)) { handleConversationalReply(effectiveMsg); return }
+    // ── Intent classification — toggles override, classifier fills the rest ──
+    const classification = classifyIntent(effectiveMsg)
+    const resolvedMode = chatMode          ? 'chat'
+      : longRequestMode                    ? 'long'
+      : buildMode                          ? 'build'
+      : executionMode === 'drct'           ? 'creative'
+      : classification.mode
+
+    // eslint-disable-next-line no-console
+    console.debug('[BLUSWAN_ROUTE]', { resolvedMode, ...classification })
+
+    if (resolvedMode === 'chat') { handleConversationalReply(effectiveMsg); return }
+    if (resolvedMode === 'long' && !lrmPlan) { handleLrmGeneratePlan(effectiveMsg); return }
+
+    const agentForceBuildMode = resolvedMode === 'build'
+    const agentExecMode       = resolvedMode === 'creative' ? 'drct' : 'default'
+
     if (shouldUseAgent || modularToolId) {
       let branchOverride = null
       agentMutatedRef.current = false
@@ -1405,9 +1411,9 @@ export function useWorkspaceState({
           branchOverride = newBranch; agentBranchRef.current = newBranch
         } catch (err) { setError(`Failed to create branch: ${err.message}`); return }
       }
-      agentSession.run(effectiveMsg, conversation.slice(-10), { branchOverride, executionMode, modularToolId, forceBuildMode: buildMode })
+      agentSession.run(effectiveMsg, conversation.slice(-10), { branchOverride, executionMode: agentExecMode, modularToolId, forceBuildMode: agentForceBuildMode })
     } else { handleGenerate(effectiveMsg) }
-  }, [prompt, attachedFiles, chatMode, buildMode, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prompt, attachedFiles, chatMode, buildMode, longRequestMode, lrmPlan, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleKeyDown = useCallback((e) => {
     const submitByEnter    = e.key === 'Enter' && !e.shiftKey && !e.isComposing
@@ -1507,7 +1513,7 @@ export function useWorkspaceState({
     loadWorkflows, triggerWorkflow,
     handleRunInSandbox, handleRunTests,
     runTerminalCommand, confirmAction, handlePush,
-    handleConversationalReply, isConversationalPrompt,
+    handleConversationalReply,
     handleLrmGeneratePlan, handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel,
     handleSubmitPrompt, handleKeyDown,
     setActivePhase, emitStreamEvent,
