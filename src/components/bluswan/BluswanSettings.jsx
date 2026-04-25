@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useRef } from 'react'
 import { clearApiKeys, saveModels, testModelConnection, testSearchConnection, loadSearchKey, saveSearchKey } from '../../services/aiService.js'
+import { detectProvider, discoverLocalModels } from '../../services/providerRegistry.js'
 import { getRepo, getAuthenticatedUser } from '../../services/githubService.js'
 import { parseGitHubUrl } from '../../utils/codeUtils.js'
 import { KEYS } from '../../shared/storageKeys.js'
@@ -24,6 +25,23 @@ import {
 
 // ─── ModelCard ────────────────────────────────────────────────────────────────
 function ModelCard({ m, isCollapsed, onExpand, onRemove, saveError, isSaving, testResult, onTest, onSave, onUpdateKey, onUpdateField }) {
+  const [discoveredModels, setDiscoveredModels] = useState([])
+  const [discovering, setDiscovering] = useState(false)
+
+  const isLocal = m.baseUrl && detectProvider(m.baseUrl).id !== 'unknown' &&
+    ['ollama', 'lmstudio', 'openai-compatible'].includes(detectProvider(m.baseUrl).id) &&
+    (m.baseUrl.includes('localhost') || m.baseUrl.includes('127.0.0.1'))
+
+  async function handleDiscover() {
+    setDiscovering(true)
+    const models = await discoverLocalModels(m.baseUrl)
+    setDiscoveredModels(models)
+    setDiscovering(false)
+    if (models.length === 1) onUpdateField('modelId', models[0])
+  }
+
+  const listId = `discover-${m.id}`
+
   if (isCollapsed) {
     return (
       <div className="lk-settings-model-row--saved" onClick={onExpand} title="Click to edit">
@@ -56,17 +74,31 @@ function ModelCard({ m, isCollapsed, onExpand, onRemove, saveError, isSaving, te
       <input
         className="lk-input"
         type="password"
-        placeholder={`API key for ${m.name || 'this model'}`}
+        placeholder={`API key for ${m.name || 'this model'} (leave blank for local)`}
         value={m.apiKey || ''}
         onChange={e => onUpdateKey(e.target.value)}
         autoComplete="off"
       />
       {m.id.startsWith('custom-') && (
         <>
-          <input className="lk-input" placeholder="Model ID (e.g. gpt-4o)" value={m.modelId || ''}
-            onChange={e => onUpdateField('modelId', e.target.value)} />
           <input className="lk-input" placeholder="Base URL" value={m.baseUrl || ''}
             onChange={e => onUpdateField('baseUrl', e.target.value)} />
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input className="lk-input" placeholder="Model ID (e.g. gpt-4o)" value={m.modelId || ''}
+              onChange={e => onUpdateField('modelId', e.target.value)}
+              list={discoveredModels.length ? listId : undefined}
+              style={{ flex: 1 }} />
+            {discoveredModels.length > 0 && (
+              <datalist id={listId}>
+                {discoveredModels.map(id => <option key={id} value={id} />)}
+              </datalist>
+            )}
+            {isLocal && (
+              <button className="lk-btn lk-btn--small" onClick={handleDiscover} disabled={discovering} title="Discover running models">
+                {discovering ? '…' : 'Discover'}
+              </button>
+            )}
+          </div>
         </>
       )}
       {!m.id.startsWith('custom-') && <span className="lk-hint">{m.baseUrl}</span>}
@@ -74,7 +106,7 @@ function ModelCard({ m, isCollapsed, onExpand, onRemove, saveError, isSaving, te
       <div className="lk-settings-model-test">
         <button
           className="lk-btn lk-btn--small"
-          disabled={!m.apiKey || testResult?.testing}
+          disabled={testResult?.testing}
           onClick={onTest}
         >
           {testResult?.testing ? '…Testing' : 'Test Connection'}

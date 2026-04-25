@@ -159,10 +159,66 @@ const PROVIDERS = {
     streamFormat: 'openai',
     systemPrompt: 'message',
     defaultContextWindow: 32_000,
+    supportsTools: 'detect',
+  },
+  lmstudio: {
+    name: 'LM Studio',
+    matchUrls: ['localhost:1234', '127.0.0.1:1234'],
+    toolFormat: 'openai',
+    streamFormat: 'openai',
+    systemPrompt: 'message',
+    defaultContextWindow: 32_000,
+    supportsTools: 'detect',
   },
 }
 
 // ── Core helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Normalize a baseUrl to the canonical form the provider's API expects.
+ * Currently handles Gemini: /v1beta → /v1beta/openai (OpenAI-compat endpoint).
+ */
+export function normalizeBaseUrl(baseUrl) {
+  if (!baseUrl) return baseUrl
+  // Gemini: route through the OpenAI-compatible sub-path
+  if (baseUrl.includes('googleapis.com') && !baseUrl.includes('/openai')) {
+    return baseUrl.replace(/\/+$/, '') + '/openai'
+  }
+  return baseUrl
+}
+
+/**
+ * Probe a local model server for its available model IDs.
+ * Supports Ollama (/api/tags) and LM Studio / OpenAI-compat (/models).
+ * Returns an empty array on any error (server not running, CORS, etc.).
+ */
+export async function discoverLocalModels(baseUrl) {
+  if (!baseUrl) return []
+  const provider = detectProvider(baseUrl)
+
+  if (provider.id === 'ollama') {
+    try {
+      // Strip /api or /v1 suffix to get the Ollama root URL
+      const root = baseUrl.replace(/\/+(api|v1)\/*$/, '')
+      const res = await fetch(`${root}/api/tags`, { signal: AbortSignal.timeout(3000) })
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.models || []).map(m => m.name).filter(Boolean)
+    } catch { return [] }
+  }
+
+  if (provider.id === 'lmstudio' || provider.id === 'openai-compatible') {
+    try {
+      const root = baseUrl.replace(/\/+$/, '')
+      const res = await fetch(`${root}/models`, { signal: AbortSignal.timeout(3000) })
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.data || []).map(m => m.id).filter(Boolean)
+    } catch { return [] }
+  }
+
+  return []
+}
 
 /**
  * Identify which provider a baseUrl belongs to.

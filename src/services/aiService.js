@@ -1,4 +1,5 @@
 import { KEYS as STORAGE_KEYS } from '../shared/storageKeys.js'
+import { detectProvider, toProviderTools, getDevProxyUrl, normalizeBaseUrl } from './providerRegistry.js'
 
 const MODELS_KEY    = STORAGE_KEYS.LS.AI_MODELS      // localStorage  — config only, NO api keys
 const KEYS_SS_KEY   = STORAGE_KEYS.SS.AI_KEYS         // sessionStorage — api keys (primary, clears on tab close)
@@ -329,6 +330,22 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const DEFAULT_MAX_TOKENS = 8192
 
+// ── No-tool fallback cache ────────────────────────────────────────────────────
+// Models that returned a "tools not supported" error this session are cached here.
+// Subsequent calls skip tools entirely so we don't keep erroring.
+const NO_TOOL_MODELS = new Set()
+
+function isToolSupportError(errText = '') {
+  const t = errText.toLowerCase()
+  return (
+    t.includes('tool') ||
+    t.includes('function call') ||
+    t.includes('does not support') ||
+    t.includes('not support') ||
+    t.includes('unsupported')
+  )
+}
+
 async function fetchWithRetry(url, options, maxRetries = 4) {
   let delay = 2000
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -462,7 +479,7 @@ function buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig = {}) {
     }
   }
   return {
-    url: `${devProxyUrl(baseUrl)}/chat/completions`,
+    url: `${devProxyUrl(normalizeBaseUrl(baseUrl))}/chat/completions`,
     options: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -688,14 +705,40 @@ export async function callWithToolsStreaming(modelConfig, messages, tools, signa
     return readAnthropicToolStream(res, signal, onTextDelta)
   }
 
-  const providerTools = toProviderTools(tools, baseUrl)
-  const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, {
-    stream: true, tools: providerTools, tool_choice: 'auto', messages,
-    stream_options: { include_usage: true },
-  }, modelConfig)
-  const res = await fetchWithRetry(url, { ...options, signal })
-  if (!res.ok) { const err = await res.text(); throw new Error(`AI API error ${res.status}: ${err}`) }
-  return readOpenAIToolStream(res, signal, onTextDelta)
+  const noToolMode = NO_TOOL_MODELS.has(modelId) || !tools?.length
+  const providerTools = noToolMode ? [] : toProviderTools(tools, baseUrl)
+  const body = noToolMode
+    ? { stream: true, messages, stream_options: { include_usage: true } }
+    : { stream: true, tools: providerTools, tool_choice: 'auto', messages, stream_options: { include_usage: true } }
+
+  try {
+    const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig)
+    const res = await fetchWithRetry(url, { ...options, signal })
+    if (!res.ok) {
+      const errText = await res.text()
+      if (!noToolMode && (res.status === 400 || res.status === 422) && isToolSupportError(errText)) {
+        NO_TOOL_MODELS.add(modelId)
+        const fallbackBody = { stream: true, messages, stream_options: { include_usage: true } }
+        const { url: u2, options: o2 } = buildOpenAIRequest(baseUrl, apiKey, modelId, fallbackBody, modelConfig)
+        const res2 = await fetchWithRetry(u2, { ...o2, signal })
+        if (!res2.ok) { const e2 = await res2.text(); throw new Error(`AI API error ${res2.status}: ${e2}`) }
+        return readOpenAIToolStream(res2, signal, onTextDelta)
+      }
+      throw new Error(`AI API error ${res.status}: ${errText}`)
+    }
+    return readOpenAIToolStream(res, signal, onTextDelta)
+  } catch (err) {
+    if (err.name === 'AbortError') throw err
+    if (!noToolMode && isToolSupportError(err.message)) {
+      NO_TOOL_MODELS.add(modelId)
+      const fallbackBody = { stream: true, messages, stream_options: { include_usage: true } }
+      const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, fallbackBody, modelConfig)
+      const res = await fetchWithRetry(url, { ...options, signal })
+      if (!res.ok) { const e = await res.text(); throw new Error(`AI API error ${res.status}: ${e}`) }
+      return readOpenAIToolStream(res, signal, onTextDelta)
+    }
+    throw err
+  }
 }
 
 // ── callWithTools — non-streaming call with function/tool schemas ─────────────
@@ -721,23 +764,50 @@ export async function callWithTools(modelConfig, messages, tools, signal, system
   }
 
   // OpenAI / Kimi / any compatible
-  const providerTools = toProviderTools(tools, baseUrl)
-  const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, {
-    tools: providerTools,
-    tool_choice: 'auto',
-    messages,
-  }, modelConfig)
-  const res = await fetchWithRetry(url, { ...options, signal })
-  if (!res.ok) { const err = await res.text(); throw new Error(`AI API error ${res.status}: ${err}`) }
-  const data = await res.json()
-  const choice = data.choices?.[0]
-  const text = choice?.message?.content || ''
-  const toolCalls = (choice?.message?.tool_calls || []).map(tc => ({
-    id: tc.id,
-    name: tc.function.name,
-    input: (() => { try { return JSON.parse(tc.function.arguments || '{}') } catch { return {} } })(),
-  }))
-  return { text, toolCalls, isDone: choice?.finish_reason === 'stop', _raw: choice?.message }
+  const noToolMode = NO_TOOL_MODELS.has(modelId) || !tools?.length
+  const providerTools = noToolMode ? [] : toProviderTools(tools, baseUrl)
+  const reqBody = noToolMode
+    ? { messages }
+    : { tools: providerTools, tool_choice: 'auto', messages }
+
+  async function parseOpenAIResponse(res) {
+    const data = await res.json()
+    const choice = data.choices?.[0]
+    const text = choice?.message?.content || ''
+    const toolCalls = (choice?.message?.tool_calls || []).map(tc => ({
+      id: tc.id,
+      name: tc.function.name,
+      input: (() => { try { return JSON.parse(tc.function.arguments || '{}') } catch { return {} } })(),
+    }))
+    return { text, toolCalls, isDone: choice?.finish_reason === 'stop', _raw: choice?.message }
+  }
+
+  try {
+    const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, reqBody, modelConfig)
+    const res = await fetchWithRetry(url, { ...options, signal })
+    if (!res.ok) {
+      const errText = await res.text()
+      if (!noToolMode && (res.status === 400 || res.status === 422) && isToolSupportError(errText)) {
+        NO_TOOL_MODELS.add(modelId)
+        const { url: u2, options: o2 } = buildOpenAIRequest(baseUrl, apiKey, modelId, { messages }, modelConfig)
+        const res2 = await fetchWithRetry(u2, { ...o2, signal })
+        if (!res2.ok) { const e2 = await res2.text(); throw new Error(`AI API error ${res2.status}: ${e2}`) }
+        return parseOpenAIResponse(res2)
+      }
+      throw new Error(`AI API error ${res.status}: ${errText}`)
+    }
+    return parseOpenAIResponse(res)
+  } catch (err) {
+    if (err.name === 'AbortError') throw err
+    if (!noToolMode && isToolSupportError(err.message)) {
+      NO_TOOL_MODELS.add(modelId)
+      const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, { messages }, modelConfig)
+      const res = await fetchWithRetry(url, { ...options, signal })
+      if (!res.ok) { const e = await res.text(); throw new Error(`AI API error ${res.status}: ${e}`) }
+      return parseOpenAIResponse(res)
+    }
+    throw err
+  }
 }
 
 // Convert Anthropic-style content blocks to OpenAI-compatible format
