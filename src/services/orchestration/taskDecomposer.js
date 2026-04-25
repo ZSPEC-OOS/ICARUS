@@ -205,6 +205,9 @@ export function createTaskDecomposer({ onEvent = () => {} } = {}) {
   return { decomposeTask, runDecomposition }
 }
 
+// ── Named exports for external use ───────────────────────────────────────────
+export { scoreComplexity, splitIntoSubtaskTexts }
+
 // ── Result merger ─────────────────────────────────────────────────────────────
 function mergeAnalyses(analyses) {
   if (!analyses.length) return ''
