@@ -9,6 +9,7 @@ import {
   applySystemPrompt,
   getDevProxyUrl,
   trimMessagesToContextWindow,
+  normalizeBaseUrl,
 } from './providerRegistry.js'
 
 // ── detectProvider ────────────────────────────────────────────────────────────
@@ -175,4 +176,41 @@ test('trimMessagesToContextWindow injects pruning notice when trimming', () => {
   const result = trimMessagesToContextWindow([...head, ...tail], 'https://api.groq.com/openai/v1', 'llama3-70b-8192')
   const notice = result[2]
   assert.ok(notice.content.includes('pruned'))
+})
+
+// ── normalizeBaseUrl ──────────────────────────────────────────────────────────
+
+test('normalizeBaseUrl appends /openai for Gemini v1beta URL', () => {
+  const url = normalizeBaseUrl('https://generativelanguage.googleapis.com/v1beta')
+  assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/openai')
+})
+
+test('normalizeBaseUrl does not double-append /openai if already present', () => {
+  const url = normalizeBaseUrl('https://generativelanguage.googleapis.com/v1beta/openai')
+  assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/openai')
+})
+
+test('normalizeBaseUrl returns non-Gemini URLs unchanged', () => {
+  assert.equal(normalizeBaseUrl('https://api.openai.com/v1'), 'https://api.openai.com/v1')
+  assert.equal(normalizeBaseUrl('https://api.anthropic.com/v1'), 'https://api.anthropic.com/v1')
+  assert.equal(normalizeBaseUrl('http://localhost:11434/api'), 'http://localhost:11434/api')
+})
+
+test('normalizeBaseUrl handles null/undefined gracefully', () => {
+  assert.equal(normalizeBaseUrl(null), null)
+  assert.equal(normalizeBaseUrl(undefined), undefined)
+})
+
+// ── detectProvider — LM Studio & Ollama ──────────────────────────────────────
+
+test('detectProvider identifies LM Studio on localhost:1234', () => {
+  const p = detectProvider('http://localhost:1234/v1')
+  assert.equal(p.id, 'lmstudio')
+  assert.equal(p.supportsTools, 'detect')
+})
+
+test('detectProvider identifies Ollama on localhost:11434', () => {
+  const p = detectProvider('http://localhost:11434/api')
+  assert.equal(p.id, 'ollama')
+  assert.equal(p.supportsTools, 'detect')
 })
