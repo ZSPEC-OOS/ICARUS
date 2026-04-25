@@ -84,6 +84,8 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   onLrmOverride,
   onLrmCancel,
   onLrmSkip,
+  failedAtPhase,
+  onRetry,
 }) {
   const streamBoxRef = useRef(null)
 
@@ -333,11 +335,25 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                   </div>
                 )}
 
-                {/* Failure reason */}
-                {boxState === 'error' && errorReason && (
-                  <div className="lk-stream-error-reason">
-                    <span className="lk-stream-error-icon">✗</span>
-                    {errorReason}
+                {/* Failure reason + FSM phase + retry */}
+                {boxState === 'error' && (
+                  <div className="lk-stream-error-wrap">
+                    {errorReason && (
+                      <div className="lk-stream-error-reason">
+                        <span className="lk-stream-error-icon">✗</span>
+                        {errorReason}
+                      </div>
+                    )}
+                    {failedAtPhase && (
+                      <div className="lk-stream-error-phase">
+                        Failed during: <code>{failedAtPhase}</code>
+                      </div>
+                    )}
+                    {onRetry && (
+                      <button className="lk-btn lk-btn--small lk-stream-retry-btn" onClick={onRetry}>
+                        ↻ Retry task
+                      </button>
+                    )}
                   </div>
                 )}
 

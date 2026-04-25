@@ -70,6 +70,7 @@ export function useAgentSession({
   const [lastVerification,setLastVerification]= useState(null) // reliability gate result
   const [lastCritique,    setLastCritique]    = useState(null) // critique pass result
   const [escalatedModelId,setEscalatedModelId]= useState(null) // set when model2 escalation fires
+  const [failedAtPhase,   setFailedAtPhase]   = useState(null) // FSM phase name at point of error
 
   // Narration thread — ordered mix of { kind:'text', text } and { kind:'tool', name, status }
   const [narrationThread, setNarrationThread] = useState([])
@@ -98,6 +99,7 @@ export function useAgentSession({
     narrationRef.current = []
     setNarrationThread([])
     setEscalatedModelId(null)
+    setFailedAtPhase(null)
 
     // Layer 1: detect intent before the loop so the badge appears immediately
     const intent     = detectIntent(task)
@@ -304,6 +306,7 @@ export function useAgentSession({
             setOrchLanes(prev => applyLaneEvent(prev, ev))
             logActivity('error', `✗ Agent error: ${ev.message}`)
             updateActivity(startId, { status: 'error', msg: `⚡ Agent failed — ${ev.message}` })
+            if (ev.fsmState) setFailedAtPhase(ev.fsmState)
             break
 
           // ── 4.1 / 4.2: Orchestration events ─────────────────────────────
@@ -368,6 +371,7 @@ export function useAgentSession({
       // as an absolute safety net so isAgentRunning is always cleared
       logActivity('error', `✗ Agent crashed: ${unexpectedErr.message}`)
       updateActivity(startId, { status: 'error', msg: `⚡ Agent crashed — ${unexpectedErr.message}` })
+      setFailedAtPhase('crashed')
       onSetError?.(`Agent crashed: ${unexpectedErr.message}`)
     } finally {
       clearTimeout(sessionTimeoutId)
@@ -392,7 +396,7 @@ export function useAgentSession({
     isAgentRunning, agentSummary, agentFiles, agentStreamText,
     narrationThread,
     // Layer 1+2+3 new exports
-    agentIntent, agentTask, agentPhase,
+    agentIntent, agentTask, agentPhase, failedAtPhase,
     // 4.1 / 4.2: orchestration exports
     orchLanes, orchDecision, lastVerification, lastCritique, escalatedModelId,
     abortRef, run, abort,

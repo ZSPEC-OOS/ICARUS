@@ -68,6 +68,15 @@ const BluswanSettings = memo(function BluswanSettings({
 }) {
   const GHTOKEN_SS_KEY = KEYS.SS.GH_TOKEN
 
+  // ── Simple / Advanced mode ────────────────────────────────────────────────
+  const [simpleMode, setSimpleMode] = useState(() => {
+    try { return localStorage.getItem(KEYS.LS.SIMPLE_MODE) !== 'false' } catch { return true }
+  })
+  function toggleSimpleMode(next) {
+    setSimpleMode(next)
+    try { localStorage.setItem(KEYS.LS.SIMPLE_MODE, String(next)) } catch {}
+  }
+
   // ── Firebase state ──────────────────────────────────────────────────────────
   const [fbDraft, setFbDraft]   = useState(() => {
     const cfg = loadFirebaseConfig()
@@ -388,6 +397,18 @@ export async function test() { return { passed: true, message: "Smoke test passe
   return (
     <div className="lk-drawer lk-drawer--settings">
 
+      {/* ── Simple / Advanced toggle ──────────────────────────────────────── */}
+      <div className="lk-settings-mode-toggle">
+        <button
+          className={`lk-settings-mode-btn${simpleMode ? ' lk-settings-mode-btn--active' : ''}`}
+          onClick={() => toggleSimpleMode(true)}
+        >Simple</button>
+        <button
+          className={`lk-settings-mode-btn${!simpleMode ? ' lk-settings-mode-btn--active' : ''}`}
+          onClick={() => toggleSimpleMode(false)}
+        >Advanced</button>
+      </div>
+
       {/* ── Account ───────────────────────────────────────────────────────── */}
       {onLogout && (
         <div className="lk-settings-account">
@@ -539,6 +560,8 @@ export async function test() { return { passed: true, message: "Smoke test passe
           )}
         </div>
       </div>
+
+      {!simpleMode && <>
 
       {/* ── Model 2 Attachment ────────────────────────────────────────────── */}
       <div className="lk-settings-section">
@@ -868,6 +891,8 @@ export async function test() { return { passed: true, message: "Smoke test passe
         )}
       </div>
 
+      </>}{/* end !simpleMode block 1: Model2/Modular/WebSearch/Firebase */}
+
       {/* ── GitHub Connection ─────────────────────────────────────────────── */}
       <div className="lk-settings-section">
         <div className="lk-settings-section-hd">
@@ -940,6 +965,8 @@ export async function test() { return { passed: true, message: "Smoke test passe
       </div>
 
 
+      {!simpleMode && <>
+
       <div className="lk-drawer-toggles">
         <label className="lk-toggle"><input type="checkbox" checked={generateTests} onChange={e => setGenerateTests(e.target.checked)} /><span>Generate test file alongside code</span></label>
         <label className="lk-toggle lk-toggle--warn"><input type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} /><span>Dry run — preview only, no commits</span></label>
@@ -988,6 +1015,8 @@ export async function test() { return { passed: true, message: "Smoke test passe
           </div>
         </div>
       )}
+
+      </>}{/* end !simpleMode block 2: toggles + thinking budget */}
 
       {/* Creativity slider */}
       <div className="lk-finetune-section">
