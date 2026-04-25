@@ -19,7 +19,7 @@ import { shadowContext } from './shadowContext.js'
 import { codeIntelligence } from './codeIntelligence.js'
 import { createContextCompressor } from './contextCompressor.js'
 import { promptRegistry } from './promptRegistry.js'
-import { runDrctPipeline } from './creative/drctPipeline.js'
+
 import { fetchLibraryContext } from './libraryContextService.js'
 
 export function makeSessionDiary() {
@@ -195,30 +195,6 @@ export async function runAgentLoop({
   } catch { /* non-fatal */ }
   const executionTrace = { mutations: [], commandRuns: [] }
   let finalText = ''
-
-  if (executionMode === 'drct') {
-    try {
-      const drct = await runDrctPipeline({
-        task,
-        modelConfig: activeModelConfig,
-        enhancerConfig,
-        signal,
-        onEvent,
-      })
-      onEvent?.({
-        type: 'done',
-        text: drct.text,
-        filesChanged: [],
-        mode: 'drct',
-        workflow: drct.workflow,
-      })
-      return
-    } catch (err) {
-      onEvent?.({ type: 'error', message: `DRCT mode failed: ${err.message}` })
-      onEvent?.({ type: 'done', text: 'DRCT mode failed; no output produced.', filesChanged: [], mode: 'drct' })
-      return
-    }
-  }
 
   // ── Proactive RAG injection ───────────────────────────────────────────────
   // When RAG is enabled and the shadow index is ready, retrieve the top-K most
