@@ -375,6 +375,7 @@ export function useAgentSession({
 
   const abort = useCallback(() => {
     abortRef.current?.abort()
+    runningRef.current = false
     setAgentTask(prev => prev ? { ...prev, status: 'interrupted' } : prev)
     setIsAgentRunning(false)
   }, [])
