@@ -31,6 +31,8 @@ export default function PromptBar({
   lrmPlan, setLrmPlan,
   // chat mode
   chatMode, setChatMode,
+  // build mode (off = plan/read-only, on = full tool access)
+  buildMode, setBuildMode,
   // model selector
   models,
   activeModelId, setActiveModelId,
@@ -137,6 +139,11 @@ export default function PromptBar({
                 title={chatMode ? 'Chat Mode ON — messages go straight to chat, no coding or planning' : 'Enable Chat Mode — discuss the repo without triggering code changes'}
                 onClick={() => setChatMode(v => !v)}
               >💬 Chat</button>
+              <button
+                className={`lk-toolbar-btn--build${buildMode ? ' lk-toolbar-btn--build-on' : ''}`}
+                title={buildMode ? 'Build Mode ON — agent can write files and run commands' : 'Enable Build Mode — unlock file writes and shell execution (off = plan/read-only)'}
+                onClick={() => setBuildMode(v => !v)}
+              >🔨 Build</button>
             </div>
 
             <div className="lk-input-toolbar-right">

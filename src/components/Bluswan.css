@@ -7238,6 +7238,43 @@ kbd {
 .lk-toolbar-btn--chat-on:hover {
   background: rgba(60, 190, 110, 0.28);
 }
+.lk-toolbar-btn--build {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: auto;
+  padding: 0 9px;
+  height: 28px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid rgba(180, 130, 60, 0.2);
+  background: transparent;
+  color: rgba(180, 140, 80, 0.45);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.lk-toolbar-btn--build:hover {
+  color: rgba(200, 160, 90, 0.65);
+  border-color: rgba(200, 150, 70, 0.28);
+  background: rgba(180, 130, 50, 0.06);
+}
+.lk-toolbar-btn--build-on {
+  color: #fff8e8;
+  border-color: rgba(240, 180, 80, 0.9);
+  background: rgba(210, 150, 50, 0.22);
+  box-shadow: 0 0 0 1px rgba(210, 150, 50, 0.2) inset;
+}
+.lk-toolbar-btn--build-on:hover {
+  background: rgba(210, 150, 50, 0.28);
+}
 
 /* Generating-plan status bar */
 .lk-lrm-generating {

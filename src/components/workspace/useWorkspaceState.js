@@ -206,7 +206,8 @@ export function useWorkspaceState({
     autoTestAfterWrite:     saved.hooksConfig?.autoTestAfterWrite     ?? false,
     testCmd:                saved.hooksConfig?.testCmd                ?? '',
   })
-  const planMode = true
+  const [buildMode, setBuildMode] = useState(false)
+  const planMode = !buildMode
   const [planApproval,    setPlanApproval]    = useState(null)
   const [executedPlan,    setExecutedPlan]    = useState(null)
   const [webSearchApiKey, setWebSearchApiKey] = useState('')
@@ -1404,9 +1405,9 @@ export function useWorkspaceState({
           branchOverride = newBranch; agentBranchRef.current = newBranch
         } catch (err) { setError(`Failed to create branch: ${err.message}`); return }
       }
-      agentSession.run(effectiveMsg, conversation.slice(-10), { branchOverride, executionMode, modularToolId })
+      agentSession.run(effectiveMsg, conversation.slice(-10), { branchOverride, executionMode, modularToolId, forceBuildMode: buildMode })
     } else { handleGenerate(effectiveMsg) }
-  }, [prompt, attachedFiles, chatMode, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prompt, attachedFiles, chatMode, buildMode, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleKeyDown = useCallback((e) => {
     const submitByEnter    = e.key === 'Enter' && !e.shiftKey && !e.isComposing
@@ -1481,6 +1482,7 @@ export function useWorkspaceState({
     longRequestMode, setLongRequestMode, lrmPlan, setLrmPlan,
     executionMode, setExecutionMode,
     chatMode, setChatMode,
+    buildMode, setBuildMode,
     lrmGeneratingPlan, taskSidebarCollapsed, setTaskSidebarCollapsed,
     lrmPhasePushed, lrmPhasePrUrl,
     // shadow context
