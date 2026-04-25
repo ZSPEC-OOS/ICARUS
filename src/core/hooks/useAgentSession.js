@@ -165,7 +165,9 @@ export function useAgentSession({
       sourceRepoConfig,
       planMode,
       !!webSearchApiKey,
-      shadowContext.buildRepoMap(3000),   // Aider-style symbol map ranked by centrality
+      shadowContext.buildRepoMap(3000),
+      '',
+      executionMode,
     )
 
     // Layer 1: show intent badge in the first activity entry

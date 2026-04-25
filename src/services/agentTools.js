@@ -691,8 +691,8 @@ for (const tool of AGENT_TOOLS) {
 
 // System prompt injected at the start of every agent session.
 // planMode=true  → read-only analysis; no file writes.
-// webSearch=true → web_search tool is active (Tavily key configured).
-export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoName, bridgeAvailable, sourceRepoConfig = null, planMode = false, webSearch = false, repoMap = null, sessionId = '') {
+// executionMode='drct' → injects the Dream→Remix→Critique→Transcend creative lens.
+export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoName, bridgeAvailable, sourceRepoConfig = null, planMode = false, webSearch = false, repoMap = null, sessionId = '', executionMode = 'default') {
   const hasSrc = !!(sourceRepoConfig?.owner && sourceRepoConfig?.repo)
   const srcLabel = hasSrc ? `${sourceRepoConfig.owner}/${sourceRepoConfig.repo}` : null
 
@@ -711,6 +711,9 @@ export function buildAgentSystemPrompt(conventions, bluswanMd, repoOwner, repoNa
       ? `READ-ONLY MODE: You may only read files, list directories, and search the codebase. Do NOT write, edit, or delete any files. Your job is to analyse the code and produce a detailed plan or explanation.`
       : null,
     planMode ? `` : null,
+    executionMode === 'drct' ? `CREATIVE MODE — Dream → Remix → Critique → Transcend:` : null,
+    executionMode === 'drct' ? `You are in DRCT creative mode. Your goal is inspired, design-led output that goes beyond the obvious interpretation. Work through these four phases before writing any code:\n\n1. DREAM — Generate 3 distinct creative directions. Each must differ radically in approach, aesthetic, or interaction model. Write them as short concept pitches, grounded in what you find in the codebase.\n\n2. REMIX — Extract the sharpest idea from each direction. Combine the best elements into one hybrid concept that is stronger than any single direction alone.\n\n3. CRITIQUE — Score your hybrid on: originality (does it surprise?), coherence (does it hang together?), and feasibility (can it be built cleanly here?). Revise until it passes all three.\n\n4. TRANSCEND — Implement the winning concept. Push it further than the brief — the output should make the user think "I didn't know it could look / work like this."\n\nNarrate your reasoning through each phase before writing code.` : null,
+    executionMode === 'drct' ? `` : null,
     !planMode && hasSrc ? `TARGET repository (read + write): ${repoOwner}/${repoName}` : null,
     !planMode && hasSrc ? `SOURCE repository (read-only):    ${srcLabel} (branch: ${sourceRepoConfig?.branch || 'main'})` : null,
     !planMode && hasSrc ? `` : null,
