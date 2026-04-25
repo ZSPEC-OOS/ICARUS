@@ -278,6 +278,7 @@ export function useWorkspaceState({
   // ── Long Request Mode ────────────────────────────────────────────────────
   const [longRequestMode,    setLongRequestMode]    = useState(false)
   const [executionMode,      setExecutionMode]      = useState(saved.executionMode || 'default')
+  const [chatMode,           setChatMode]           = useState(false)
   const [lrmPlan,            setLrmPlan]            = useState(null)
   const [lrmGeneratingPlan,  setLrmGeneratingPlan]  = useState(false)
   const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(
@@ -1389,6 +1390,7 @@ export function useWorkspaceState({
       if (!effectiveMsg) { setError('Add a task after loadworkflow_<toolname>.'); return }
     }
 
+    if (chatMode) { handleConversationalReply(effectiveMsg); return }
     if (longRequestMode && !lrmPlan && !isConversationalPrompt(effectiveMsg)) { handleLrmGeneratePlan(effectiveMsg); return }
     if (isConversationalPrompt(effectiveMsg)) { handleConversationalReply(effectiveMsg); return }
     if (shouldUseAgent || modularToolId) {
@@ -1404,7 +1406,7 @@ export function useWorkspaceState({
       }
       agentSession.run(effectiveMsg, conversation.slice(-10), { branchOverride, executionMode, modularToolId })
     } else { handleGenerate(effectiveMsg) }
-  }, [prompt, attachedFiles, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prompt, attachedFiles, chatMode, longRequestMode, lrmPlan, isConversationalPrompt, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleKeyDown = useCallback((e) => {
     const submitByEnter    = e.key === 'Enter' && !e.shiftKey && !e.isComposing
@@ -1478,6 +1480,7 @@ export function useWorkspaceState({
     // lrm
     longRequestMode, setLongRequestMode, lrmPlan, setLrmPlan,
     executionMode, setExecutionMode,
+    chatMode, setChatMode,
     lrmGeneratingPlan, taskSidebarCollapsed, setTaskSidebarCollapsed,
     lrmPhasePushed, lrmPhasePrUrl,
     // shadow context

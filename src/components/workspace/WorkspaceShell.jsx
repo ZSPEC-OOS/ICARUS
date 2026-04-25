@@ -45,7 +45,7 @@ export default function WorkspaceShell(props) {
     isAmplifying, amplifierDecisions, isPlanning,
     remediationStatus, executedPlan, planApproval,
     setPlanApproval, setExecutedPlan,
-    filePlan, lrmPlan, lrmGeneratingPlan, longRequestMode, executionMode, setExecutionMode,
+    filePlan, lrmPlan, lrmGeneratingPlan, longRequestMode, executionMode, setExecutionMode, chatMode, setChatMode,
     taskSidebarCollapsed, setTaskSidebarCollapsed,
     // repo picker
     repoPickerOpen, repoPickerRef, openRepoPicker, repoPickerSearch,
@@ -388,6 +388,7 @@ export default function WorkspaceShell(props) {
               isRunningPostPushTests={ws.isRunningPostPushTests}
               longRequestMode={longRequestMode}   setLongRequestMode={ws.setLongRequestMode}
               executionMode={executionMode}        setExecutionMode={setExecutionMode}
+              chatMode={chatMode}                  setChatMode={setChatMode}
               lrmPlan={lrmPlan}                   setLrmPlan={setLrmPlan}
               models={models}
               activeModelId={ws.activeModelId}    setActiveModelId={setActiveModelId}
