@@ -49,7 +49,6 @@ export default function WorkspaceShell(props) {
     setPlanApproval, setExecutedPlan,
     filePlan, lrmPlan, lrmGeneratingPlan,
     routeOverride, setRouteOverride, routeClassification,
-    taskSidebarCollapsed, setTaskSidebarCollapsed,
     // repo picker
     repoPickerOpen, repoPickerRef, openRepoPicker, repoPickerSearch,
     setRepoPickerSearch, repoPickerLoading, repoPickerError, userRepos,
@@ -369,33 +368,6 @@ export default function WorkspaceShell(props) {
                   }}
                 />
               </div>
-
-              {/* Right task sidebar */}
-              {conversation.length > 0 && (
-                <div className={`lk-task-sidebar${taskSidebarCollapsed ? ' lk-task-sidebar--collapsed' : ''}`}>
-                  <button
-                    className="lk-task-sidebar-toggle"
-                    onClick={() => setTaskSidebarCollapsed(v => !v)}
-                    title={taskSidebarCollapsed ? 'Expand task panel' : 'Collapse task panel'}
-                  >{taskSidebarCollapsed ? '‹' : '›'}</button>
-                  <div className="lk-task-sidebar-inner">
-                    <div className="lk-task-sidebar-hd">TASK</div>
-                    <div className="lk-task-sidebar-task">
-                      {(() => {
-                        const firstUser = conversation.find(m => m.role === 'user')
-                        const text = typeof firstUser?.content === 'string' ? firstUser.content : ''
-                        return text.length > 300 ? `${text.slice(0, 297)}…` : text
-                      })()}
-                    </div>
-                    {agentSession.isAgentRunning && agentSession.agentPhase && (
-                      <div className="lk-task-sidebar-phase">
-                        <span className="lk-task-sidebar-phase-dot" />
-                        <span>{agentSession.agentPhase}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Bottom input bar */}
