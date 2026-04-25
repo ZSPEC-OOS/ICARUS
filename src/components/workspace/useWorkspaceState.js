@@ -207,8 +207,7 @@ export function useWorkspaceState({
     autoTestAfterWrite:     saved.hooksConfig?.autoTestAfterWrite     ?? false,
     testCmd:                saved.hooksConfig?.testCmd                ?? '',
   })
-  const [buildMode, setBuildMode] = useState(false)
-  const planMode = !buildMode
+  const planMode = true
   const [planApproval,    setPlanApproval]    = useState(null)
   const [executedPlan,    setExecutedPlan]    = useState(null)
   const [webSearchApiKey, setWebSearchApiKey] = useState('')
@@ -267,6 +266,7 @@ export function useWorkspaceState({
 
   // ── UI state ─────────────────────────────────────────────────────────────
   const [isGenerating,     setIsGenerating]     = useState(false)
+  const [isChatGenerating, setIsChatGenerating] = useState(false)
   const [isGenTests,       setIsGenTests]       = useState(false)
   const [isPushing,        setIsPushing]        = useState(false)
   const [pushStep,         setPushStep]         = useState('')
@@ -277,11 +277,11 @@ export function useWorkspaceState({
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [history,          setHistory]          = useState(loadHistory)
 
-  // ── Long Request Mode ────────────────────────────────────────────────────
-  const [longRequestMode,    setLongRequestMode]    = useState(false)
-  const [executionMode,      setExecutionMode]      = useState(saved.executionMode || 'default')
-  const [chatMode,           setChatMode]           = useState(false)
-  const [lrmPlan,            setLrmPlan]            = useState(null)
+  // ── Routing ───────────────────────────────────────────────────────────────
+  const [routeOverride,  setRouteOverride]  = useState(null)   // null = auto-classify
+  const [executionMode,  setExecutionMode]  = useState(saved.executionMode || 'default')
+  const [lrmPlan,        setLrmPlan]        = useState(null)
+  const routeClassification = useMemo(() => classifyIntent(prompt.trim()), [prompt])
   const [lrmGeneratingPlan,  setLrmGeneratingPlan]  = useState(false)
   const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 430px)').matches
@@ -1251,7 +1251,7 @@ export function useWorkspaceState({
     if (!model.apiKey) { setError(`No API key for "${model.name}". Open Admin Panel.`); return }
     const clean = userMsg.trim()
     if (!clean) return
-    setError(''); setIsGenerating(true)
+    setError(''); setIsGenerating(true); setIsChatGenerating(true)
     try {
       const reply = await runPromptWithRetry(model, clean, [
         { role: 'system', content: 'You are BLUSWAN in chat mode. Reply directly and helpfully. Use markdown formatting when useful.' },
@@ -1260,7 +1260,7 @@ export function useWorkspaceState({
       setConversation(prev => [...prev, { role: 'user', content: clean }, { role: 'assistant', content: reply }])
       setTurnCount(t => t + 1); setPrompt('')
     } catch (err) { setError(`Chat response failed: ${err.message}`) }
-    finally { setIsGenerating(false) }
+    finally { setIsGenerating(false); setIsChatGenerating(false) }
   }, [models, activeModelId, conversation, setConversation, setTurnCount])
 
   // ── Long Request Mode ─────────────────────────────────────────────────────
@@ -1349,7 +1349,8 @@ export function useWorkspaceState({
     if (!userMsg && attachedFiles.length === 0) return
     const fileContext = attachedFiles.length > 0 ? `\n\n[Attached files: ${attachedFiles.map(f => f.name).join(', ')}]` : ''
     const fullMsg = (userMsg + fileContext).trim()
-    setPrompt(''); setAttachedFiles([])
+    const override = routeOverride
+    setPrompt(''); setAttachedFiles([]); setRouteOverride(null)
     // ── load_ — direct modular tool execution, bypasses all AI/GitHub logic ────
     const loadMatch = fullMsg.match(/^load_(\S+)(?:\s+([\s\S]*))?$/)
     if (loadMatch) {
@@ -1383,13 +1384,9 @@ export function useWorkspaceState({
       if (!effectiveMsg) { setError('Add a task after loadworkflow_<toolname>.'); return }
     }
 
-    // ── Intent classification — toggles override, classifier fills the rest ──
+    // ── Intent classification — manual override stamps, classifier fills the rest
     const classification = classifyIntent(effectiveMsg)
-    const resolvedMode = chatMode          ? 'chat'
-      : longRequestMode                    ? 'long'
-      : buildMode                          ? 'build'
-      : executionMode === 'drct'           ? 'creative'
-      : classification.mode
+    const resolvedMode   = override ?? classification.mode
 
     // eslint-disable-next-line no-console
     console.debug('[BLUSWAN_ROUTE]', { resolvedMode, ...classification })
@@ -1413,7 +1410,7 @@ export function useWorkspaceState({
       }
       agentSession.run(effectiveMsg, conversation.slice(-10), { branchOverride, executionMode: agentExecMode, modularToolId, forceBuildMode: agentForceBuildMode })
     } else { handleGenerate(effectiveMsg) }
-  }, [prompt, attachedFiles, chatMode, buildMode, longRequestMode, lrmPlan, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prompt, attachedFiles, routeOverride, lrmPlan, handleConversationalReply, shouldUseAgent, hasGithub, dryRun, githubToken, repoOwner, repoName, baseBranch, agentSession, conversation, handleGenerate, handleLrmGeneratePlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleKeyDown = useCallback((e) => {
     const submitByEnter    = e.key === 'Enter' && !e.shiftKey && !e.isComposing
@@ -1480,15 +1477,14 @@ export function useWorkspaceState({
     repoPickerOpen, setRepoPickerOpen, repoPickerSearch, setRepoPickerSearch,
     userRepos, repoPickerLoading, repoPickerError, repoPickerRef,
     // ui state
-    isGenerating, isGenTests, isPushing, pushStep, error, setError,
+    isGenerating, isChatGenerating, isGenTests, isPushing, pushStep, error, setError,
     settingsOpen, setSettingsOpen, historyOpen, setHistoryOpen,
     sourceOpen, setSourceOpen, mobileDrawerOpen, setMobileDrawerOpen,
     history, setHistory, busy, isModulesPage, hasOutputContent,
-    // lrm
-    longRequestMode, setLongRequestMode, lrmPlan, setLrmPlan,
+    // routing
+    routeOverride, setRouteOverride, routeClassification,
+    lrmPlan, setLrmPlan,
     executionMode, setExecutionMode,
-    chatMode, setChatMode,
-    buildMode, setBuildMode,
     lrmGeneratingPlan, taskSidebarCollapsed, setTaskSidebarCollapsed,
     lrmPhasePushed, lrmPhasePrUrl,
     // shadow context

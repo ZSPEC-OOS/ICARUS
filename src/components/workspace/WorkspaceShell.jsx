@@ -41,11 +41,12 @@ export default function WorkspaceShell(props) {
     history, setHistory,
     // activity feed
     activityLog, activityFeedRef, agentSession,
-    isGenerating, isPushing, pushStep,
+    isGenerating, isChatGenerating, isPushing, pushStep,
     isAmplifying, amplifierDecisions, isPlanning,
     remediationStatus, executedPlan, planApproval,
     setPlanApproval, setExecutedPlan,
-    filePlan, lrmPlan, lrmGeneratingPlan, longRequestMode, executionMode, setExecutionMode, chatMode, setChatMode, buildMode, setBuildMode,
+    filePlan, lrmPlan, lrmGeneratingPlan,
+    routeOverride, setRouteOverride, routeClassification,
     taskSidebarCollapsed, setTaskSidebarCollapsed,
     // repo picker
     repoPickerOpen, repoPickerRef, openRepoPicker, repoPickerSearch,
@@ -309,7 +310,7 @@ export default function WorkspaceShell(props) {
                   isAgentRunning={agentSession.isAgentRunning}
                   agentStreamText={agentSession.agentStreamText}
                   narrationThread={agentSession.narrationThread}
-                  isGenerating={chatMode ? false : isGenerating}
+                  isGenerating={isChatGenerating ? false : isGenerating}
                   isPushing={isPushing}
                   pushStep={pushStep}
                   feedRef={activityFeedRef}
@@ -331,8 +332,8 @@ export default function WorkspaceShell(props) {
                     agentSession.run(t, conversation.slice(-10), { forceBuildMode: true, skipAgentStart: true })
                   }}
                   onCancelPlan={() => setPlanApproval(null)}
-                  lrmGeneratingPlan={longRequestMode && lrmGeneratingPlan}
-                  lrmPlan={longRequestMode ? lrmPlan : null}
+                  lrmGeneratingPlan={lrmGeneratingPlan}
+                  lrmPlan={lrmPlan}
                   onLrmStart={handleLrmStart}
                   onLrmProceed={handleLrmProceed}
                   onLrmOverride={handleLrmOverride}
@@ -386,11 +387,9 @@ export default function WorkspaceShell(props) {
               prResult={ws.prResult}
               handleRunProjectTests={ws.handleRunProjectTests}
               isRunningPostPushTests={ws.isRunningPostPushTests}
-              longRequestMode={longRequestMode}   setLongRequestMode={ws.setLongRequestMode}
-              executionMode={executionMode}        setExecutionMode={setExecutionMode}
-              chatMode={chatMode}                  setChatMode={setChatMode}
-              buildMode={buildMode}                setBuildMode={setBuildMode}
-              lrmPlan={lrmPlan}                   setLrmPlan={setLrmPlan}
+              routeOverride={routeOverride}
+              setRouteOverride={setRouteOverride}
+              routeClassification={routeClassification}
               models={models}
               activeModelId={ws.activeModelId}    setActiveModelId={setActiveModelId}
               onModelChange={onModelChange}

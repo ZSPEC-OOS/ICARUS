@@ -3,6 +3,7 @@
 // Receives a focused slice of workspace state as props.
 
 import { useRef } from 'react'
+import RouteBadge from './RouteBadge'
 
 export default function PromptBar({
   // input state
@@ -25,14 +26,9 @@ export default function PromptBar({
   prResult,
   handleRunProjectTests,
   isRunningPostPushTests,
-  // LRM
-  longRequestMode, setLongRequestMode,
-  executionMode, setExecutionMode,
-  lrmPlan, setLrmPlan,
-  // chat mode
-  chatMode, setChatMode,
-  // build mode (off = plan/read-only, on = full tool access)
-  buildMode, setBuildMode,
+  // routing
+  routeOverride, setRouteOverride,
+  routeClassification,
   // model selector
   models,
   activeModelId, setActiveModelId,
@@ -124,26 +120,12 @@ export default function PromptBar({
                 title="Attach files or photos"
                 onClick={() => fileInputRef.current?.click()}
               >+</button>
-              <button
-                className={`lk-toolbar-btn--lrm${longRequestMode ? ' lk-toolbar-btn--lrm-on' : ''}`}
-                title={longRequestMode ? 'Long Request Mode ON — click to disable' : 'Enable Long Request Mode'}
-                onClick={() => { setLongRequestMode(v => !v); if (!longRequestMode) setLrmPlan(null) }}
-              >⇥ LRM</button>
-              <button
-                className={`lk-toolbar-btn--drct${executionMode === 'drct' ? ' lk-toolbar-btn--drct-on' : ''}`}
-                title={executionMode === 'drct' ? 'DRCT Creative Mode ON — click to disable' : 'Enable DRCT Creative Mode'}
-                onClick={() => setExecutionMode(prev => prev === 'drct' ? 'default' : 'drct')}
-              >🎨 DRCT</button>
-              <button
-                className={`lk-toolbar-btn--chat${chatMode ? ' lk-toolbar-btn--chat-on' : ''}`}
-                title={chatMode ? 'Chat Mode ON — messages go straight to chat, no coding or planning' : 'Enable Chat Mode — discuss the repo without triggering code changes'}
-                onClick={() => setChatMode(v => !v)}
-              >💬 Chat</button>
-              <button
-                className={`lk-toolbar-btn--build${buildMode ? ' lk-toolbar-btn--build-on' : ''}`}
-                title={buildMode ? 'Build Mode ON — agent can write files and run commands' : 'Enable Build Mode — unlock file writes and shell execution (off = plan/read-only)'}
-                onClick={() => setBuildMode(v => !v)}
-              >🔨 Build</button>
+              <RouteBadge
+                routeOverride={routeOverride}
+                setRouteOverride={setRouteOverride}
+                classification={routeClassification}
+                hasPrompt={!!prompt.trim()}
+              />
             </div>
 
             <div className="lk-input-toolbar-right">
