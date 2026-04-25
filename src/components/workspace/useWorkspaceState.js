@@ -29,7 +29,7 @@ import {
 import { estimateCost } from '../../utils/tokenEstimator'
 import { shadowContext } from '../../services/shadowContext'
 import { isVaguePrompt, amplifyPrompt } from '../../services/intentAmplifier'
-import { classifyIntent } from '../../services/intentClassifier'
+import { classifyIntent, estimateScope } from '../../services/intentClassifier'
 import { buildFilePlan } from '../../services/planner'
 import {
   createPipelineSteps,
@@ -281,7 +281,14 @@ export function useWorkspaceState({
   const [routeOverride,  setRouteOverride]  = useState(null)   // null = auto-classify
   const [executionMode,  setExecutionMode]  = useState(saved.executionMode || 'default')
   const [lrmPlan,        setLrmPlan]        = useState(null)
-  const routeClassification = useMemo(() => classifyIntent(prompt.trim()), [prompt])
+  const routeClassification = useMemo(() => {
+    const text = prompt.trim()
+    if (!text) return { mode: 'build', confidence: 0.4, reason: 'empty', scope: 'unknown' }
+    const repoSignals = shadowContext.isReady
+      ? { scope: estimateScope(text, shadowContext) }
+      : null
+    return classifyIntent(text, repoSignals)
+  }, [prompt]) // shadowContext is a stable singleton — intentionally omitted
   const [lrmGeneratingPlan,  setLrmGeneratingPlan]  = useState(false)
   const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 430px)').matches
@@ -1385,7 +1392,8 @@ export function useWorkspaceState({
     }
 
     // ── Intent classification — manual override stamps, classifier fills the rest
-    const classification = classifyIntent(effectiveMsg)
+    const repoSignals  = shadowContext.isReady ? { scope: estimateScope(effectiveMsg, shadowContext) } : null
+    const classification = classifyIntent(effectiveMsg, repoSignals)
     const resolvedMode   = override ?? classification.mode
 
     // eslint-disable-next-line no-console
