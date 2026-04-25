@@ -5,7 +5,9 @@
 // ── Agent loop ────────────────────────────────────────────────────────────────
 export const AGENT_MAX_TURNS          = 100       // safety ceiling; prevents runaway loops
 export const AGENT_KEEP_TURNS         = 10        // message turns to retain (older pruned)
-export const AGENT_LOOP_WINDOW        = 3         // recent turns checked for repeat-tool-call loops
+export const AGENT_LOOP_WINDOW        = 5         // recent turns checked for repeat-tool-call loops
+export const AGENT_LOOP_MAX_RECOVERIES = 3        // max loop-recovery injections before hard stop
+export const AGENT_SESSION_TIMEOUT_MS  = 5 * 60 * 1000  // 5-minute hard ceiling on any agent run
 
 // ── Diff viewer ───────────────────────────────────────────────────────────────
 export const DIFF_MAX_LINES           = 600       // max lines per side for LCS diff
