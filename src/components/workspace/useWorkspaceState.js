@@ -279,7 +279,6 @@ export function useWorkspaceState({
 
   // ── Routing ───────────────────────────────────────────────────────────────
   const [routeOverride,  setRouteOverride]  = useState(null)   // null = auto-classify
-  const [executionMode,  setExecutionMode]  = useState(saved.executionMode || 'default')
   const [lrmPlan,        setLrmPlan]        = useState(null)
   const routeClassification = useMemo(() => {
     const text = prompt.trim()
@@ -333,13 +332,13 @@ export function useWorkspaceState({
     const s = {
       repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking, thinkingBudget, webSearchApiKey,
-      permissionMode, generateTests, dryRun, hooksConfig, executionMode,
+      permissionMode, generateTests, dryRun, hooksConfig,
     }
     saveSettings(s)
     onSettingsChangedRef.current?.(s)
   }, [repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking, thinkingBudget, webSearchApiKey,
-      permissionMode, generateTests, dryRun, hooksConfig, executionMode]) // eslint-disable-line react-hooks/exhaustive-deps
+      permissionMode, generateTests, dryRun, hooksConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!hasGithub) return
@@ -1349,6 +1348,18 @@ export function useWorkspaceState({
 
   const handleLrmCancel = useCallback(() => { setLrmPlan(null); setLrmGeneratingPlan(false) }, [])
 
+  const handleLrmSkip = useCallback(() => {
+    const task = lrmPlan?.originalPrompt
+    setLrmPlan(null)
+    setLrmGeneratingPlan(false)
+    if (!task) return
+    if (shouldUseAgent) {
+      agentSession.run(task, conversation.slice(-10), { executionMode: 'default', forceBuildMode: true })
+    } else {
+      handleGenerate(task)
+    }
+  }, [lrmPlan, shouldUseAgent, agentSession, conversation, handleGenerate])
+
   // ── Submit + keyboard ─────────────────────────────────────────────────────
   const handleSubmitPrompt = useCallback(async () => {
     setHistoryOpen(false); setSettingsOpen(false)
@@ -1492,7 +1503,6 @@ export function useWorkspaceState({
     // routing
     routeOverride, setRouteOverride, routeClassification,
     lrmPlan, setLrmPlan,
-    executionMode, setExecutionMode,
     lrmGeneratingPlan, taskSidebarCollapsed, setTaskSidebarCollapsed,
     lrmPhasePushed, lrmPhasePrUrl,
     // shadow context
@@ -1518,7 +1528,7 @@ export function useWorkspaceState({
     handleRunInSandbox, handleRunTests,
     runTerminalCommand, confirmAction, handlePush,
     handleConversationalReply,
-    handleLrmGeneratePlan, handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel,
+    handleLrmGeneratePlan, handleLrmStart, handleLrmProceed, handleLrmOverride, handleLrmCancel, handleLrmSkip,
     handleSubmitPrompt, handleKeyDown,
     setActivePhase, emitStreamEvent,
     lastBranchName, setLastBranchName,
