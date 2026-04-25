@@ -1116,6 +1116,15 @@ export function useWorkspaceState({
   }, [models, activeModelId, conversation, setConversation, setTurnCount])
 
   // ── Long Request Mode ─────────────────────────────────────────────────────
+  // Launch a plan immediately without waiting for user confirmation (Claude Code style).
+  // Called internally after plan generation — bypasses the phase plan UI entirely.
+  const _lrmLaunchPlan = useCallback((plan) => {
+    const phase = plan.phases[0]
+    setLrmPhasePushed(false); setLrmPhasePrUrl(null)
+    setLrmPlan({ ...plan, currentIdx: 0, statuses: { 0: 'active' } })
+    handleGenerate(`[Phase 1: ${phase.title}]\n${phase.instructions}\n\nOriginal request: ${plan.originalPrompt}`)
+  }, [handleGenerate]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleLrmGeneratePlan = useCallback(async (userMsg) => {
     const model = models.find(m => m.id === activeModelId)
     if (!model) { setError('Select a model before using Long Request Mode.'); return }
@@ -1128,20 +1137,15 @@ export function useWorkspaceState({
       const jsonStr = raw.includes('[') ? raw.slice(raw.indexOf('[')) : '[' + raw
       const phases  = JSON.parse(jsonStr.slice(0, jsonStr.lastIndexOf(']') + 1))
       if (!Array.isArray(phases) || phases.length === 0) throw new Error('Empty phase plan')
-      setLrmPlan({ originalPrompt: userMsg, phases, currentIdx: 0, statuses: {}, verifyError: null })
+      _lrmLaunchPlan({ originalPrompt: userMsg, phases, currentIdx: 0, statuses: {}, verifyError: null })
     } catch {
-      // AI plan generation failed — fall back to decomposer-split phases so the
-      // user still gets a runnable LRM session instead of a hard error.
+      // AI plan generation failed — fall back to decomposer-split phases.
       const parts = splitIntoSubtaskTexts(userMsg)
-      const fallbackPhases = parts.map((text, i) => ({
-        title: `Step ${i + 1}`,
-        instructions: text,
-        targets: [],
-      }))
-      setLrmPlan({ originalPrompt: userMsg, phases: fallbackPhases, currentIdx: 0, statuses: {}, verifyError: null })
+      const fallbackPhases = parts.map((text, i) => ({ title: `Step ${i + 1}`, instructions: text, targets: [] }))
+      _lrmLaunchPlan({ originalPrompt: userMsg, phases: fallbackPhases, currentIdx: 0, statuses: {}, verifyError: null })
     }
     finally { setLrmGeneratingPlan(false) }
-  }, [models, activeModelId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [models, activeModelId, _lrmLaunchPlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLrmStart = useCallback(() => {
     if (!lrmPlan) return
@@ -1215,6 +1219,29 @@ export function useWorkspaceState({
       handleGenerate(task)
     }
   }, [lrmPlan, shouldUseAgent, agentSession, conversation, handleGenerate])
+
+  // ── LRM auto-advance: when generation finishes with an active phase, silently
+  //    advance to the next phase (or mark the plan complete).  This removes all
+  //    user-facing "Proceed to Phase X" buttons — phases chain automatically.
+  const lrmPlanRef = useRef(null)
+  useEffect(() => { lrmPlanRef.current = lrmPlan }, [lrmPlan])
+
+  useEffect(() => {
+    if (isGenerating) return  // wait until generation finishes
+    const plan = lrmPlanRef.current
+    if (!plan) return
+    const { currentIdx, statuses } = plan
+    if (statuses[currentIdx] !== 'active') return  // phase already complete / blocked / etc.
+    // Phase generation just finished — advance silently
+    const nextIdx = currentIdx + 1
+    if (nextIdx >= plan.phases.length) {
+      setLrmPlan(p => p ? { ...p, statuses: { ...p.statuses, [currentIdx]: 'complete' } } : p)
+      return
+    }
+    const nextPhase = plan.phases[nextIdx]
+    setLrmPlan(p => p ? { ...p, currentIdx: nextIdx, statuses: { ...p.statuses, [currentIdx]: 'complete', [nextIdx]: 'active' }, verifyError: null } : p)
+    handleGenerate(`[Phase ${nextIdx + 1}: ${nextPhase.title}]\n${nextPhase.instructions}\n\nOriginal request: ${plan.originalPrompt}`)
+  }, [isGenerating]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Submit + keyboard ─────────────────────────────────────────────────────
   const handleSubmitPrompt = useCallback(async () => {

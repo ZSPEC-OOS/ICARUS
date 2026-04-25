@@ -467,6 +467,7 @@ function buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig = {}) {
   // Kimi K2.5 extended thinking — Moonshot API flag
   if (modelConfig.enableThinking && baseUrl.includes('moonshot.cn')) {
     body.enable_thinking = true
+    body.temperature = 1  // Kimi K2.5 requires temperature=1 when thinking is enabled
   }
   if (PROXY_URL) {
     return {
