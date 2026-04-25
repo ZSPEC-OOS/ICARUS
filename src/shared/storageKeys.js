@@ -46,6 +46,8 @@ export const KEYS = Object.freeze({
     AI_KEYS_BACKUP:     'wrkflow:keysbak',
     /** Prompt template registry: per-variant win/loss stats for A/B testing. */
     PROMPT_REGISTRY_STATS: 'bluswan:prompt-registry:stats',
+    /** Routing override log: records when users manually change the classifier's mode choice. */
+    ROUTING_OVERRIDES:     'bluswan:routing:overrides',
   }),
 
   // ── sessionStorage ───────────────────────────────────────────────────────────

@@ -176,6 +176,33 @@ export const promptRegistry = {
     return [..._registry.keys()]
   },
 
+  /**
+   * Record a user-initiated routing override so threshold tuning can identify
+   * systematically miscategorised phrases.
+   *
+   * @param {string} sessionId
+   * @param {string} classifiedMode  — what the classifier chose
+   * @param {string} overrideMode    — what the user changed it to
+   */
+  recordRoutingOverride(sessionId, classifiedMode, overrideMode) {
+    if (!classifiedMode || !overrideMode || classifiedMode === overrideMode) return
+    try {
+      const key = KEYS.LS.ROUTING_OVERRIDES
+      const existing = JSON.parse(localStorage.getItem(key) || '[]')
+      existing.push({ ts: Date.now(), sessionId: sessionId || '', from: classifiedMode, to: overrideMode })
+      // Keep last 500 overrides
+      const trimmed = existing.slice(-500)
+      localStorage.setItem(key, JSON.stringify(trimmed))
+    } catch { /* non-fatal */ }
+  },
+
+  /** Return all recorded routing overrides for analysis. */
+  getRoutingOverrides() {
+    try {
+      return JSON.parse(localStorage.getItem(KEYS.LS.ROUTING_OVERRIDES) || '[]')
+    } catch { return [] }
+  },
+
   /** Reset all stats (useful for testing). */
   _resetStats() {
     _stats = new Map()
