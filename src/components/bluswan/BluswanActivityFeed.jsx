@@ -1,7 +1,6 @@
 import { memo, useRef, useEffect, useState } from 'react'
-import BluswanPhasePlan from './BluswanPhasePlan'
 
-// ─── Inline markdown (for stream text and summaries) ─────────────────────────
+// ─── Inline markdown (bold + code only) ──────────────────────────────────────
 function renderInlineMarkdown(text) {
   const parts = String(text || '').split(/(`[^`]+`|\*\*[^*]+\*\*)/g)
   return parts.map((part, idx) => {
@@ -15,33 +14,26 @@ function renderMarkdown(text) {
   const lines = String(text || '').split('\n')
   const blocks = []
   let listItems = []
-
   const flushList = () => {
-    if (listItems.length > 0) {
-      blocks.push(
-        <ul key={`list-${blocks.length}`} className="lk-md-list">
-          {listItems.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
-        </ul>,
-      )
-      listItems = []
-    }
+    if (!listItems.length) return
+    blocks.push(<ul key={`ul-${blocks.length}`} className="lk-cc-md-list">{listItems.map((it, i) => <li key={i}>{renderInlineMarkdown(it)}</li>)}</ul>)
+    listItems = []
   }
-
-  lines.forEach((line) => {
-    const trimmed = line.trim()
-    if (!trimmed) { flushList(); blocks.push(<div key={`sp-${blocks.length}`} className="lk-md-spacer" />); return }
-    if (/^[-*]\s+/.test(trimmed)) { listItems.push(trimmed.replace(/^[-*]\s+/, '')); return }
+  lines.forEach(line => {
+    const t = line.trim()
+    if (!t) { flushList(); return }
+    if (/^[-*]\s+/.test(t)) { listItems.push(t.replace(/^[-*]\s+/, '')); return }
     flushList()
-    if      (trimmed.startsWith('### ')) blocks.push(<h4 key={`h3-${blocks.length}`}>{renderInlineMarkdown(trimmed.slice(4))}</h4>)
-    else if (trimmed.startsWith('## '))  blocks.push(<h3 key={`h2-${blocks.length}`}>{renderInlineMarkdown(trimmed.slice(3))}</h3>)
-    else if (trimmed.startsWith('# '))   blocks.push(<h2 key={`h1-${blocks.length}`}>{renderInlineMarkdown(trimmed.slice(2))}</h2>)
-    else blocks.push(<p key={`p-${blocks.length}`}>{renderInlineMarkdown(trimmed)}</p>)
+    if      (t.startsWith('### ')) blocks.push(<h4 key={`h-${blocks.length}`}>{renderInlineMarkdown(t.slice(4))}</h4>)
+    else if (t.startsWith('## '))  blocks.push(<h3 key={`h-${blocks.length}`}>{renderInlineMarkdown(t.slice(3))}</h3>)
+    else if (t.startsWith('# '))   blocks.push(<h2 key={`h-${blocks.length}`}>{renderInlineMarkdown(t.slice(2))}</h2>)
+    else blocks.push(<p key={`p-${blocks.length}`}>{renderInlineMarkdown(t)}</p>)
   })
   flushList()
   return blocks
 }
 
-// ─── Braille spinner (mirrors BLUSWAN TUI: ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏) ─────────────
+// ─── Braille spinner ──────────────────────────────────────────────────────────
 const BRAILLE = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 function BrailleSpinner() {
   const [frame, setFrame] = useState(0)
@@ -50,6 +42,21 @@ function BrailleSpinner() {
     return () => clearInterval(id)
   }, [])
   return <span className="lk-braille-spinner">{BRAILLE[frame]}</span>
+}
+
+// ─── ToolLine — a single Claude-Code-style tool call row ─────────────────────
+function ToolLine({ status, children }) {
+  const cls = status === 'done'  ? 'lk-cc-line lk-cc-line--done'
+            : status === 'error' ? 'lk-cc-line lk-cc-line--err'
+            :                      'lk-cc-line lk-cc-line--active'
+  return (
+    <div className={cls}>
+      {status === 'done'  ? <span className="lk-cc-icon">✓</span>
+     : status === 'error' ? <span className="lk-cc-icon lk-cc-icon--err">✗</span>
+     :                      <span className="lk-cc-icon lk-cc-icon--spin"><BrailleSpinner /></span>}
+      <span className="lk-cc-line-text">{children}</span>
+    </div>
+  )
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -63,9 +70,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   pushStep,
   feedRef,
   conversation,
-  agentIntent: _agentIntent,
   agentTask,
-  agentPhase: _agentPhase,
   activeModelName,
   escalatedModelId,
   filePlan = [],
@@ -78,47 +83,23 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   onApprovePlan,
   onCancelPlan,
   lrmGeneratingPlan = false,
-  lrmPlan = null,
-  onLrmStart,
-  onLrmProceed,
-  onLrmOverride,
-  onLrmCancel,
-  onLrmSkip,
+  // lrmPlan and related LRM props intentionally unused — phases run silently
   failedAtPhase,
   onRetry,
 }) {
-  const streamBoxRef = useRef(null)
+  const streamRef = useRef(null)
 
-  // ── Output style: true = TUI (Braille spinner + ⎿), false = Classic (◌/✓ chips)
-  const [tuiMode, setTuiMode] = useState(true)
-
-  // Auto-scroll to bottom on every render so new lines stay visible
+  // Auto-scroll as new lines arrive
   useEffect(() => {
-    const el = streamBoxRef.current
+    const el = streamRef.current
     if (el) el.scrollTop = el.scrollHeight
   })
 
-  // ── Derive box state from agent lifecycle ─────────────────────────────────
   const wasTerminated = !isAgentRunning && agentTask?.status === 'interrupted'
   const hasError = !isAgentRunning && !wasTerminated &&
     activityLog.some(e => e.type === 'error' || e.status === 'error')
   const isDone = !isAgentRunning && !wasTerminated && !hasError &&
     activityLog.some(e => e.type === 'done')
-  const boxState = (isAgentRunning || isGenerating || isPushing)
-    ? 'processing'
-    : wasTerminated ? 'terminated'
-    : hasError      ? 'error'
-    : isDone        ? 'done'
-    : null
-
-  const isDeveloping =
-    activityLog.length > 0 ||
-    amplifierDecisions.length > 0 ||
-    filePlan.length > 0 ||
-    isAmplifying || isPlanning || isGenerating || isPushing ||
-    remediationStatus || isAgentRunning ||
-    !!planApproval || !!executedPlan || wasTerminated || hasError ||
-    lrmGeneratingPlan || !!lrmPlan
 
   const errorReason = hasError
     ? (() => {
@@ -128,272 +109,155 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
       })()
     : null
 
-  // Summary = last assistant message, shown inside the box when done
   const summaryMsg = isDone && conversation?.length > 0
     ? [...conversation].reverse().find(m => m.role === 'assistant')
     : null
 
-  const hasStreamContent =
-    narrationThread.length > 0 ||
-    activityLog.length > 0 ||
-    amplifierDecisions.length > 0 ||
-    filePlan.length > 0 ||
-    !!executedPlan?.summary ||
-    !!summaryMsg ||
-    !!planApproval ||
+  const isActive = isAgentRunning || isGenerating || isPushing
+
+  const hasContent =
+    narrationThread.length > 0 || activityLog.length > 0 ||
+    amplifierDecisions.length > 0 || filePlan.length > 0 ||
+    !!executedPlan?.summary || !!summaryMsg || !!planApproval ||
     (isAgentRunning && !!agentStreamText)
 
-  // ── Output line renderers — branch on tuiMode ────────────────────────────
-  // Tool event (narration chip or ⎿ line)
-  const renderToolLine = (key, status, logMsg) => {
-    if (tuiMode) {
-      const cls = status === 'done'  ? 'lk-tool-result'
-                : status === 'error' ? 'lk-tool-error'
-                :                      'lk-tool-active'
-      return (
-        <div key={key} className={cls}>
-          {status === 'done' ? '⎿' : status === 'error' ? '✗' : <BrailleSpinner />}
-          {' '}{logMsg}
-        </div>
-      )
-    }
-    return (
-      <div key={key} className={[
-        'lk-narration-chip',
-        status === 'done'  ? 'lk-narration-chip--done'  : '',
-        status === 'error' ? 'lk-narration-chip--error' : '',
-        (!status || status === 'active') ? 'lk-narration-chip--active' : '',
-      ].filter(Boolean).join(' ')}>
-        {status === 'done' ? '✓' : status === 'error' ? '✗' : '◌'} {logMsg}
-      </div>
-    )
-  }
-
-  // Raw activity-log or file-plan stream line
-  const renderStreamEntry = (key, { done, err, active, text }) => {
-    if (tuiMode) {
-      return (
-        <div key={key} className={done ? 'lk-tool-result' : err ? 'lk-tool-error' : active ? 'lk-tool-active' : 'lk-stream-line'}>
-          {done && '⎿ '}{err && '✗ '}{active && <><BrailleSpinner />{' '}</>}{text}
-        </div>
-      )
-    }
-    return (
-      <div key={key} className={[
-        'lk-stream-line',
-        done   ? 'lk-stream-line--dim'   : '',
-        err    ? 'lk-stream-line--error' : '',
-        active ? 'lk-stream-line--live'  : '',
-      ].filter(Boolean).join(' ')}>
-        {text}
-      </div>
-    )
-  }
-
-  // Single-line status (Amplifying / Planning / Generating / Pushing / LRM)
-  const renderStatusLine = (key, label) => tuiMode
-    ? <div key={key} className="lk-tool-active"><BrailleSpinner /> {label}</div>
-    : <div key={key} className="lk-stream-line lk-stream-line--live">{label}</div>
-
   return (
-    <div className="lk-output lk-activity-output" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="lk-activity-feed" ref={feedRef}>
+    <div className="lk-cc-feed" ref={feedRef}>
+      <div className="lk-cc-stream" ref={streamRef}>
 
-        {/* ── Single developing stream box ───────────────────────────────── */}
-        {isDeveloping && (
-          <div className="lk-developing-box-center">
+        {/* Model indicator */}
+        {activeModelName && (
+          <div className="lk-cc-model-line">
+            {escalatedModelId
+              ? <><span className="lk-cc-escalate">⬆</span> {escalatedModelId}</>
+              : activeModelName}
+          </div>
+        )}
 
-            {/* ── Output style toggle + active model ───────────────────── */}
-            <div className="lk-ost-row">
-              <button
-                className={`lk-ost-btn${!tuiMode ? ' lk-ost-btn--active' : ''}`}
-                onClick={() => setTuiMode(false)}
-              >Classic</button>
-              <button
-                className={`lk-ost-btn${tuiMode ? ' lk-ost-btn--active' : ''}`}
-                onClick={() => setTuiMode(true)}
-              >TUI</button>
-              {activeModelName && (
-                <div className={`lk-active-model-badge${escalatedModelId ? ' lk-active-model-badge--escalated' : ''}`}>
-                  {escalatedModelId
-                    ? <><span className="lk-active-model-escalate">⬆</span> {escalatedModelId}</>
-                    : activeModelName}
-                </div>
-              )}
-            </div>
+        {/* Executed plan summary */}
+        {executedPlan?.summary && (
+          <div className="lk-cc-plan-summary">
+            <div className="lk-cc-plan-summary-hd">▶ Plan</div>
+            <div className="lk-cc-plan-summary-body">{renderMarkdown(executedPlan.summary)}</div>
+          </div>
+        )}
 
-            <div className={['lk-developing-box-wrap', boxState && `lk-developing-box-wrap--${boxState}`].filter(Boolean).join(' ')}>
-              <div className="lk-developing-box" ref={streamBoxRef}>
+        {/* LRM: silent analysis indicator */}
+        {lrmGeneratingPlan && <ToolLine status="active">Analyzing task scope…</ToolLine>}
 
-                {/* Executed plan — shown at top of box once approved, persists during execution */}
-                {executedPlan?.summary && (
-                  <div className="lk-stream-executed-plan">
-                    <div className="lk-stream-executed-plan-hd">▶ Plan</div>
-                    <div className="lk-stream-executed-plan-body">
-                      {renderMarkdown(executedPlan.summary)}
-                    </div>
+        {/* Narration thread (agent mode) */}
+        {narrationThread.length > 0 ? (
+          <>
+            {narrationThread.map((entry, i) => {
+              if (entry.kind === 'text') {
+                return (
+                  <div key={`n-${i}`} className="lk-cc-prose">
+                    {renderInlineMarkdown(entry.text)}
                   </div>
-                )}
-
-                {/* LRM: generating plan status */}
-                {lrmGeneratingPlan && renderStatusLine('lrm-gen', 'This looks like a multi-phase task — building a breakdown…')}
-
-                {/* ── Narration thread (agent mode) ─────────────────────── */}
-                {narrationThread.length > 0 ? (
-                  <div className="lk-narration-thread">
-                    {narrationThread.map((entry, i) => {
-                      if (entry.kind === 'text') {
-                        return (
-                          <div key={`n-${i}`} className="lk-narration-text">
-                            {renderInlineMarkdown(entry.text)}
-                          </div>
-                        )
-                      }
-                      if (entry.kind === 'tool') {
-                        return renderToolLine(`t-${i}`, entry.status, entry.logMsg)
-                      }
-                      return null
-                    })}
-                    {/* Live typing narration */}
-                    {isAgentRunning && agentStreamText && (
-                      <div className="lk-narration-text lk-narration-text--live">
-                        {renderInlineMarkdown(agentStreamText)}
-                        <span className="lk-stream-cursor">▋</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    {/* Fallback: raw activity log when no narration yet */}
-                    {activityLog.map(entry => {
-                      const text   = [entry.msg, entry.detail].filter(Boolean).join(' — ')
-                      const done   = entry.status === 'done' || entry.status === 'skip'
-                      const err    = entry.status === 'error'
-                      const active = entry.status === 'active'
-                      return renderStreamEntry(entry.id, { done, err, active, text })
-                    })}
-
-                    {/* Amplifier decisions */}
-                    {amplifierDecisions.map((d, i) => tuiMode
-                      ? <div key={`amp-${i}`} className="lk-tool-result">⎿ {d}</div>
-                      : <div key={`amp-${i}`} className="lk-stream-line">{d}</div>
-                    )}
-
-                    {/* Status lines */}
-                    {isAmplifying    && renderStatusLine('amp',  'Amplifying intent')}
-                    {isPlanning      && renderStatusLine('plan', 'Planning across repo')}
-                    {remediationStatus && renderStatusLine('rem', remediationStatus)}
-                    {isGenerating    && renderStatusLine('gen',  'Generating')}
-                    {isPushing       && renderStatusLine('push', pushStep || 'Pushing')}
-
-                    {/* File plan */}
-                    {filePlan.map(entry => {
-                      const done = entry.status === 'done'
-                      const err  = entry.status === 'error'
-                      const live = !done && !err
-                      if (tuiMode) {
-                        const action = entry.action === 'modify' ? 'Edit' : 'Write'
-                        return (
-                          <div
-                            key={`fp-${entry.path}`}
-                            className={done ? 'lk-tool-result' : err ? 'lk-tool-error' : 'lk-tool-active'}
-                          >
-                            {done && '⎿'}{err && '✗'}{live && <BrailleSpinner />}
-                            {' '}{action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
-                          </div>
-                        )
-                      }
-                      const action = entry.action === 'modify' ? 'editing' : 'writing'
-                      return (
-                        <div
-                          key={`fp-${entry.path}`}
-                          className={[
-                            'lk-stream-line',
-                            done ? 'lk-stream-line--dim'   : '',
-                            err  ? 'lk-stream-line--error' : '',
-                            live ? 'lk-stream-line--live'  : '',
-                          ].filter(Boolean).join(' ')}
-                        >
-                          {action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
-                        </div>
-                      )
-                    })}
-
-                    {/* Live stream text */}
-                    {isAgentRunning && agentStreamText && (
-                      <div className="lk-stream-line lk-stream-line--current">
-                        {renderInlineMarkdown(agentStreamText)}
-                        <span className="lk-stream-cursor">▋</span>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {!hasStreamContent && boxState === 'processing' && (
-                  <div className="lk-tool-active">
-                    <BrailleSpinner /> Preparing task…
-                  </div>
-                )}
-
-                {/* Failure reason + FSM phase + retry */}
-                {boxState === 'error' && (
-                  <div className="lk-stream-error-wrap">
-                    {errorReason && (
-                      <div className="lk-stream-error-reason">
-                        <span className="lk-stream-error-icon">✗</span>
-                        {errorReason}
-                      </div>
-                    )}
-                    {failedAtPhase && (
-                      <div className="lk-stream-error-phase">
-                        Failed during: <code>{failedAtPhase}</code>
-                      </div>
-                    )}
-                    {onRetry && (
-                      <button className="lk-btn lk-btn--small lk-stream-retry-btn" onClick={onRetry}>
-                        ↻ Retry task
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Summary — last assistant message, shown inside box when done */}
-                {summaryMsg && (
-                  <div className="lk-stream-summary">
-                    {typeof summaryMsg.content === 'string'
-                      ? renderMarkdown(summaryMsg.content)
-                      : null}
-                  </div>
-                )}
-
-                {/* Plan approval — inside the box so all output stays together */}
-                {planApproval && (
-                  <div className="lk-stream-plan-approval">
-                    <div className="lk-stream-plan-text">
-                      Plan ready{planApproval.summary ? ` — ${planApproval.summary.slice(0, 160)}` : ''}
-                    </div>
-                    <div className="lk-stream-plan-actions">
-                      <button className="lk-btn lk-btn--small lk-btn--success" onClick={onApprovePlan}>▶ Execute</button>
-                      <button className="lk-btn lk-btn--small" onClick={onCancelPlan}>✗ Cancel</button>
-                    </div>
-                  </div>
-                )}
-
+                )
+              }
+              if (entry.kind === 'tool') {
+                return <ToolLine key={`t-${i}`} status={entry.status}>{entry.logMsg}</ToolLine>
+              }
+              return null
+            })}
+            {/* Live streaming narration */}
+            {isAgentRunning && agentStreamText && (
+              <div className="lk-cc-prose lk-cc-prose--live">
+                {renderInlineMarkdown(agentStreamText)}
+                <span className="lk-stream-cursor">▋</span>
               </div>
-            </div>
-
-            {/* LRM phase plan — rendered below the stream box, inside the center wrapper */}
-            {lrmPlan && (
-              <BluswanPhasePlan
-                plan={lrmPlan}
-                isGenerating={isGenerating}
-                onStart={onLrmStart}
-                onProceed={onLrmProceed}
-                onOverride={onLrmOverride}
-                onCancel={onLrmCancel}
-                onSkip={onLrmSkip}
-              />
             )}
+          </>
+        ) : (
+          <>
+            {/* Raw activity log */}
+            {activityLog.map(entry => {
+              const text   = [entry.msg, entry.detail].filter(Boolean).join(' — ')
+              const status = entry.status === 'done' || entry.status === 'skip' ? 'done'
+                           : entry.status === 'error' ? 'error'
+                           : entry.status === 'active' ? 'active' : null
+              return <ToolLine key={entry.id} status={status}>{text}</ToolLine>
+            })}
+
+            {/* Amplifier decisions */}
+            {amplifierDecisions.map((d, i) => (
+              <ToolLine key={`amp-${i}`} status="done">{d}</ToolLine>
+            ))}
+
+            {/* Status lines */}
+            {isAmplifying     && <ToolLine status="active">Amplifying intent…</ToolLine>}
+            {isPlanning       && <ToolLine status="active">Planning…</ToolLine>}
+            {remediationStatus && <ToolLine status="active">{remediationStatus}</ToolLine>}
+
+            {/* File plan */}
+            {filePlan.map(entry => {
+              const action = entry.action === 'modify' ? 'Edit' : 'Write'
+              const status = entry.status === 'done' ? 'done' : entry.status === 'error' ? 'error' : 'active'
+              return (
+                <ToolLine key={`fp-${entry.path}`} status={status}>
+                  {action} {entry.path}{entry.error ? ` — ${entry.error}` : ''}
+                </ToolLine>
+              )
+            })}
+
+            {isGenerating && !filePlan.length && !activityLog.length && (
+              <ToolLine status="active">Generating…</ToolLine>
+            )}
+            {isPushing && <ToolLine status="active">{pushStep || 'Pushing to GitHub…'}</ToolLine>}
+
+            {/* Live stream text */}
+            {isAgentRunning && agentStreamText && (
+              <div className="lk-cc-prose lk-cc-prose--live">
+                {renderInlineMarkdown(agentStreamText)}
+                <span className="lk-stream-cursor">▋</span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Idle preparing indicator */}
+        {!hasContent && isActive && (
+          <ToolLine status="active">Preparing…</ToolLine>
+        )}
+
+        {/* Error block */}
+        {hasError && (
+          <div className="lk-cc-error-block">
+            {errorReason && (
+              <div className="lk-cc-error-msg">
+                <span className="lk-cc-icon lk-cc-icon--err">✗</span>
+                <span>{errorReason}</span>
+              </div>
+            )}
+            {failedAtPhase && (
+              <div className="lk-cc-error-detail">└─ failed during: {failedAtPhase}</div>
+            )}
+            {onRetry && (
+              <button className="lk-btn lk-btn--small lk-cc-retry-btn" onClick={onRetry}>
+                ↻ Retry
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Done summary */}
+        {summaryMsg && (
+          <div className="lk-cc-summary">
+            {typeof summaryMsg.content === 'string' ? renderMarkdown(summaryMsg.content) : null}
+          </div>
+        )}
+
+        {/* Plan approval (amplifier pre-execution confirmation) */}
+        {planApproval && (
+          <div className="lk-cc-approval">
+            <div className="lk-cc-approval-text">
+              Plan ready{planApproval.summary ? ` — ${planApproval.summary.slice(0, 160)}` : ''}
+            </div>
+            <div className="lk-cc-approval-actions">
+              <button className="lk-btn lk-btn--small lk-btn--success" onClick={onApprovePlan}>▶ Execute</button>
+              <button className="lk-btn lk-btn--small" onClick={onCancelPlan}>✗ Cancel</button>
+            </div>
           </div>
         )}
 

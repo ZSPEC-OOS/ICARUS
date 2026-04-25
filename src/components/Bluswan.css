@@ -7670,3 +7670,179 @@ kbd {
   color: #74c0fc;
   background: rgba(116,192,252,0.06);
 }
+
+/* ─── Claude Code–style activity feed ───────────────────────────────────────
+   Replaces the glowing developing-box with a flat, terminal-style stream.
+   BLUSWAN accent colors are preserved; the chrome is removed.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.lk-cc-feed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 28px 24px;
+  scroll-behavior: smooth;
+}
+.lk-cc-feed::-webkit-scrollbar { width: 4px; }
+.lk-cc-feed::-webkit-scrollbar-thumb { background: rgba(116,192,252,0.15); border-radius: 2px; }
+
+.lk-cc-stream {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: ui-monospace, 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+/* ── Model indicator ─────────────────────────────────────────────────────── */
+.lk-cc-model-line {
+  font-size: 10px;
+  color: var(--lk-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.lk-cc-escalate { color: var(--lk-accent); font-size: 10px; }
+
+/* ── Tool call lines ─────────────────────────────────────────────────────── */
+.lk-cc-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 21px;
+  word-break: break-all;
+}
+.lk-cc-line--active { color: var(--lk-accent); }
+.lk-cc-line--done   { color: rgba(176,186,208,0.30); }
+.lk-cc-line--err    { color: var(--lk-danger); }
+
+.lk-cc-icon {
+  flex-shrink: 0;
+  width: 14px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(176,186,208,0.30);
+}
+.lk-cc-icon--err  { color: var(--lk-danger); }
+.lk-cc-icon--spin { color: var(--lk-accent); }
+
+.lk-cc-line-text { flex: 1; }
+
+/* ── Prose (assistant narration) ─────────────────────────────────────────── */
+.lk-cc-prose {
+  font-family: var(--lk-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgba(214,230,255,0.82);
+  margin: 8px 0 6px 20px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lk-cc-prose strong { color: rgba(214,230,255,0.95); font-weight: 600; }
+.lk-cc-prose code   {
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 11px;
+  background: rgba(116,192,252,0.08);
+  border: 1px solid rgba(116,192,252,0.15);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.lk-cc-prose--live { color: rgba(214,230,255,0.95); }
+
+/* ── Error block ─────────────────────────────────────────────────────────── */
+.lk-cc-error-block {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--lk-danger);
+  background: rgba(255,107,107,0.04);
+  border-radius: 0 4px 4px 0;
+}
+.lk-cc-error-msg {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--lk-danger);
+  font-size: 12px;
+}
+.lk-cc-error-detail {
+  font-size: 11px;
+  color: rgba(176,186,208,0.45);
+  margin: 3px 0 0 20px;
+}
+.lk-cc-retry-btn { margin-top: 10px; }
+
+/* ── Done summary ────────────────────────────────────────────────────────── */
+.lk-cc-summary {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--lk-border-soft);
+}
+.lk-cc-summary p  {
+  font-family: var(--lk-font-sans, sans-serif);
+  font-size: 13px;
+  color: rgba(214,230,255,0.82);
+  line-height: 1.65;
+  margin: 0 0 8px;
+}
+.lk-cc-summary h2, .lk-cc-summary h3, .lk-cc-summary h4 {
+  font-size: 13px; font-weight: 600;
+  color: rgba(214,230,255,0.92);
+  margin: 12px 0 4px;
+}
+.lk-cc-summary .lk-cc-md-list {
+  padding-left: 18px;
+  margin: 4px 0 8px;
+  color: rgba(214,230,255,0.78);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* ── Plan summary (amplifier executed plan) ──────────────────────────────── */
+.lk-cc-plan-summary {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-left: 2px solid rgba(116,192,252,0.35);
+  background: rgba(116,192,252,0.04);
+}
+.lk-cc-plan-summary-hd {
+  font-size: 10px;
+  color: var(--lk-accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.lk-cc-plan-summary-body p {
+  font-size: 12px;
+  color: rgba(176,186,208,0.65);
+  margin: 0 0 4px;
+  line-height: 1.6;
+}
+
+/* ── Plan approval (pre-execute confirmation) ────────────────────────────── */
+.lk-cc-approval {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--lk-accent-dim, rgba(116,192,252,0.25));
+  border-radius: 6px;
+  background: rgba(116,192,252,0.03);
+}
+.lk-cc-approval-text {
+  font-size: 12px;
+  color: rgba(176,186,208,0.75);
+  margin-bottom: 8px;
+}
+.lk-cc-approval-actions { display: flex; gap: 8px; }
+
+/* ── Responsive: mobile ──────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .lk-cc-feed { padding: 14px 16px 16px; }
+  .lk-cc-prose { font-size: 12px; margin-left: 16px; }
+}
