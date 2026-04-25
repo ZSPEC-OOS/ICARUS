@@ -14,6 +14,7 @@ global.localStorage = {
   removeItem: (k)    => { delete store[k] },
   clear:      ()     => { Object.keys(store).forEach(k => delete store[k]) },
 }
+global.sessionStorage = global.localStorage
 global.performance = global.performance ?? { now: () => Date.now() }
 // globalThis.crypto is already available in Node 18+; no override needed
 
@@ -139,4 +140,67 @@ test('makeSessionDiary deduplicates files read', () => {
   const readLine = digest.split('\n').find(l => l.startsWith('Files read:'))
   const count = (readLine?.match(/src\/a\.js/g) || []).length
   assert.equal(count, 1)
+})
+
+// ── pruneMessages — context-window-aware branch ───────────────────────────────
+
+const ANTHROPIC_URL = 'https://api.anthropic.com/v1'
+const GROQ_SMALL_URL = 'https://api.groq.com/openai/v1'
+
+function makeModelConfig(baseUrl, modelId) {
+  return { baseUrl, modelId, apiKey: 'test', name: 'test' }
+}
+
+test('pruneMessages with modelConfig preserves head when within budget', () => {
+  const msgs = [makeMsg('system', 'sys'), makeMsg('user', 'task'), makeMsg('assistant', 'ok')]
+  // 200k window — these tiny messages easily fit
+  const result = pruneMessages(msgs, null, false, makeModelConfig(ANTHROPIC_URL, 'claude-opus-4-7'))
+  assert.deepEqual(result, msgs)
+})
+
+test('pruneMessages with modelConfig trims overflow messages', () => {
+  const head = [makeMsg('system', 'sys'), makeMsg('user', 'task')]
+  // Fill tail with messages large enough to exceed Groq llama3-70b-8192 (8192 tokens * 4 chars - 4096 reserve)
+  const bigContent = 'x'.repeat(2000)
+  const tail = Array.from({ length: 30 }, (_, i) =>
+    makeMsg(i % 2 === 0 ? 'assistant' : 'user', bigContent)
+  )
+  const result = pruneMessages([...head, ...tail], null, false, makeModelConfig(GROQ_SMALL_URL, 'llama3-70b-8192'))
+  assert.ok(result.length < 2 + tail.length, 'should have trimmed some messages')
+  assert.deepEqual(result.slice(0, 2), head, 'head must be preserved')
+})
+
+test('pruneMessages with modelConfig injects pruning notice', () => {
+  const head = [makeMsg('system', 'sys'), makeMsg('user', 'task')]
+  const bigContent = 'x'.repeat(2000)
+  const tail = Array.from({ length: 30 }, (_, i) =>
+    makeMsg(i % 2 === 0 ? 'assistant' : 'user', bigContent)
+  )
+  const result = pruneMessages([...head, ...tail], null, false, makeModelConfig(GROQ_SMALL_URL, 'llama3-70b-8192'))
+  if (result.length < 2 + tail.length) {
+    assert.ok(result[2].content.includes('pruned'), 'notice should mention "pruned"')
+  }
+})
+
+test('pruneMessages falls back to turn-count when modelConfig is absent', () => {
+  const head = [makeMsg('system', 'sys'), makeMsg('user', 'task')]
+  const tail = Array.from({ length: 30 }, (_, i) => makeMsg(i % 2 === 0 ? 'assistant' : 'user', String(i)))
+  const result = pruneMessages([...head, ...tail])
+  // AGENT_KEEP_TURNS=10 → keep=20 → result ≤ 2+20+1(notice)
+  assert.ok(result.length <= 23)
+  assert.deepEqual(result.slice(0, 2), head)
+})
+
+test('pruneMessages with diary injects digest notice when trimming via modelConfig', () => {
+  const diary = makeSessionDiary()
+  diary.onFileRead('src/main.js')
+  const head = [makeMsg('system', 'sys'), makeMsg('user', 'task')]
+  const bigContent = 'x'.repeat(2000)
+  const tail = Array.from({ length: 30 }, (_, i) =>
+    makeMsg(i % 2 === 0 ? 'assistant' : 'user', bigContent)
+  )
+  const result = pruneMessages([...head, ...tail], diary, false, makeModelConfig(GROQ_SMALL_URL, 'llama3-70b-8192'))
+  if (result.length < 2 + tail.length) {
+    assert.ok(result[2].content.includes('SESSION DIGEST') || result[2].content.includes('pruned'))
+  }
 })

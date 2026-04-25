@@ -29,6 +29,7 @@ import { isVaguePrompt, amplifyPrompt } from '../../services/intentAmplifier'
 import { classifyIntent, estimateScope } from '../../services/intentClassifier'
 import { promptRegistry } from '../../services/promptRegistry'
 import { buildFilePlan } from '../../services/planner'
+import { splitIntoSubtaskTexts } from '../../services/orchestration/taskDecomposer'
 import {
   createPipelineSteps,
   formatStructuredOutput,
@@ -1128,7 +1129,17 @@ export function useWorkspaceState({
       const phases  = JSON.parse(jsonStr.slice(0, jsonStr.lastIndexOf(']') + 1))
       if (!Array.isArray(phases) || phases.length === 0) throw new Error('Empty phase plan')
       setLrmPlan({ originalPrompt: userMsg, phases, currentIdx: 0, statuses: {}, verifyError: null })
-    } catch (err) { setError(`LRM plan generation failed: ${err.message}`) }
+    } catch {
+      // AI plan generation failed — fall back to decomposer-split phases so the
+      // user still gets a runnable LRM session instead of a hard error.
+      const parts = splitIntoSubtaskTexts(userMsg)
+      const fallbackPhases = parts.map((text, i) => ({
+        title: `Step ${i + 1}`,
+        instructions: text,
+        targets: [],
+      }))
+      setLrmPlan({ originalPrompt: userMsg, phases: fallbackPhases, currentIdx: 0, statuses: {}, verifyError: null })
+    }
     finally { setLrmGeneratingPlan(false) }
   }, [models, activeModelId]) // eslint-disable-line react-hooks/exhaustive-deps
 
