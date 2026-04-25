@@ -278,9 +278,6 @@ export function useWorkspaceState({
     return classifyIntent(text, repoSignals)
   }, [prompt]) // shadowContext is a stable singleton — intentionally omitted
   const [lrmGeneratingPlan,  setLrmGeneratingPlan]  = useState(false)
-  const [taskSidebarCollapsed, setTaskSidebarCollapsed] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 430px)').matches
-  )
   const [lrmPhasePushed,     setLrmPhasePushed]     = useState(false)
   const [lrmPhasePrUrl,      setLrmPhasePrUrl]      = useState(null)
 
@@ -1390,7 +1387,7 @@ export function useWorkspaceState({
     // routing
     routeOverride, setRouteOverride, routeClassification,
     lrmPlan, setLrmPlan,
-    lrmGeneratingPlan, taskSidebarCollapsed, setTaskSidebarCollapsed,
+    lrmGeneratingPlan,
     lrmPhasePushed, lrmPhasePrUrl,
     // shadow context
     shadowStatus,
