@@ -1,5 +1,6 @@
 import { callWithToolsStreaming } from './aiService.js'
 import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS, AGENT_LOOP_WINDOW, AGENT_LOOP_MAX_RECOVERIES } from '../config/constants.js'
+import { getContextWindow } from './providerRegistry.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
 import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
 import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
@@ -82,9 +83,33 @@ function buildToolResultMessages(toolCalls, results, isAnthropic, rawAssistantCo
   ]
 }
 
-export function pruneMessages(messages, diary = null, isAnthropic = false) {
+export function pruneMessages(messages, diary = null, isAnthropic = false, modelConfig = null) {
   const head = messages.slice(0, 2)
   const tail = messages.slice(2)
+
+  // Context-window-aware budget: trim to fit within the model's token limit
+  // (4 chars ≈ 1 token; reserve 4096 tokens for the next response)
+  if (modelConfig?.baseUrl) {
+    const windowTokens = getContextWindow(modelConfig.baseUrl, modelConfig.modelId)
+    const charBudget   = (windowTokens - 4096) * 4
+    const headLen      = head.reduce((n, m) => n + msgCharLen(m), 0)
+    let budget         = charBudget - headLen
+    const kept         = []
+    for (let i = tail.length - 1; i >= 0; i--) {
+      const len = msgCharLen(tail[i])
+      if (budget - len < 0 && kept.length > 0) break
+      budget -= len
+      kept.unshift(tail[i])
+    }
+    const dropped = tail.length - kept.length
+    if (dropped === 0) return messages
+    const notice = diary?.hasContent()
+      ? { role: 'user', content: diary.buildDigest(Math.floor(dropped / 2)) }
+      : { role: 'user', content: `[${Math.floor(dropped / 2)} earlier turns pruned to fit context window. Original task and system instructions above remain in full.]` }
+    return [...head, notice, ...kept]
+  }
+
+  // Fallback: turn-count based pruning (no modelConfig available)
   const keep = AGENT_KEEP_TURNS * 2
   if (tail.length <= keep) return messages
   const droppedCount = Math.floor((tail.length - keep) / 2)
@@ -95,6 +120,12 @@ export function pruneMessages(messages, diary = null, isAnthropic = false) {
   }
   if (diary?.hasContent()) return [...head, { role: 'user', content: diary.buildDigest(droppedCount) }, ...trimmed]
   return [...head, { role: 'user', content: `[${droppedCount} earlier turns pruned to fit context. Original task and system instructions above remain in full.]` }, ...trimmed]
+}
+
+function msgCharLen(msg) {
+  if (!msg?.content) return 0
+  if (typeof msg.content === 'string') return msg.content.length
+  try { return JSON.stringify(msg.content).length } catch { return 0 }
 }
 
 export async function runAgentLoop({
@@ -488,7 +519,7 @@ export async function runAgentLoop({
 
           const results = settled.map(r => r.status === 'fulfilled' ? r.value : `ERROR: ${r.reason}`)
           const nextMessages = buildToolResultMessages(response.toolCalls, results, isAnthropic, response._raw)
-          messages = pruneMessages([...messages, ...nextMessages], compressor, isAnthropic)
+          messages = pruneMessages([...messages, ...nextMessages], compressor, isAnthropic, modelConfig)
 
           const sig = toolSignature(response.toolCalls)
           recentSigs.push(sig)
