@@ -303,7 +303,7 @@ export async function testSearchConnection(apiKey) {
 }
 
 function isAnthropicUrl(baseUrl) {
-  return baseUrl.includes('api.anthropic.com')
+  return detectProvider(baseUrl).id === 'anthropic'
 }
 
 // ── Proxy detection ───────────────────────────────────────────────────────────
@@ -317,45 +317,12 @@ const PROXY_URL = import.meta.env?.VITE_AI_PROXY_URL || null
 // In production the app must be served with a reverse proxy or use PROXY_URL.
 const IS_DEV = import.meta.env?.DEV ?? false
 function devProxyUrl(baseUrl) {
-  if (!IS_DEV) return baseUrl
-  if (baseUrl.includes('moonshot.cn'))           return '/api/proxy/moonshot'
-  if (baseUrl.includes('api.anthropic.com'))     return '/api/proxy/anthropic'
-  if (baseUrl.includes('api.openai.com'))        return '/api/proxy/openai'
-  if (baseUrl.includes('googleapis.com'))        return '/api/proxy/gemini'
-  if (baseUrl.includes('api.groq.com'))          return '/api/proxy/groq'
-  if (baseUrl.includes('codestral.mistral.ai'))  return '/api/proxy/codestral'
-  if (baseUrl.includes('api.mistral.ai'))        return '/api/proxy/mistral'
-  if (baseUrl.includes('api.deepseek.com'))      return '/api/proxy/deepseek'
-  if (baseUrl.includes('api.x.ai'))              return '/api/proxy/xai'
-  if (baseUrl.includes('openrouter.ai'))         return '/api/proxy/openrouter'
-  return baseUrl
+  return getDevProxyUrl(baseUrl, IS_DEV)
 }
 
-import { THINKING_BUDGET_TOKENS, STREAM_CHUNK_TIMEOUT_MS } from '../config/constants.js'
-import { createLogger } from '../utils/logger.js'
-
-const log = createLogger('AIService')
-
-// Per-chunk read timeout — prevents a stalled stream from hanging the agent loop
-// indefinitely.  If no data arrives within this window the stream is aborted.
-function readChunkWithTimeout(reader) {
-  let timeoutId
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(
-      () => reject(new Error(`Stream stalled — no data received for ${STREAM_CHUNK_TIMEOUT_MS / 1000} s`)),
-      STREAM_CHUNK_TIMEOUT_MS
-    )
-  })
-  return Promise.race([reader.read(), timeoutPromise]).finally(() => clearTimeout(timeoutId))
-}
-
-// Detect provider name from baseUrl for the proxy request
-function detectProvider(baseUrl) {
-  if (baseUrl.includes('anthropic.com'))    return 'anthropic'
-  if (baseUrl.includes('moonshot.cn'))      return 'kimi'
-  if (baseUrl.includes('openai.com'))       return 'openai'
-  if (baseUrl.includes('googleapis.com'))   return 'gemini'
-  return 'openai'   // default: treat any other URL as OpenAI-compatible
+// detectProviderName: legacy name needed by buildOpenAIRequest proxy body
+function detectProviderName(baseUrl) {
+  return detectProvider(baseUrl).id
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -490,7 +457,7 @@ function buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig = {}) {
       options: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: detectProvider(baseUrl), body: { model: modelId, ...body } }),
+        body: JSON.stringify({ provider: detectProviderName(baseUrl), body: { model: modelId, ...body } }),
       },
     }
   }
@@ -721,13 +688,10 @@ export async function callWithToolsStreaming(modelConfig, messages, tools, signa
     return readAnthropicToolStream(res, signal, onTextDelta)
   }
 
-  const openAITools = tools.map(t => ({
-    type: 'function',
-    function: { name: t.name, description: t.description, parameters: t.input_schema },
-  }))
+  const providerTools = toProviderTools(tools, baseUrl)
   const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, {
-    stream: true, tools: openAITools, tool_choice: 'auto', messages,
-    stream_options: { include_usage: true },  // Claude Code-style per-turn token accounting
+    stream: true, tools: providerTools, tool_choice: 'auto', messages,
+    stream_options: { include_usage: true },
   }, modelConfig)
   const res = await fetchWithRetry(url, { ...options, signal })
   if (!res.ok) { const err = await res.text(); throw new Error(`AI API error ${res.status}: ${err}`) }
@@ -757,12 +721,9 @@ export async function callWithTools(modelConfig, messages, tools, signal, system
   }
 
   // OpenAI / Kimi / any compatible
-  const openAITools = tools.map(t => ({
-    type: 'function',
-    function: { name: t.name, description: t.description, parameters: t.input_schema },
-  }))
+  const providerTools = toProviderTools(tools, baseUrl)
   const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, {
-    tools: openAITools,
+    tools: providerTools,
     tool_choice: 'auto',
     messages,
   }, modelConfig)
