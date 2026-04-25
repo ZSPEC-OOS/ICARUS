@@ -317,6 +317,8 @@ export default function WorkspaceShell(props) {
                   conversation={conversation}
                   agentIntent={agentSession.agentIntent}
                   agentTask={agentSession.agentTask}
+                  activeModelName={models?.find(m => m.id === activeModelId)?.name || activeModelId || null}
+                  escalatedModelId={agentSession.escalatedModelId}
                   agentPhase={agentSession.agentPhase}
                   filePlan={filePlan}
                   isAmplifying={isAmplifying}

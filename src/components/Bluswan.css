@@ -6789,11 +6789,36 @@ kbd {
    box is visible so it never clutters idle state.                            */
 .lk-ost-row {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 2px;
+  gap: 4px;
   width: 100%;
   max-width: 900px;
   margin-bottom: 6px;
+}
+.lk-active-model-badge {
+  margin-left: auto;
+  margin-right: auto;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(176, 186, 208, 0.14);
+  color: rgba(176, 186, 208, 0.42);
+  background: transparent;
+  order: -1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.lk-active-model-badge--escalated {
+  border-color: rgba(255, 195, 90, 0.38);
+  color: rgba(255, 195, 90, 0.80);
+}
+.lk-active-model-escalate {
+  margin-right: 3px;
 }
 .lk-ost-btn {
   font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;

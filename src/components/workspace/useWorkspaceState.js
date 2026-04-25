@@ -30,6 +30,7 @@ import { estimateCost } from '../../utils/tokenEstimator'
 import { shadowContext } from '../../services/shadowContext'
 import { isVaguePrompt, amplifyPrompt } from '../../services/intentAmplifier'
 import { classifyIntent, estimateScope } from '../../services/intentClassifier'
+import { promptRegistry } from '../../services/promptRegistry'
 import { buildFilePlan } from '../../services/planner'
 import {
   createPipelineSteps,
@@ -1407,8 +1408,12 @@ export function useWorkspaceState({
     const classification = classifyIntent(effectiveMsg, repoSignals)
     const resolvedMode   = override ?? classification.mode
 
+    if (override && override !== classification.mode) {
+      promptRegistry.recordRoutingOverride(agentSession.agentTask?.id || '', classification.mode, override)
+    }
+
     // eslint-disable-next-line no-console
-    console.debug('[BLUSWAN_ROUTE]', { resolvedMode, ...classification })
+    console.debug('[BLUSWAN_ROUTE]', { resolvedMode, classified: classification.mode, override, ...classification })
 
     if (resolvedMode === 'chat') { handleConversationalReply(effectiveMsg); return }
     if (resolvedMode === 'long' && !lrmPlan) { handleLrmGeneratePlan(effectiveMsg); return }

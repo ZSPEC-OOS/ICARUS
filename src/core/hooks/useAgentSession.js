@@ -69,6 +69,7 @@ export function useAgentSession({
   const [orchDecision,    setOrchDecision]    = useState(null) // latest routing decision
   const [lastVerification,setLastVerification]= useState(null) // reliability gate result
   const [lastCritique,    setLastCritique]    = useState(null) // critique pass result
+  const [escalatedModelId,setEscalatedModelId]= useState(null) // set when model2 escalation fires
 
   // Narration thread — ordered mix of { kind:'text', text } and { kind:'tool', name, status }
   const [narrationThread, setNarrationThread] = useState([])
@@ -96,6 +97,7 @@ export function useAgentSession({
     setAgentStreamText('')
     narrationRef.current = []
     setNarrationThread([])
+    setEscalatedModelId(null)
 
     // Layer 1: detect intent before the loop so the badge appears immediately
     const intent     = detectIntent(task)
@@ -333,6 +335,7 @@ export function useAgentSession({
             const reasonLabel = ev.reason === 'quality_gates' ? 'quality gates failed' : 'primary model error'
             logActivity('warn', `⬆ Model 2 escalation triggered (${reasonLabel}) — retrying with ${ev.model2Id || 'backup model'}`)
             updateActivity(startId, { msg: `⚡ Escalating to backup model…` })
+            if (ev.model2Id) setEscalatedModelId(ev.model2Id)
             break
           }
 
@@ -391,7 +394,7 @@ export function useAgentSession({
     // Layer 1+2+3 new exports
     agentIntent, agentTask, agentPhase,
     // 4.1 / 4.2: orchestration exports
-    orchLanes, orchDecision, lastVerification, lastCritique,
+    orchLanes, orchDecision, lastVerification, lastCritique, escalatedModelId,
     abortRef, run, abort,
   }
 }

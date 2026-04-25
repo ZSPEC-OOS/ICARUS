@@ -66,6 +66,8 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
   agentIntent: _agentIntent,
   agentTask,
   agentPhase: _agentPhase,
+  activeModelName,
+  escalatedModelId,
   filePlan = [],
   isAmplifying = false,
   amplifierDecisions = [],
@@ -199,7 +201,7 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
         {isDeveloping && (
           <div className="lk-developing-box-center">
 
-            {/* ── Output style toggle ──────────────────────────────────── */}
+            {/* ── Output style toggle + active model ───────────────────── */}
             <div className="lk-ost-row">
               <button
                 className={`lk-ost-btn${!tuiMode ? ' lk-ost-btn--active' : ''}`}
@@ -209,6 +211,13 @@ const BluswanActivityFeed = memo(function BluswanActivityFeed({
                 className={`lk-ost-btn${tuiMode ? ' lk-ost-btn--active' : ''}`}
                 onClick={() => setTuiMode(true)}
               >TUI</button>
+              {activeModelName && (
+                <div className={`lk-active-model-badge${escalatedModelId ? ' lk-active-model-badge--escalated' : ''}`}>
+                  {escalatedModelId
+                    ? <><span className="lk-active-model-escalate">⬆</span> {escalatedModelId}</>
+                    : activeModelName}
+                </div>
+              )}
             </div>
 
             <div className={['lk-developing-box-wrap', boxState && `lk-developing-box-wrap--${boxState}`].filter(Boolean).join(' ')}>

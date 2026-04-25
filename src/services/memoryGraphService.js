@@ -110,7 +110,32 @@ class MemoryGraphService {
     if (this._loaded) return
     this._loadFromLocalStorage()
     this._loaded = true
+    this.pruneStale()
     this._persistToDiskBestEffort()
+  }
+
+  // Remove nodes (and their connected edges) whose updatedAt is older than maxAgeDays.
+  // Called automatically on init so stale session data doesn't accumulate indefinitely.
+  pruneStale(maxAgeDays = 7) {
+    const cutoff = Date.now() - maxAgeDays * 86_400_000
+    let pruned = 0
+    for (const [id, node] of this.nodes) {
+      const ts = node.updatedAt ? Date.parse(node.updatedAt) : 0
+      if (ts > 0 && ts < cutoff) {
+        this.nodes.delete(id)
+        pruned++
+      }
+    }
+    if (pruned > 0) {
+      // Remove edges that reference deleted nodes
+      for (const [id, edge] of this.edges) {
+        if (!this.nodes.has(edge.source) || !this.nodes.has(edge.target)) {
+          this.edges.delete(id)
+        }
+      }
+      log.debug(`pruneStale: removed ${pruned} nodes older than ${maxAgeDays}d`)
+      this._scheduleFlush()
+    }
   }
 
   _loadFromLocalStorage() {

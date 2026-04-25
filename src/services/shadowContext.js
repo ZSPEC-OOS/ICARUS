@@ -46,6 +46,7 @@ class ShadowContextStore {
     this._fileIndex    = []   // [{path, name, ext, size}]
     this._totalRepoFiles = 0  // includes non-code files for metadata accuracy
     this._contentIndex = {}   // {path: {full, preview, symbols, imports}}
+    this._indexedContentCount = 0  // live counter for progress display
     this._importGraph  = {}   // {path: [depPath, ...]}   — files this file imports
     this._importedBy   = {}   // {path: [consumerPath, ...]} — files that import this
     this._conventions  = null
@@ -87,6 +88,7 @@ class ShadowContextStore {
     this._fileIndex    = []
     this._totalRepoFiles = 0
     this._contentIndex = {}
+    this._indexedContentCount = 0
     this._importGraph  = {}
     this._importedBy   = {}
     this._conventions  = null
@@ -410,7 +412,14 @@ class ShadowContextStore {
 
   // Returns a short human-readable summary for the UI badge
   statusSummary() {
-    if (this.isIndexing) return `indexing…`
+    if (this.isIndexing) {
+      const scanned  = this._fileIndex.length
+      const indexed  = this._indexedContentCount
+      const total    = this._totalRepoFiles
+      if (indexed > 0) return `Indexing — ${indexed} / ${scanned} files read`
+      if (scanned > 0) return `Scanning — ${scanned} of ~${total || '?'} files found`
+      return `Indexing repo…`
+    }
     if (!this.isReady)   return null
     const c            = this._conventions
     const label        = [c?.framework !== 'unknown' ? c?.framework : '', c?.language].filter(Boolean).join(' · ')
@@ -454,7 +463,8 @@ class ShadowContextStore {
       .sort((a, b) => (a.size || 0) - (b.size || 0))
       .slice(0, MAX_CONTENT_FILES)
 
-    for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    const total = candidates.length
+    for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = candidates.slice(i, i + BATCH_SIZE)
       await Promise.allSettled(batch.map(async f => {
         try {
@@ -467,10 +477,12 @@ class ShadowContextStore {
             symbols: this._extractSymbols(content),
             imports: this._extractImports(content),
           }
+          this._indexedContentCount++
         } catch (e) {
           log.warn('failed to fetch content for ' + f.path, e.message)
         }
       }))
+      this._onUpdate?.()
     }
   }
 
