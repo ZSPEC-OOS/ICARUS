@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import LoginScreen from './components/LoginScreen'
 import Bluswan from './components/Bluswan'
 import { loadModels, saveModels, saveSearchKey } from './services/aiService'
 import {
@@ -108,7 +107,6 @@ class AppErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  const [pinUnlocked, setPinUnlocked] = useState(false)
   // Three-phase state:
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
   //   authUser=null      -> Not logged in (show LoginScreen)
@@ -194,7 +192,7 @@ export default function App() {
       } else {
         authUserRef.current = null
         setAuthUser(null)
-        setSettingsReady(false)
+        setSettingsReady(true)
       }
       setAuthChecked(true)
     })
@@ -257,38 +255,11 @@ export default function App() {
     } catch {}
     pendingSettingsRef.current = {}
     setModels([])
-    setPinUnlocked(false)
   }, [])
 
-  const handlePinUnlock = useCallback(async (pin) => {
-    setPinUnlocked(true)
-    try {
-      // Derive stable email/password from PIN so every device with the same PIN
-      // gets the same Firebase UID — enabling cross-device Firestore persistence.
-      const email    = `pin-${pin}@bluswan.local`
-      const password = `BLUSWAN_${pin}`
-      try {
-        await signInWithEmail(email, password)
-      } catch (err) {
-        const code = err.code || ''
-        if (['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(code)) {
-          // First time on any device — create the account
-          await signUpWithEmail(email, password)
-        } else {
-          throw err
-        }
-      }
-      // onAuthStateChange will fire, load Firestore settings, then set authUser + settingsReady.
-    } catch (err) {
-      console.warn('[Bluswan] PIN auth failed — using local-only mode:', err.message)
-      // Allow app to render without cloud settings
-      setSettingsReady(true)
-    }
-  }, [])
+
 
   if (!authChecked) return <Splash />
-  if (!authUser && !pinUnlocked) return <LoginScreen onUnlock={handlePinUnlock} />
-  if (pinUnlocked && !authUser && !settingsReady) return <Splash msg="Connecting…" />
   if (authUser && !settingsReady) return <Splash msg="Loading your settings..." />
 
   return (
@@ -311,7 +282,7 @@ export default function App() {
           onClose={() => {}}
           onSettingsChanged={handleSettingsChanged}
           onLogout={handleLogout}
-          userEmail={authUser?.email || 'pin-user@local'}
+          userEmail={authUser?.email || 'local-user@bluswan.local'}
           savedModelIds={fbModelIds}
           onModelSaved={handleModelSaved}
         />
