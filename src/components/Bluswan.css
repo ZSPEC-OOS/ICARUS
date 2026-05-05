@@ -1112,6 +1112,27 @@ html, body, #root {
   gap: 4px;
 }
 
+.lk-mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--lk-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.lk-mode-toggle-btn {
+  border: 0;
+  background: transparent;
+  color: var(--lk-text-muted);
+  font-size: 0.72rem;
+  padding: 4px 7px;
+  cursor: pointer;
+}
+
+.lk-mode-toggle-btn--active {
+  background: var(--lk-accent-dim);
+  color: var(--lk-accent);
+}
+
 /* ── Toolbar icon buttons ─────────────────────────────────────────── */
 .lk-toolbar-btn {
   display: flex;

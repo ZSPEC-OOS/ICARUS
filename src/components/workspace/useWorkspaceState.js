@@ -209,7 +209,7 @@ export function useWorkspaceState({
     autoTestAfterWrite:     saved.hooksConfig?.autoTestAfterWrite     ?? false,
     testCmd:                saved.hooksConfig?.testCmd                ?? '',
   })
-  const planMode = false
+  const [planMode, setPlanMode] = useState(saved.planMode ?? true)
   const [planApproval,    setPlanApproval]    = useState(null)
   const [executedPlan,    setExecutedPlan]    = useState(null)
   const [webSearchApiKey, setWebSearchApiKey] = useState('')
@@ -318,13 +318,13 @@ export function useWorkspaceState({
     const s = {
       repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking, thinkingBudget, webSearchApiKey,
-      permissionMode, generateTests, dryRun, hooksConfig,
+      permissionMode, generateTests, dryRun, hooksConfig, planMode,
     }
     saveSettings(s)
     onSettingsChangedRef.current?.(s)
   }, [repoOwner, repoName, baseBranch, githubToken, githubClientId,
       creativity, enableThinking, thinkingBudget, webSearchApiKey,
-      permissionMode, generateTests, dryRun, hooksConfig]) // eslint-disable-line react-hooks/exhaustive-deps
+      permissionMode, generateTests, dryRun, hooksConfig, planMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!hasGithub) return
@@ -1357,7 +1357,7 @@ export function useWorkspaceState({
     prompt, setPrompt, refinementPrompt, setRefinementPrompt, attachedFiles, setAttachedFiles, fileInputRef,
     // toggles
     generateTests, setGenerateTests, creativity, setCreativity, enableThinking, setEnableThinking,
-    thinkingBudget, setThinkingBudget, hooksConfig, setHooksConfig, planMode,
+    thinkingBudget, setThinkingBudget, hooksConfig, setHooksConfig, planMode, setPlanMode,
     planApproval, setPlanApproval, executedPlan, setExecutedPlan, webSearchApiKey,
     // file plan
     filePlan, setFilePlan, activeFileIndex, setActiveFileIndex, isPlanning,
