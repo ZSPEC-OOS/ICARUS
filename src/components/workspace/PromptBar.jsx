@@ -33,11 +33,14 @@ export default function PromptBar({
   models,
   activeModelId, setActiveModelId,
   onModelChange,
+  planMode,
+  setPlanMode,
   // branch row
   baseBranch,
   lastBranchName,
   // error / pr badge
   error,
+  handlePush,
 }) {
   const busy = isGenerating || isPushing
 
@@ -126,6 +129,22 @@ export default function PromptBar({
                 classification={routeClassification}
                 hasPrompt={!!prompt.trim()}
               />
+              <div className="lk-mode-toggle" role="group" aria-label="Execution mode">
+                <button
+                  className={`lk-mode-toggle-btn${planMode ? ' lk-mode-toggle-btn--active' : ''}`}
+                  onClick={() => setPlanMode(true)}
+                  type="button"
+                >
+                  Plan
+                </button>
+                <button
+                  className={`lk-mode-toggle-btn${!planMode ? ' lk-mode-toggle-btn--active' : ''}`}
+                  onClick={() => setPlanMode(false)}
+                  type="button"
+                >
+                  Code
+                </button>
+              </div>
             </div>
 
             <div className="lk-input-toolbar-right">
@@ -136,6 +155,10 @@ export default function PromptBar({
                   {isRunningPostPushTests ? 'Running…' : 'Run Tests'}
                 </button>
               )}
+              <button className="lk-btn lk-btn--run" onClick={handlePush} disabled={busy || agentSession.isAgentRunning}>
+                <span className="lk-btn-icon">↗</span>
+                Make PR
+              </button>
 
               <select
                 className="lk-toolbar-model-select"

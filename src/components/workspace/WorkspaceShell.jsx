@@ -394,9 +394,12 @@ export default function WorkspaceShell(props) {
               models={models}
               activeModelId={ws.activeModelId}    setActiveModelId={setActiveModelId}
               onModelChange={onModelChange}
+              planMode={ws.planMode}
+              setPlanMode={ws.setPlanMode}
               baseBranch={baseBranch}
               lastBranchName={ws.lastBranchName}
               error={ws.error}
+              handlePush={ws.handlePush}
             />
           </>
         )}
