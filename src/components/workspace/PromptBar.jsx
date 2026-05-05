@@ -43,6 +43,7 @@ export default function PromptBar({
   handlePush,
 }) {
   const busy = isGenerating || isPushing
+  const isTaskComplete = agentSession?.agentPhase === 'complete'
 
   return (
     <div className="lk-input-bar">
@@ -155,10 +156,12 @@ export default function PromptBar({
                   {isRunningPostPushTests ? 'Running…' : 'Run Tests'}
                 </button>
               )}
-              <button className="lk-btn lk-btn--run" onClick={handlePush} disabled={busy || agentSession.isAgentRunning}>
-                <span className="lk-btn-icon">↗</span>
-                Make PR
-              </button>
+              {isTaskComplete && (
+                <button className="lk-btn lk-btn--run" onClick={handlePush} disabled={busy || agentSession.isAgentRunning}>
+                  <span className="lk-btn-icon">↗</span>
+                  Create PR
+                </button>
+              )}
 
               <select
                 className="lk-toolbar-model-select"
