@@ -475,17 +475,9 @@ export async function test() { return { passed: true, message: "Smoke test passe
 
   // ── Save model to Firebase ─────────────────────────────────────────────────
   async function handleSaveModel(m) {
-    // Validate all three required fields before writing to Firestore
+    // Allow API key persistence even when optional metadata fields are empty.
     if (!m.apiKey?.trim()) {
       setSaveErrors(e => ({ ...e, [m.id]: 'API Key is required' }))
-      return
-    }
-    if (!m.baseUrl?.trim()) {
-      setSaveErrors(e => ({ ...e, [m.id]: 'Base URL is required' }))
-      return
-    }
-    if (!m.modelId?.trim()) {
-      setSaveErrors(e => ({ ...e, [m.id]: 'Model ID is required' }))
       return
     }
 
