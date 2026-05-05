@@ -109,7 +109,7 @@ class AppErrorBoundary extends React.Component {
 export default function App() {
   // Three-phase state:
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
-  //   authUser=null      -> Not logged in (show LoginScreen)
+  //   authUser=null      -> Not logged in
   //   settingsReady=false -> Logged in but loading Firestore (show splash)
   //   settingsReady=true  -> Ready (show Bluswan)
   const [authChecked, setAuthChecked] = useState(false)
@@ -136,7 +136,6 @@ export default function App() {
   const authUserRef = useRef(null)
 
   // Firebase auth listener - single source of truth
-  // We do NOT set authUser from the LoginScreen onLogin callback.
   // This listener fires when Firebase confirms login, giving us time to load
   // Firestore settings BEFORE rendering Bluswan (so it initialises with correct values).
   useEffect(() => {
