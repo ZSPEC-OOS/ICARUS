@@ -209,7 +209,7 @@ export function useWorkspaceState({
     autoTestAfterWrite:     saved.hooksConfig?.autoTestAfterWrite     ?? false,
     testCmd:                saved.hooksConfig?.testCmd                ?? '',
   })
-  const planMode = true
+  const planMode = false
   const [planApproval,    setPlanApproval]    = useState(null)
   const [executedPlan,    setExecutedPlan]    = useState(null)
   const [webSearchApiKey, setWebSearchApiKey] = useState('')
