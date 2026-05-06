@@ -122,6 +122,18 @@ function execBridgePlugin() {
 export default defineConfig({
   plugins: [react(), execBridgePlugin()],
 
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'vendor'
+          if (id.includes('node_modules/firebase')) return 'firebase'
+          if (id.includes('node_modules/ogl')) return 'ogl'
+        },
+      },
+    },
+  },
+
   server: {
     proxy: {
       // Proxy external AI API calls through Vite's Node server to avoid CORS
