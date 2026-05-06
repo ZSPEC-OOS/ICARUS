@@ -42,7 +42,7 @@ export const MEMORY_MAX_EDGES         = 5000      // LRU cap: evict oldest edges
 export const TRACE_MAX_AGE_DAYS       = 7         // evict trace entries older than this many days
 
 // ── Streaming ─────────────────────────────────────────────────────────────────
-export const STREAM_CHUNK_TIMEOUT_MS  = 30_000    // abort stream if no chunk arrives within this window (ms)
+export const STREAM_CHUNK_TIMEOUT_MS  = 90_000    // abort stream if no chunk arrives within this window (ms)
 
 // ── Generation / remediation ─────────────────────────────────────────────────
 export const AUTOFIX_MAX_ATTEMPTS     = 5         // auto-remediation AI fix passes
