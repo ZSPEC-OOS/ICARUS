@@ -1,5 +1,6 @@
 import { KEYS as STORAGE_KEYS } from '../shared/storageKeys.js'
 import { detectProvider, toProviderTools, getDevProxyUrl, normalizeBaseUrl } from './providerRegistry.js'
+import { STREAM_CHUNK_TIMEOUT_MS } from '../config/constants.js'
 
 const MODELS_KEY    = STORAGE_KEYS.LS.AI_MODELS      // localStorage  — config only, NO api keys
 const KEYS_SS_KEY   = STORAGE_KEYS.SS.AI_KEYS         // sessionStorage — api keys (primary, clears on tab close)
@@ -373,7 +374,7 @@ async function fetchWithRetry(url, options, maxRetries = 4) {
   }
 }
 
-async function readChunkWithTimeout(reader, timeoutMs = 30000) {
+async function readChunkWithTimeout(reader, timeoutMs = STREAM_CHUNK_TIMEOUT_MS) {
   return Promise.race([
     reader.read(),
     new Promise((_, reject) =>
