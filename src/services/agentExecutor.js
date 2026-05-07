@@ -305,7 +305,7 @@ function buildTokenIoPlan(task, expectedOutputSize = 'medium', mode = 'adaptive'
   }
 }
 
-export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, modelConfig, availableModels, _depth = 0, enhancerConfig: enhancerConfigOverrides, hooksConfig, modularTools = [] }) {
+export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRepoConfig, webSearchApiKey, bridgeAvailable, modelConfig, availableModels, _depth = 0, enhancerConfig: enhancerConfigOverrides, hooksConfig, modularTools = [], signal: parentSignal = null }) {
   const enhancerConfig = resolveEnhancerConfig(enhancerConfigOverrides)
 
   async function rawExecuteTool(name, input) {
@@ -1004,6 +1004,7 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
           modelConfig,
           availableModels,
           _depth: _depth + 1,
+          signal: parentSignal,
           onFileWrite: allowWrites
             ? (path, action) => { subFilesChanged.push({ path, action }); onFileWrite?.(path, action) }
             : undefined,
@@ -1032,7 +1033,7 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
             executeTool: subExecutor,
             modelConfig,
             onEvent: (ev) => { if (ev.type === 'text_delta') textChunks.push(ev.delta) },
-            signal: null,
+            signal: parentSignal,
             conversationHistory: [],
             enhancerConfig: null,
             availableModels: availableModels || [],

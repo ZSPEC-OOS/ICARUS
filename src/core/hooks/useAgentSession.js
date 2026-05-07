@@ -136,6 +136,7 @@ export function useAgentSession({
       availableModels: availableModels || [],
       hooksConfig:     hooksConfig || null,
       modularTools:    modularTool ? [modularTool] : [],
+      signal:          ctrl.signal,
       onFileWrite: (path, action) => {
         setAgentFiles(prev => prev.includes(path) ? prev : [...prev, path])
         onFileWrite?.(path, action)
@@ -185,6 +186,13 @@ export function useAgentSession({
     setLastVerification(null)
     setLastCritique(null)
 
+    // Append entry, capping the thread at 250 to prevent O(n²) spread cost on long runs
+    const pushNarration = (entry) => {
+      const next = [...narrationRef.current, entry]
+      narrationRef.current = next.length > 250 ? next.slice(-250) : next
+      setNarrationThread([...narrationRef.current])
+    }
+
     try { await runAgentLoop({
       task,
       systemPrompt,
@@ -204,8 +212,7 @@ export function useAgentSession({
             const prev = streamTextRef.current.trim()
             if (prev) {
               logActivity('agent', `💬 ${prev}`)
-              narrationRef.current = [...narrationRef.current, { kind: 'text', text: prev }]
-              setNarrationThread([...narrationRef.current])
+              pushNarration({ kind: 'text', text: prev })
               streamTextRef.current = ''
               setAgentStreamText('')
             }
@@ -231,8 +238,7 @@ export function useAgentSession({
             const narration = streamTextRef.current.trim()
             if (narration) {
               logActivity('agent', `💬 ${narration}`)
-              narrationRef.current = [...narrationRef.current, { kind: 'text', text: narration }]
-              setNarrationThread([...narrationRef.current])
+              pushNarration({ kind: 'text', text: narration })
               streamTextRef.current = ''
               setAgentStreamText('')
             }
@@ -246,8 +252,7 @@ export function useAgentSession({
               setAgentTask(prev => prev ? { ...prev, steps: [...(prev.steps || []), ev.input.task || ''] } : prev)
             }
             // Add tool chip to narration thread
-            narrationRef.current = [...narrationRef.current, { kind: 'tool', id: ev.id, name: ev.name, logMsg, status: 'active' }]
-            setNarrationThread([...narrationRef.current])
+            pushNarration({ kind: 'tool', id: ev.id, name: ev.name, logMsg, status: 'active' })
             logActivity('tool', `● ${logMsg}`)
             break
           }
@@ -287,8 +292,7 @@ export function useAgentSession({
             const final = streamTextRef.current.trim()
             if (final) {
               logActivity('agent', `💬 ${final}`)
-              narrationRef.current = [...narrationRef.current, { kind: 'text', text: final }]
-              setNarrationThread([...narrationRef.current])
+              pushNarration({ kind: 'text', text: final })
               streamTextRef.current = ''
               setAgentStreamText('')
             }
