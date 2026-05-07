@@ -375,12 +375,17 @@ async function fetchWithRetry(url, options, maxRetries = 4) {
 }
 
 async function readChunkWithTimeout(reader, timeoutMs = STREAM_CHUNK_TIMEOUT_MS) {
-  return Promise.race([
-    reader.read(),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Stream read timeout')), timeoutMs)
-    ),
-  ])
+  let timeoutId
+  try {
+    return await Promise.race([
+      reader.read(),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Stream read timeout')), timeoutMs)
+      }),
+    ])
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 async function readSSEStream(res, onChunk, extractDelta, signal) {
