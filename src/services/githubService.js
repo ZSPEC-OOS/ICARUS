@@ -36,7 +36,13 @@ export async function getRepo(token, owner, repo) {
 export async function listUserRepos(token, maxPages = 3) {
   const all = []
   for (let page = 1; page <= maxPages; page++) {
-    const batch = await ghFetch(token, `/user/repos?sort=pushed&per_page=100&page=${page}&type=all`)
+    let batch
+    try {
+      batch = await ghFetch(token, `/user/repos?sort=pushed&per_page=100&page=${page}&type=all`)
+    } catch (err) {
+      if (all.length === 0) throw err
+      break
+    }
     if (!Array.isArray(batch) || batch.length === 0) break
     all.push(...batch)
     if (batch.length < 100) break
