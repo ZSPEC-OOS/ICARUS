@@ -929,6 +929,7 @@ class BluswanRepairEngine {
         // Strip dangerous paths
         !item.path.startsWith('/') &&
         !item.path.includes('..') &&
+        // eslint-disable-next-line no-control-regex
         !/[\x00-\x1f]/.test(item.path)
       )
   }

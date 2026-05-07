@@ -11,7 +11,7 @@ const VECTOR_DIM = MEMORY_VECTOR_DIM
 const MAX_FILE_INGEST_CHARS = MEMORY_MAX_INGEST_CHARS
 
 function tokenize(text = '') {
-  return String(text).toLowerCase().replace(/[^a-z0-9_\-/\.\s]/g, ' ').split(/\s+/).filter(Boolean)
+  return String(text).toLowerCase().replace(/[^a-z0-9_/.-\s]/g, ' ').split(/\s+/).filter(Boolean)
 }
 
 // Thin wrappers that preserve the Math.abs behaviour used throughout this file.

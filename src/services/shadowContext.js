@@ -574,7 +574,7 @@ class ShadowContextStore {
     while ((m = exportedDecl.exec(str)) !== null) add(m[1] || m[2], true)
 
     // ── Pattern 3: export const/let Name = (function / arrow / class) ───────
-    const exportedConst = /^export\s+(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:\(|function\s*\(|class\s*[\{(])/gm
+    const exportedConst = /^export\s+(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:\(|function\s*\(|class\s*[{(])/gm
     while ((m = exportedConst.exec(str)) !== null) add(m[1], true)
 
     // ── Pattern 4: export default function / class (anonymous OK) ────────────
@@ -590,7 +590,7 @@ class ShadowContextStore {
     while ((m = hooks.exec(str)) !== null) add(m[1] || m[2], /^export\b/.test(str.slice(Math.max(0, m.index - 10), m.index + 5)))
 
     // ── Pattern 7: Python def / Go func / TypeScript type|interface ──────────
-    const otherLang = /^(?:def\s+(\w+)\s*\(|func\s+(\w+)\s*[\({]|type\s+(\w+)\s*[=\{]|interface\s+(\w+)\s*\{)/gm
+    const otherLang = /^(?:def\s+(\w+)\s*\(|func\s+(\w+)\s*[({]|type\s+(\w+)\s*[={]|interface\s+(\w+)\s*\{)/gm
     while ((m = otherLang.exec(str)) !== null) add(m[1] || m[2] || m[3] || m[4], false)
 
     // Exported symbols first, then internal — up to 60 total

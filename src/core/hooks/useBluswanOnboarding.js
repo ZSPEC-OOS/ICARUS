@@ -152,7 +152,9 @@ export function useBluswanOnboarding(settings = {}) {
     if (!isSimpleMode()) return
     const hasApiKey  = settings?.models?.some(m => m.apiKey)
     const hasGitHub  = !!(settings?.githubToken)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!hasApiKey)  addTip('no-api-key')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!hasGitHub)  addTip('no-github')
   }, [settings, addTip])
 
@@ -160,7 +162,9 @@ export function useBluswanOnboarding(settings = {}) {
   useEffect(() => {
     const hasApiKey = settings?.models?.some(m => m.apiKey)
     const hasGitHub = !!(settings?.githubToken)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (hasApiKey)   dismissTip('tip-api-key')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (hasGitHub)   dismissTip('tip-github-key')
   }, [settings]) // intentionally omit dismissTip from deps — stable callback
 

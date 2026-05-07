@@ -115,7 +115,7 @@ export function applyEditBlocks(existing, response) {
 
 export function buildPyodideSandboxHtml(code) {
   const pyCode = JSON.stringify(code)
-  return `<!DOCTYPE html><html><head><script src="${PYODIDE_CDN}"><\/script><script>
+  return `<!DOCTYPE html><html><head><script src="${PYODIDE_CDN}"></script><script>
 const __log=[];
 window.addEventListener('error',e=>{__log.push({level:'error',text:e.error?.stack||e.message});parent.postMessage({done:true,log:__log},'*');},true);
 const __t=setTimeout(()=>{__log.push({level:'warn',text:'[timeout] 20 s limit reached'});parent.postMessage({done:true,log:__log},'*');},${SANDBOX_PY_TIMEOUT_MS});
@@ -129,7 +129,7 @@ async function main(){
   }catch(e){clearTimeout(__t);__log.push({level:'error',text:String(e)});parent.postMessage({done:true,log:__log},'*');}
 }
 main()
-<\/script></head><body></body></html>`
+</script></head><body></body></html>`
 }
 
 export function buildSandboxHtml(code, setup = '') {
@@ -148,7 +148,7 @@ try{
   ${escaped}
   clearTimeout(__t);parent.postMessage({done:true,log:__log},'*');
 }catch(e){clearTimeout(__t);__log.push({level:'error',text:e.stack||e.message});parent.postMessage({done:true,log:__log},'*');}
-<\/script></head><body></body></html>`
+</script></head><body></body></html>`
 }
 
 // ── Code completeness detection ───────────────────────────────────────────────

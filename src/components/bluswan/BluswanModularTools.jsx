@@ -11,7 +11,7 @@ import {
 // ─── BluswanModularTools ────────────────────────────────────────────────────────
 // Drag-and-drop tool installer + tool list with Test / Download / Uninstall.
 export default function BluswanModularTools() {
-  const [tools,       setTools]       = useState([])
+  const [tools,       setTools]       = useState(getAllTools)
   const [isDragging,  setIsDragging]  = useState(false)
   const [installMsg,  setInstallMsg]  = useState(null)  // { type: 'success'|'error', text }
   const [testResults, setTestResults] = useState({})    // { [id]: { passed, message, running } }
@@ -20,8 +20,6 @@ export default function BluswanModularTools() {
   const timerRef = useRef(null)
 
   const refresh = useCallback(() => setTools(getAllTools()), [])
-
-  useEffect(() => { refresh() }, [refresh])
 
   // ── Drag-and-drop handlers ─────────────────────────────────────────────────
   const onDragOver = useCallback(e => {

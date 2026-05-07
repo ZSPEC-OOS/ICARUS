@@ -30,6 +30,7 @@ export function useConversation() {
 
   // Always start fresh on page load; prior sessions are archived into Task History.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!hydratedCloud) setHydratedCloud(true)
   }, [hydratedCloud])
 
