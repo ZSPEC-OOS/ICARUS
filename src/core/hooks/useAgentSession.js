@@ -23,6 +23,7 @@ import {
 } from '../../services/interactivePipeline.js'
 import { applyLaneEvent } from '../../components/bluswan/BluswanTaskLanes.jsx'
 import { getAllTools } from '../../services/toolLoader.js'
+import { generateBranchName, createBranch, getBranch } from '../../services/githubService.js'
 
 // Read-only tools — used when planMode is active (no writes, no shell exec)
 const PLAN_MODE_TOOLS = new Set([
@@ -71,6 +72,7 @@ export function useAgentSession({
   const [lastCritique,    setLastCritique]    = useState(null) // critique pass result
   const [escalatedModelId,setEscalatedModelId]= useState(null) // set when model2 escalation fires
   const [failedAtPhase,   setFailedAtPhase]   = useState(null) // FSM phase name at point of error
+  const [sessionBranch,   setSessionBranch]   = useState(null) // auto-created branch for this task
 
   // Narration thread — ordered mix of { kind:'text', text } and { kind:'tool', name, status }
   const [narrationThread, setNarrationThread] = useState([])
@@ -78,6 +80,7 @@ export function useAgentSession({
 
   const streamTextRef         = useRef('')
   const streamUpdatePendingRef = useRef(false)  // RAF debounce guard for text_delta
+  const sessionBranchRef      = useRef(null)    // sync copy of sessionBranch for async callbacks
   const abortRef              = useRef(null)
   const runningRef      = useRef(false)   // guard against concurrent runs
   const pendingToolsRef = useRef(new Map()) // Map<toolId, activityId> for matching tool_start/done
@@ -118,6 +121,31 @@ export function useAgentSession({
     abortRef.current = ctrl
     const sessionTimeoutId = setTimeout(() => ctrl.abort(), AGENT_SESSION_TIMEOUT_MS)
 
+    // ── Auto-branch (Claude Code style): fresh branch per task ────────────────
+    // New conversation → create bluswan/<slug>-<id> from the configured base branch.
+    // Follow-up turns in the same conversation → reuse the branch from turn 1.
+    // An explicit branchOverride always wins.
+    let effectiveBranch = branchOverride || githubConfig.branch
+    if (!branchOverride && githubConfig.token && githubConfig.owner && githubConfig.repo) {
+      if (conversationHistory.length === 0) {
+        sessionBranchRef.current = null
+        setSessionBranch(null)
+        try {
+          const base = await getBranch(githubConfig.token, githubConfig.owner, githubConfig.repo, githubConfig.branch)
+          const baseSha = base?.commit?.sha
+          if (baseSha) {
+            const newBranch = generateBranchName(task)
+            await createBranch(githubConfig.token, githubConfig.owner, githubConfig.repo, newBranch, baseSha)
+            effectiveBranch = newBranch
+            sessionBranchRef.current = newBranch
+            setSessionBranch(newBranch)
+          }
+        } catch { /* branch creation failed — fall back to configured branch silently */ }
+      } else if (sessionBranchRef.current) {
+        effectiveBranch = sessionBranchRef.current
+      }
+    }
+
     // Inject a modular tool if requested via loadworkflow_
     let modularTool = null
     if (modularToolId) {
@@ -128,7 +156,7 @@ export function useAgentSession({
       token:           githubConfig.token,
       owner:           githubConfig.owner,
       repo:            githubConfig.repo,
-      branch:          branchOverride || githubConfig.branch,
+      branch:          effectiveBranch,
       sourceRepoConfig,
       webSearchApiKey: webSearchApiKey || '',
       bridgeAvailable: !!bridgeAvailable,
@@ -307,6 +335,7 @@ export function useAgentSession({
               msg: `⚡ Agent done — ${ev.filesChanged?.length || 0} file(s) changed`,
             })
             logActivity('done', `✓ Agent complete`)
+            if (sessionBranchRef.current) logActivity('agent', `⎇ Branch: ${sessionBranchRef.current}`)
             onSetActiveTab?.('activity')
             onAgentComplete?.(task, ev.text || '')
             if (planMode && !forceBuildMode) onPlanDone?.(task, ev.text || '')
@@ -408,6 +437,7 @@ export function useAgentSession({
   return {
     isAgentRunning, agentSummary, agentFiles, agentStreamText,
     narrationThread,
+    sessionBranch,
     // Layer 1+2+3 new exports
     agentIntent, agentTask, agentPhase, failedAtPhase,
     // 4.1 / 4.2: orchestration exports
