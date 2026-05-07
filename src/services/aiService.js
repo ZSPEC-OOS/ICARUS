@@ -388,11 +388,14 @@ async function readChunkWithTimeout(reader, timeoutMs = STREAM_CHUNK_TIMEOUT_MS)
   }
 }
 
+const MAX_STREAM_CHARS = 524288  // 512 KB hard cap — prevents OOM on very long responses
+
 async function readSSEStream(res, onChunk, extractDelta, signal) {
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let fullText = ''
+  let textCapped = false
 
   while (true) {
     if (signal?.aborted) {
@@ -416,8 +419,12 @@ async function readSSEStream(res, onChunk, extractDelta, signal) {
       if (data === '[DONE]') continue
       try {
         const delta = extractDelta(JSON.parse(data))
-        if (delta) {
+        if (delta && !textCapped) {
           fullText += delta
+          if (fullText.length > MAX_STREAM_CHARS) {
+            fullText = fullText.slice(0, MAX_STREAM_CHARS) + '\n[Response truncated at 512 KB]'
+            textCapped = true
+          }
           onChunk?.(fullText)
         }
       } catch (e) {
@@ -533,11 +540,14 @@ async function runOpenAIPrompt(modelConfig, messages, onChunk, signal) {
 
 // ── Streaming SSE readers for tool-use responses ─────────────────────────────
 
+const MAX_THINKING_CHARS = 262144  // 256 KB cap for extended-thinking blocks
+
 async function readAnthropicToolStream(res, signal, onTextDelta) {
   const reader  = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer    = ''
   let fullText  = ''
+  let fullTextCapped = false
   // Track all content blocks by index so we can reconstruct _raw in the correct
   // order.  Anthropic requires thinking blocks to be present in subsequent turns
   // when extended thinking is active — stripping them causes a 400 on turn 2+.
@@ -581,11 +591,20 @@ async function readAnthropicToolStream(res, signal, onTextDelta) {
           }
         } else if (ev.type === 'content_block_delta') {
           if (ev.delta?.type === 'text_delta') {
-            fullText += ev.delta.text
+            if (!fullTextCapped) {
+              fullText += ev.delta.text
+              if (fullText.length > MAX_STREAM_CHARS) {
+                fullText = fullText.slice(0, MAX_STREAM_CHARS)
+                fullTextCapped = true
+              }
+            }
             onTextDelta?.(ev.delta.text)
             if (blocks[ev.index]) blocks[ev.index].text = (blocks[ev.index].text || '') + ev.delta.text
           } else if (ev.delta?.type === 'thinking_delta' && blocks[ev.index]) {
-            blocks[ev.index].thinking = (blocks[ev.index].thinking || '') + ev.delta.thinking
+            const cur = blocks[ev.index].thinking || ''
+            if (cur.length < MAX_THINKING_CHARS) {
+              blocks[ev.index].thinking = cur + ev.delta.thinking
+            }
           } else if (ev.delta?.type === 'input_json_delta' && toolBlocks[ev.index]) {
             toolBlocks[ev.index].jsonParts.push(ev.delta.partial_json)
           }
@@ -622,12 +641,16 @@ async function readAnthropicToolStream(res, signal, onTextDelta) {
   return { text: fullText, toolCalls, isDone: stopReason === 'end_turn' || toolCalls.length === 0, _raw, usage }
 }
 
+const MAX_REASONING_CHARS = 262144  // 256 KB cap for reasoning/thinking content
+
 async function readOpenAIToolStream(res, signal, onTextDelta) {
   const reader  = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer    = ''
   let fullText  = ''
+  let fullTextCapped = false
   let reasoningContent = ''
+  let reasoningCapped  = false
   const tcMap   = {}   // index → { id, name, argParts[] }
   let finishReason = null
   // Claude Code-style token usage (sent in the final chunk when stream_options.include_usage=true)
@@ -661,12 +684,22 @@ async function readOpenAIToolStream(res, signal, onTextDelta) {
         if (!choice) continue
         const delta  = choice.delta
         if (delta?.content) {
-          fullText += delta.content
+          if (!fullTextCapped) {
+            fullText += delta.content
+            if (fullText.length > MAX_STREAM_CHARS) {
+              fullText = fullText.slice(0, MAX_STREAM_CHARS)
+              fullTextCapped = true
+            }
+          }
           onTextDelta?.(delta.content)
         }
-        // Kimi K2.5 thinking mode — accumulate reasoning_content
-        if (delta?.reasoning_content) {
+        // Kimi K2.5 thinking mode — accumulate reasoning_content (capped to prevent OOM)
+        if (delta?.reasoning_content && !reasoningCapped) {
           reasoningContent += delta.reasoning_content
+          if (reasoningContent.length > MAX_REASONING_CHARS) {
+            reasoningContent = reasoningContent.slice(0, MAX_REASONING_CHARS)
+            reasoningCapped = true
+          }
         }
         if (delta?.tool_calls) {
           for (const tc of delta.tool_calls) {

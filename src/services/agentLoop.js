@@ -525,6 +525,13 @@ export async function runAgentLoop({
             recentSigs.length = 0
             loopRecoveryCount++
             if (loopRecoveryCount >= AGENT_LOOP_MAX_RECOVERIES) {
+              // Prefer escalating to model2 for a fresh perspective before hard-stopping
+              if (model2Config && !needsModel2Escalation) {
+                needsModel2Escalation = true
+                onEvent?.({ type: 'model2_escalation', reason: 'loop_limit', model2Id: model2Config.modelId || model2Config.id })
+                finalText = 'Loop limit reached — escalating to backup model for a fresh approach.'
+                return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
+              }
               finalText = 'Agent stopped: repeated the same actions after multiple recovery attempts. Please rephrase or break the task into smaller steps.'
               onEvent({ type: 'text_delta', delta: '\n[Loop limit reached — stopping agent]\n' })
               return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
