@@ -56,7 +56,7 @@ export async function execute(input) {
 export async function test() {
   const failures = []
   const sample = [
-    'TypeError: Cannot read properties of undefined (reading \"map\")',
+    'TypeError: Cannot read properties of undefined (reading "map")',
     '    at renderList (src/components/List.jsx:42:15)',
     '    at src/App.jsx:10:3',
   ].join('\n')

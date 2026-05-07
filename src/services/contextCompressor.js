@@ -43,9 +43,9 @@ const DECISION_PATTERNS = [
 
 // Patterns that flag a key fact about the codebase
 const FACT_PATTERNS = [
-  /`([\w/.\-]+\.[a-z]{2,5})`\s+(?:contains?|handles?|is responsible for|defines?|exports?)\s+([^.!?\n]{10,80})/gi,
+  /`([\w/.-]+\.[a-z]{2,5})`\s+(?:contains?|handles?|is responsible for|defines?|exports?)\s+([^.!?\n]{10,80})/gi,
   /The\s+`([\w$]+)`\s+(?:function|class|hook|component|service)\s+([^.!?\n]{10,80})/gi,
-  /Found\s+(?:the\s+)?([^.!?\n]{10,60})\s+in\s+`([\w/.\-]+)`/gi,
+  /Found\s+(?:the\s+)?([^.!?\n]{10,60})\s+in\s+`([\w/.-]+)`/gi,
 ]
 
 // Tool result prefixes that signal a failure worth recording

@@ -30,7 +30,7 @@ const SECRET_RULES = [
   { id: 'aws_key',       severity: 'critical', pattern: /\bAKIA[0-9A-Z]{16}\b/,                 description: 'AWS access key ID' },
   { id: 'stripe_live',   severity: 'critical', pattern: /\bsk_live_[a-zA-Z0-9]{24,}\b/,         description: 'Stripe live secret key' },
   { id: 'private_key',   severity: 'critical', pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/, description: 'PEM private key block' },
-  { id: 'anthropic_key', severity: 'critical', pattern: /\bsk-ant-[a-zA-Z0-9\-]{30,}\b/,       description: 'Anthropic API key' },
+  { id: 'anthropic_key', severity: 'critical', pattern: /\bsk-ant-[a-zA-Z0-9-]{30,}\b/,        description: 'Anthropic API key' },
   { id: 'generic_apikey',severity: 'high',
     pattern: /(?:api[_-]?key|apikey|access[_-]?token|secret[_-]?key)\s*[:=]\s*['"`]([a-zA-Z0-9_\-./+]{20,})['"`]/i,
     description: 'Hardcoded API key or secret token' },

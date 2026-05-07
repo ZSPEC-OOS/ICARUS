@@ -175,10 +175,10 @@ function globToRegex(glob) {
   const src = glob
     .replace(/[.+^${}()|[\]\\]/g, (c) => (c === '{' || c === '}' ? c : `\\${c}`))
     .replace(/\{([^}]+)\}/g, (_, g) => `(?:${g.split(',').map(s => s.replace(/[.+^$[\]\\]/g, '\\$&')).join('|')})`)
-    .replace(/\*\*/g, '\x00')  // placeholder
+    .replace(/\*\*/g, '\x00')  // placeholder — \x00 used as internal sentinel
     .replace(/\*/g,   '[^/]*')
     .replace(/\?/g,   '[^/]')
-    .replace(/\x00/g, '.*')
+    .replace(/\x00/g, '.*')    // eslint-disable-line no-control-regex
   return new RegExp(`^${src}$`)
 }
 
