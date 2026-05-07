@@ -1,18 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { spawn } from 'node:child_process'
 import { getMetricsDashboard } from './src/services/efficiency/metricsService.js'
-
-let spawn = null
-
-async function ensureSpawn() {
-  if (spawn) return spawn
-  try {
-    ;({ spawn } = await import('node:child_process'))
-  } catch {
-    spawn = null
-  }
-  return spawn
-}
 
 // Dev-only exec bridge â lets the BLUSWAN terminal and Tools tab run real shell
 // commands on your machine during `vite dev`. Never included in production builds.
@@ -41,7 +30,6 @@ function execBridgePlugin() {
     name: 'bluswan-exec-bridge',
     apply: 'serve',
     configureServer(server) {
-      if (!spawn) return
       server.middlewares.use('/api/exec-stream', (req, res) => {
         if (req.method !== 'POST') { res.statusCode = 405; res.end(); return }
         let body = ''
