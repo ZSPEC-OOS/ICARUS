@@ -60,6 +60,19 @@ class SemanticCacheService {
       this.stats.deduplicatedWrites += 1
       return value
     }
+    // Evict expired entries and oldest 10% when approaching the hard cap.
+    if (this.store.size >= 500) {
+      const now = Date.now()
+      for (const [k, v] of this.store) {
+        if (v.expiresAt <= now) this.store.delete(k)
+      }
+      if (this.store.size >= 500) {
+        const evictCount = Math.ceil(this.store.size * 0.1)
+        const sorted = [...this.store.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt)
+        for (let i = 0; i < evictCount; i++) this.store.delete(sorted[i][0])
+        this.stats.evictions += evictCount
+      }
+    }
     this.store.set(finalKey, {
       value,
       valueHash: nextHash,

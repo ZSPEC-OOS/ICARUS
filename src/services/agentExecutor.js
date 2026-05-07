@@ -62,8 +62,10 @@ async function execBridge(cmd, cwd) {
     })
     if (!res.ok) return `bridge HTTP error ${res.status}`
     const { stdout, stderr, exitCode } = await res.json()
-    const out = [stdout?.trimEnd(), stderr?.trimEnd()].filter(Boolean).join('\n')
-    return `exit ${exitCode}\n${out || '(no output)'}`
+    const out    = [stdout?.trimEnd(), stderr?.trimEnd()].filter(Boolean).join('\n')
+    const capped = out.slice(0, 50_000)
+    const notice = out.length > 50_000 ? '\n[Output truncated — use grep/tail/head to narrow results]' : ''
+    return `exit ${exitCode}\n${capped || '(no output)'}${notice}`
   } catch (err) {
     return `exec bridge unavailable: ${err.message}`
   }
@@ -388,14 +390,19 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
       case 'read_file': {
         const file = await getFileContent(token, owner, repo, input.path, branch)
         if (!file?.content) return `File not found: ${input.path}`
-        let content = decodeBase64(file.content)
-        const lines = content.split('\n')
+        // Cap the base64 payload before decoding to avoid OOM on large files.
+        // ~750 KB of base64 → ~562 KB decoded, safely above the 20 000-char display cap.
+        const b64     = String(file.content).slice(0, 1_000_000)
+        const content = decodeBase64(b64)
+        const lines   = content.split('\n')
         if (input.start_line || input.end_line) {
           const s = Math.max(0, (input.start_line || 1) - 1)
           const e = Math.min(lines.length, input.end_line || lines.length)
           return `--- ${input.path} (lines ${s + 1}–${e} of ${lines.length}) ---\n${lines.slice(s, e).join('\n')}`
         }
-        return `--- ${input.path} (${lines.length} lines) ---\n${content.slice(0, 20000)}`
+        const capped  = content.slice(0, 20000)
+        const notice  = content.length > 20000 ? '\n[File truncated — use start_line/end_line to read more]' : ''
+        return `--- ${input.path} (${lines.length} lines) ---\n${capped}${notice}`
       }
 
       // ── read_many_files ────────────────────────────────────────────────
@@ -405,10 +412,14 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         const settled = await Promise.allSettled(paths.map(async p => {
           const file = await getFileContent(token, owner, repo, p, branch)
           if (!file?.content) return `--- ${p} ---\nFile not found.`
-          const content = decodeBase64(file.content)
+          const content = decodeBase64(String(file.content).slice(0, 1_000_000))
           return `--- ${p} (${content.split('\n').length} lines) ---\n${content.slice(0, 10000)}`
         }))
-        return settled.map(r => r.status === 'fulfilled' ? r.value : `Error: ${r.reason}`).join('\n\n')
+        const parts  = settled.map(r => r.status === 'fulfilled' ? r.value : `Error: ${r.reason}`)
+        const output = parts.join('\n\n')
+        const capped = output.slice(0, 100_000)
+        const notice = output.length > 100_000 ? '\n\n[Combined output truncated — request fewer files or use start_line/end_line]' : ''
+        return capped + notice
       }
 
       // ── write_file ─────────────────────────────────────────────────────

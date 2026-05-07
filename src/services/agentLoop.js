@@ -97,7 +97,7 @@ export function pruneMessages(messages, diary = null, isAnthropic = false, model
     const kept         = []
     for (let i = tail.length - 1; i >= 0; i--) {
       const len = msgCharLen(tail[i])
-      if (budget - len < 0 && kept.length > 0) break
+      if (budget - len < 0) break
       budget -= len
       kept.unshift(tail[i])
     }
