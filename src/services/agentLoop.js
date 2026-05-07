@@ -207,7 +207,7 @@ export async function runAgentLoop({
     })
   }
 
-  const isAnthropic = activeModelConfig.provider === 'anthropic' || (!activeModelConfig.provider && activeModelConfig.baseUrl?.includes('api.anthropic.com'))
+  let isAnthropic = activeModelConfig.provider === 'anthropic' || (!activeModelConfig.provider && activeModelConfig.baseUrl?.includes('api.anthropic.com'))
 
   const filesChanged = []
   const compressor = createContextCompressor({ memoryGraphService })
@@ -304,7 +304,7 @@ export async function runAgentLoop({
     ...(conversationHistory?.length ? conversationHistory : []),
     { role: 'user', content: packedInput.text },
   ]
-  const anthropicSystemField = isAnthropic ? systemPrompt : undefined
+  let anthropicSystemField = isAnthropic ? systemPrompt : undefined
 
   const rollback = createRollbackHandler({ executeTool, onEvent, memoryGraphService })
   const loopMeta = { workflow: 'agent_loop', task: String(task || '').slice(0, 180) }
@@ -367,6 +367,23 @@ export async function runAgentLoop({
                 response = result
                 if (usedFallback) {
                   activeModelConfig = modelUsed
+                  // Reconcile provider if fallback crossed the Anthropic/OpenAI boundary.
+                  // Without this the messages array and system-prompt field stay in the
+                  // wrong format and the new model either gets no system prompt (→OpenAI)
+                  // or an invalid messages layout (→Anthropic).
+                  const newIsAnthropic = modelUsed.provider === 'anthropic' || (!modelUsed.provider && modelUsed.baseUrl?.includes('api.anthropic.com'))
+                  if (newIsAnthropic !== isAnthropic) {
+                    if (!newIsAnthropic && !messages.some(m => m.role === 'system')) {
+                      // Anthropic → OpenAI: inject system message at front of messages
+                      messages = [{ role: 'system', content: systemPrompt }, ...messages]
+                      anthropicSystemField = undefined
+                    } else if (newIsAnthropic && messages[0]?.role === 'system') {
+                      // OpenAI → Anthropic: remove system message, pass it in body.system
+                      messages = messages.filter(m => m.role !== 'system')
+                      anthropicSystemField = systemPrompt
+                    }
+                    isAnthropic = newIsAnthropic
+                  }
                   router.saveFallbackPref(routing.role, modelUsed.modelId || modelUsed.id)
                   onEvent({ type: 'orchestration_fallback_used', role: routing.role, modelId: modelUsed.modelId || modelUsed.id, fallbackIndex })
                 }
