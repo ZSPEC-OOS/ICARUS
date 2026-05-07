@@ -213,7 +213,9 @@ export function createModelRouter(orchestrationConfig = {}, availableModels = []
         }
       }
     }
-    throw lastErr
+    const allFailed = new Error(`All ${chain.length} model(s) in the fallback chain failed. Last error: ${lastErr?.message}`)
+    allFailed.cause = lastErr
+    throw allFailed
   }
 
   // ── Ensemble execution ─────────────────────────────────────────────────────

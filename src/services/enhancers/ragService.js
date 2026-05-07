@@ -47,7 +47,7 @@ export function hybridSearch(input) {
     const path = hit.path || hit.id
     const entry = byPath.get(path) || initChunk(path)
     entry.vectorScore = Math.max(entry.vectorScore, normalizeScore(hit.score))
-    entry.text = hit.summary || entry.text
+    entry.text = (hit.summary || entry.text || '').slice(0, 2000)
     entry.metadata = {
       source: hit.path || hit.id,
       date: hit.updatedAt || null,
@@ -144,7 +144,7 @@ export function retrieveContext(input) {
     query,
     totalCandidates: hybrid.length,
     contexts: reranked,
-    promptContext: reranked.map((c, idx) => `[#${idx + 1}] ${c.path}\n${c.text}`).join('\n\n'),
+    promptContext: reranked.map((c, idx) => `[#${idx + 1}] ${c.path}\n${c.text.slice(0, 2000)}`).join('\n\n').slice(0, 12000),
   }
   semanticCacheService.set('rag_result', cacheKey, result, config.cacheTtlMs || 120000)
   efficiencyMetricsService.record({

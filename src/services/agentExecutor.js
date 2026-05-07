@@ -424,10 +424,19 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
       // ── write_file ─────────────────────────────────────────────────────
       case 'write_file': {
-        const existing = await getFileContent(token, owner, repo, input.path, branch)
-        const sha      = existing?.sha || null
-        const msg      = buildCommitMsg(sha ? 'edit' : 'write', input.path, input.message)
-        await createOrUpdateFile(token, owner, repo, input.path, input.content, msg, branch, sha)
+        let existing = await getFileContent(token, owner, repo, input.path, branch)
+        let sha      = existing?.sha || null
+        const msg    = buildCommitMsg(sha ? 'edit' : 'write', input.path, input.message)
+        try {
+          await createOrUpdateFile(token, owner, repo, input.path, input.content, msg, branch, sha)
+        } catch (err) {
+          // SHA conflict: another commit updated the file between our read and write — retry once.
+          if (err.status === 409 || err.status === 422) {
+            existing = await getFileContent(token, owner, repo, input.path, branch)
+            sha = existing?.sha || null
+            await createOrUpdateFile(token, owner, repo, input.path, input.content, msg, branch, sha)
+          } else { throw err }
+        }
         onFileWrite?.(input.path, 'write')
         return `Written: ${input.path} (${input.content.split('\n').length} lines)`
       }
@@ -456,7 +465,15 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
 
         const updated = current.replace(input.old_str, input.new_str)
         const msg = buildCommitMsg('edit', input.path, input.message)
-        await createOrUpdateFile(token, owner, repo, input.path, updated, msg, branch, fileSha)
+        try {
+          await createOrUpdateFile(token, owner, repo, input.path, updated, msg, branch, fileSha)
+        } catch (err) {
+          // SHA conflict — re-fetch latest SHA and retry once
+          if (err.status === 409 || err.status === 422) {
+            const fresh = await getFileContent(token, owner, repo, input.path, branch)
+            await createOrUpdateFile(token, owner, repo, input.path, updated, msg, branch, fresh?.sha || null)
+          } else { throw err }
+        }
         onFileWrite?.(input.path, 'edit')
         const syntaxNote = validation.syntaxWarning ? `\n⚠ ${validation.syntaxWarning}` : ''
         return `Edited: ${input.path}${syntaxNote}`
@@ -1315,7 +1332,15 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
         if (!result.ok) return `apply_patch failed: ${result.error}`
 
         const msg = input.message || buildCommitMsg('edit', input.path, null)
-        await createOrUpdateFile(token, owner, repo, input.path, result.content, msg, branch, file.sha)
+        try {
+          await createOrUpdateFile(token, owner, repo, input.path, result.content, msg, branch, file.sha)
+        } catch (err) {
+          // SHA conflict — re-fetch latest SHA and retry once
+          if (err.status === 409 || err.status === 422) {
+            const fresh = await getFileContent(token, owner, repo, input.path, branch)
+            await createOrUpdateFile(token, owner, repo, input.path, result.content, msg, branch, fresh?.sha || null)
+          } else { throw err }
+        }
         onFileWrite?.(input.path, 'edit')
 
         const oldCount = hunks.reduce((n, h) => n + h.lines.filter(l => l[0] === '-').length, 0)
@@ -1361,7 +1386,14 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
           ]
           const patches = files.slice(0, 20).map(f => {
             const stat = `+${f.additions}/-${f.deletions}`
-            const patchBlock = f.patch ? `\n${f.patch.slice(0, 4000)}` : ' (binary or too large)'
+            let patchBlock
+            if (f.patch) {
+              patchBlock = `\n${f.patch.slice(0, 4000)}${f.patch.length > 4000 ? '\n[diff truncated — use read_file for full content]' : ''}`
+            } else if (f.binary === true || (f.additions === 0 && f.deletions === 0 && f.status === 'modified')) {
+              patchBlock = ' (binary file — use read_file to inspect content)'
+            } else {
+              patchBlock = ' (diff too large for GitHub API — use exec bridge or read_file)'
+            }
             return `## ${f.status}: ${f.filename} (${stat})${patchBlock}`
           })
           return [...header, ...patches].join('\n').slice(0, 20000)

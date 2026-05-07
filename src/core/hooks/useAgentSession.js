@@ -76,8 +76,9 @@ export function useAgentSession({
   const [narrationThread, setNarrationThread] = useState([])
   const narrationRef = useRef([])  // sync copy for use inside async callbacks
 
-  const streamTextRef   = useRef('')
-  const abortRef        = useRef(null)
+  const streamTextRef         = useRef('')
+  const streamUpdatePendingRef = useRef(false)  // RAF debounce guard for text_delta
+  const abortRef              = useRef(null)
   const runningRef      = useRef(false)   // guard against concurrent runs
   const pendingToolsRef = useRef(new Map()) // Map<toolId, activityId> for matching tool_start/done
 
@@ -214,7 +215,15 @@ export function useAgentSession({
 
           case 'text_delta':
             streamTextRef.current += ev.delta
-            setAgentStreamText(streamTextRef.current)
+            // Debounce: batch rapid deltas into one React state update per animation frame
+            // to avoid 500+ re-renders per long response causing UI freeze.
+            if (!streamUpdatePendingRef.current) {
+              streamUpdatePendingRef.current = true
+              requestAnimationFrame(() => {
+                streamUpdatePendingRef.current = false
+                setAgentStreamText(streamTextRef.current)
+              })
+            }
             break
 
           case 'tool_start': {
