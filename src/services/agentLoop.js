@@ -362,9 +362,6 @@ export async function runAgentLoop({
                   ({ fromModel, toModel, error, fallbackIndex: fi }) => {
                     onEvent({ type: 'orchestration_fallback', role: routing.role, fromModelId: fromModel.modelId || fromModel.id, toModelId: toModel.modelId || toModel.id, error: error.message, fallbackIndex: fi })
                     traceOrchestrationFallback({ role: routing.role, fromModelId: fromModel.modelId || fromModel.id || '', toModelId: toModel.modelId || toModel.id || '', error: error.message, fallbackIndex: fi })
-                    if (usedFallback) {
-                      activeModelConfig = modelUsed
-                    }
                   }
                 )
                 response = result

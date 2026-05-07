@@ -1746,7 +1746,7 @@ export function makeExecutor({ token, owner, repo, branch, onFileWrite, sourceRe
       if (!outputValidation.ok) {
         const err = `Invalid output for ${name} (schema v${outputValidation.schemaVersion || schemaVersion()}): ${outputValidation.errors.join('; ')}`
         endToolTrace({ traceId: trace.traceId, toolName: name, input: normalizedInput, output, error: err, startedAt: trace.startedAt })
-        return err
+        throw new Error(err)
       }
 
       // ── Per-tool hooks (Phase 4) ────────────────────────────────────────
