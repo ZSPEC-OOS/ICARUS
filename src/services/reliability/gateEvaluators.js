@@ -72,7 +72,9 @@ export function evaluateReliabilityGates({
     metric: Number(avgSimilarity.toFixed(3)),
     min: minSimilarity,
     max: maxSimilarity,
-    passed: avgSimilarity >= minSimilarity && avgSimilarity <= maxSimilarity,
+    passed: similarities.length === 0
+      ? true
+      : avgSimilarity >= minSimilarity && avgSimilarity <= maxSimilarity,
     detail: similarities.length
       ? `average AST-aware proxy similarity across ${similarities.length} edits`
       : 'no code edits detected',

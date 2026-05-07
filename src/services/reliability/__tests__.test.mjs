@@ -39,6 +39,18 @@ test('fsm executes rollback path on verify failure', async () => {
   assert.deepEqual(transitions, ['plan', 'execute', 'verify', 'rollback', 'done'])
 })
 
+test('evaluateReliabilityGates passes for zero-edit (read-only) tasks', () => {
+  const report = evaluateReliabilityGates({
+    executionTrace: { commandRuns: [], mutations: [] },
+    draftText: 'Analysis complete, no files changed.',
+    critiqueConfig: { enabled: true },
+    config: {},
+  })
+  const semanticGate = report.gates.find(g => g.id === 'semantic_edit_distance')
+  assert.equal(semanticGate.passed, true, 'semantic gate should pass when no edits')
+  assert.equal(semanticGate.detail, 'no code edits detected')
+})
+
 test('evaluateCreativeCandidates ranks candidates with expected shape', () => {
   const ranked = evaluateCreativeCandidates([
     { id: 'a', content: 'A cinematic immersive story with metaphor and surprise.' },
