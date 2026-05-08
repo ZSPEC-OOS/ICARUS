@@ -27,10 +27,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` and sign in with:
-
-- **Username:** `bluswan`
-- **Password:** `admin`
+Open `http://localhost:5173` and sign in with your Google account or email via the Firebase Auth prompt.
 
 Then configure your AI provider in **Settings → AI Provider**.
 

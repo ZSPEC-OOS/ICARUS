@@ -118,10 +118,10 @@ const PROVIDERS = {
     toolFormat: 'openai',
     streamFormat: 'openai',
     systemPrompt: 'message',
-    defaultContextWindow: 64_000,
+    defaultContextWindow: 128_000,
     models: {
-      'deepseek-chat':      { contextWindow: 64_000 },
-      'deepseek-reasoner':  { contextWindow: 64_000 },
+      'deepseek-chat':      { contextWindow: 128_000 },
+      'deepseek-reasoner':  { contextWindow: 128_000 },
     },
   },
   xai: {

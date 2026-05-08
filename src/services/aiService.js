@@ -100,7 +100,22 @@ function _xorEncrypt(text) {
   ).join(''))
 }
 
-const DEFAULT_MODELS = []
+const DEFAULT_MODELS = [
+  {
+    id:      'default-deepseek-chat',
+    name:    'DeepSeek Chat',
+    baseUrl: 'https://api.deepseek.com/v1',
+    modelId: 'deepseek-chat',
+    apiKey:  '',
+  },
+  {
+    id:      'default-deepseek-reasoner',
+    name:    'DeepSeek Reasoner (R1)',
+    baseUrl: 'https://api.deepseek.com/v1',
+    modelId: 'deepseek-reasoner',
+    apiKey:  '',
+  },
+]
 
 // Presets removed — users add models manually via the custom model form.
 
@@ -954,8 +969,10 @@ export async function countTokensAnthropic(modelConfig, messages, systemPrompt) 
   return { inputTokens: data.input_tokens }
 }
 
-// ── callForStructuredOutput — JSON extraction via Anthropic tool_use ──────────
+// ── callForStructuredOutput — JSON extraction via tool_use / JSON mode ────────
 // Asks the model to fill a named tool schema and returns the parsed input object.
+// Works with both Anthropic (tool_use blocks) and OpenAI-compat providers
+// (tool_calls with JSON mode fallback for models that reject tools).
 // toolName:   string  — name of the tool (e.g. 'extract_plan')
 // toolSchema: object  — JSON Schema for the tool's input_schema
 // prompt:     string  — user instruction
@@ -963,23 +980,73 @@ export async function countTokensAnthropic(modelConfig, messages, systemPrompt) 
 // Returns the parsed object on success, throws on error.
 export async function callForStructuredOutput(modelConfig, toolName, toolSchema, prompt, systemPrompt) {
   const { apiKey, baseUrl, modelId } = modelConfig
-  if (!isAnthropicUrl(baseUrl)) throw new Error('callForStructuredOutput: only supported for Anthropic models')
 
-  const tools = [{ name: toolName, description: toolSchema.description || toolName, input_schema: toolSchema }]
-  const messages = [{ role: 'user', content: prompt }]
-  const body = {
-    max_tokens: modelConfig.maxTokens || DEFAULT_MAX_TOKENS,
-    tools,
-    tool_choice: { type: 'tool', name: toolName },
-    messages,
+  if (isAnthropicUrl(baseUrl)) {
+    const tools = [{ name: toolName, description: toolSchema.description || toolName, input_schema: toolSchema }]
+    const messages = [{ role: 'user', content: prompt }]
+    const body = {
+      max_tokens: modelConfig.maxTokens || DEFAULT_MAX_TOKENS,
+      tools,
+      tool_choice: { type: 'tool', name: toolName },
+      messages,
+    }
+    if (systemPrompt) body.system = systemPrompt
+    const { url, options } = buildAnthropicRequest(baseUrl, apiKey, modelId, body)
+    const res = await fetchWithRetry(url, options)
+    if (!res.ok) { const err = await res.text(); throw new Error(`AI API error ${res.status}: ${err}`) }
+    const data = await res.json()
+    const toolUse = (data.content || []).find(b => b.type === 'tool_use' && b.name === toolName)
+    if (!toolUse) throw new Error(`callForStructuredOutput: model did not call tool '${toolName}'`)
+    return toolUse.input
   }
-  if (systemPrompt) body.system = systemPrompt
 
-  const { url, options } = buildAnthropicRequest(baseUrl, apiKey, modelId, body)
-  const res = await fetchWithRetry(url, options)
-  if (!res.ok) { const err = await res.text(); throw new Error(`AI API error ${res.status}: ${err}`) }
-  const data = await res.json()
-  const toolUse = (data.content || []).find(b => b.type === 'tool_use' && b.name === toolName)
-  if (!toolUse) throw new Error(`callForStructuredOutput: model did not call tool '${toolName}'`)
-  return toolUse.input
+  // OpenAI-compat path (DeepSeek, Groq, OpenAI, etc.) — try tool_calls first,
+  // then fall back to JSON mode if the model rejects function calling.
+  const openAITools = [{
+    type: 'function',
+    function: { name: toolName, description: toolSchema.description || toolName, parameters: toolSchema },
+  }]
+  const messages = systemPrompt
+    ? [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }]
+    : [{ role: 'user', content: prompt }]
+
+  async function tryToolCall() {
+    const body = {
+      tools: openAITools,
+      tool_choice: { type: 'function', function: { name: toolName } },
+      messages,
+    }
+    const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig)
+    const res = await fetchWithRetry(url, options)
+    if (!res.ok) {
+      const errText = await res.text()
+      if ((res.status === 400 || res.status === 422) && isToolSupportError(errText)) return null
+      throw new Error(`AI API error ${res.status}: ${errText}`)
+    }
+    const data = await res.json()
+    const tc = data.choices?.[0]?.message?.tool_calls?.[0]
+    if (!tc) return null
+    try { return JSON.parse(tc.function.arguments || '{}') } catch { return null }
+  }
+
+  async function tryJsonMode() {
+    const jsonPrompt = `${prompt}\n\nRespond ONLY with a valid JSON object matching this schema:\n${JSON.stringify(toolSchema, null, 2)}`
+    const body = {
+      response_format: { type: 'json_object' },
+      messages: systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, { role: 'user', content: jsonPrompt }]
+        : [{ role: 'user', content: jsonPrompt }],
+    }
+    const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig)
+    const res = await fetchWithRetry(url, options)
+    if (!res.ok) { const err = await res.text(); throw new Error(`AI API error ${res.status}: ${err}`) }
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content || ''
+    try { return JSON.parse(text) } catch { throw new Error('callForStructuredOutput: model returned invalid JSON') }
+  }
+
+  const result = await tryToolCall()
+  if (result !== null) return result
+  NO_TOOL_MODELS.add(modelId)
+  return tryJsonMode()
 }

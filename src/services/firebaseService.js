@@ -11,14 +11,16 @@ import { KEYS } from '../shared/storageKeys.js'
 
 const FB_CONFIG_KEY = KEYS.LS.FIREBASE_CONFIG
 
-// ── Hardcoded project config ──────────────────────────────────────────────────
+// ── Firebase project config — loaded from environment variables ───────────────
+// Set VITE_FIREBASE_* in your .env.local (never commit real keys).
+// See .env.example for the full list of required variables.
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey:            'AIzaSyA4sX64h-WXk2rZGFKWioAi00DPnx4wpNw',
-  authDomain:        'bluswan-ai-coder.firebaseapp.com',
-  projectId:         'bluswan-ai-coder',
-  storageBucket:     'bluswan-ai-coder.firebasestorage.app',
-  messagingSenderId: '69683631923',
-  appId:             '1:69683631923:web:7b1af3e2a9d5756efd5046',
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || '',
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || '',
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || '',
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID             || '',
 }
 
 let _app     = null
@@ -190,9 +192,9 @@ export async function getStorage() {
 
 export function getFirebaseStatus() {
   return {
-    configured:  true,
+    configured:  !!DEFAULT_FIREBASE_CONFIG.projectId,
     initialised: !!_app,
-    projectId:   DEFAULT_FIREBASE_CONFIG.projectId,
+    projectId:   DEFAULT_FIREBASE_CONFIG.projectId || '(not configured)',
   }
 }
 
