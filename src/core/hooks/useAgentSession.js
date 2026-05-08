@@ -35,6 +35,24 @@ const PLAN_MODE_TOOLS = new Set([
   'hybrid_search', 'retrieve_context',
 ])
 
+// ── Session continuation layer ────────────────────────────────────────────────
+const MAX_CONTINUATIONS = 3
+
+const WRITING_TOOLS = new Set([
+  'write_file', 'edit_file', 'delete_file', 'apply_patch',
+  'multi_edit_file', 'search_replace_many', 'move_file', 'resolve_merge_conflict',
+])
+
+function isTransientError(message = '') {
+  const m = String(message).toLowerCase()
+  return m.includes('429') || m.includes('rate limit') ||
+    m.includes('503') || m.includes('502') ||
+    m.includes('timeout') || m.includes('timed out') ||
+    m.includes('network') || m.includes('econnreset') ||
+    m.includes('socket') || m.includes('enotfound') ||
+    m.includes('service unavailable')
+}
+
 export function useAgentSession({
   modelConfig,       // {apiKey, baseUrl, modelId, …}
   githubConfig,      // {token, owner, repo, branch}
@@ -221,194 +239,244 @@ export function useAgentSession({
       setNarrationThread([...narrationRef.current])
     }
 
-    try { await runAgentLoop({
-      task,
-      systemPrompt,
-      tools,
-      executeTool: executor,
-      modelConfig,
-      availableModels: availableModels || [],
-      enhancerConfig: loadEnhancerConfig(),
-      executionMode,
-      signal:      ctrl.signal,
-      conversationHistory,
-      onEvent: (ev) => {
-        if (ctrl.signal.aborted) return
-        switch (ev.type) {
-          case 'turn': {
-            // Archive any streamed narration from the previous turn
-            const prev = streamTextRef.current.trim()
-            if (prev) {
-              logActivity('agent', `💬 ${prev}`)
-              pushNarration({ kind: 'text', text: prev })
-              streamTextRef.current = ''
-              setAgentStreamText('')
+    // Auto-continuation: on turn-limit or transient error, re-queue up to
+    // MAX_CONTINUATIONS times. Three guards prevent runaway loops:
+    //   1. Hard cap on MAX_CONTINUATIONS
+    //   2. Progress gate — must have changed files OR made ≥2 writing tool calls
+    //   3. Error discrimination — transient errors only (not model/logic failures)
+    let continuationCount = 0
+    let contHistory = [...conversationHistory]
+    let perRunStats = null
+
+    try {
+      while (true) {
+        perRunStats = { hitTurnLimit: false, transientErrMsg: null, filesThisRun: [], writingCallsThisRun: 0 }
+
+        await runAgentLoop({
+          task,
+          systemPrompt,
+          tools,
+          executeTool: executor,
+          modelConfig,
+          availableModels: availableModels || [],
+          enhancerConfig: loadEnhancerConfig(),
+          executionMode,
+          signal:      ctrl.signal,
+          conversationHistory: contHistory,
+          onEvent: (ev) => {
+            if (ctrl.signal.aborted) return
+            // Per-run signal tracking for continuation decisions
+            if (ev.type === 'model2_escalation' && ev.reason === 'loop_limit') perRunStats.hitTurnLimit = true
+            if (ev.type === 'error' && isTransientError(ev.message || '')) perRunStats.transientErrMsg = ev.message
+            if (ev.type === 'file_write' && !perRunStats.filesThisRun.includes(ev.path)) perRunStats.filesThisRun.push(ev.path)
+            if (ev.type === 'tool_start' && WRITING_TOOLS.has(ev.name)) perRunStats.writingCallsThisRun++
+            if (ev.type === 'done' && /loop limit|turn limit|maximum turn/i.test(ev.text || '')) perRunStats.hitTurnLimit = true
+            switch (ev.type) {
+              case 'turn': {
+                // Archive any streamed narration from the previous turn
+                const prev = streamTextRef.current.trim()
+                if (prev) {
+                  logActivity('agent', `💬 ${prev}`)
+                  pushNarration({ kind: 'text', text: prev })
+                  streamTextRef.current = ''
+                  setAgentStreamText('')
+                }
+                updateActivity(startId, { msg: `⚡ Agent — turn ${ev.turn}` })
+                break
+              }
+
+              case 'text_delta':
+                streamTextRef.current += ev.delta
+                // Debounce: batch rapid deltas into one React state update per animation frame
+                // to avoid 500+ re-renders per long response causing UI freeze.
+                if (!streamUpdatePendingRef.current) {
+                  streamUpdatePendingRef.current = true
+                  requestAnimationFrame(() => {
+                    streamUpdatePendingRef.current = false
+                    setAgentStreamText(streamTextRef.current)
+                  })
+                }
+                break
+
+              case 'tool_start': {
+                // Flush any streaming narration before the tool line
+                const narration = streamTextRef.current.trim()
+                if (narration) {
+                  logActivity('agent', `💬 ${narration}`)
+                  pushNarration({ kind: 'text', text: narration })
+                  streamTextRef.current = ''
+                  setAgentStreamText('')
+                }
+                // Layer 3: descriptive message instead of raw JSON
+                const logMsg = toolToLogMessage(ev.name, ev.input || {})
+                // Layer 3: infer phase from tool and update phase indicator
+                const inferredPhase = inferPhaseFromTool(ev.name)
+                setAgentPhase(inferredPhase)
+                // Layer 2: update task currentStep when a todo tool fires
+                if (ev.name === 'todo' && ev.input?.action === 'in_progress') {
+                  setAgentTask(prev => prev ? { ...prev, steps: [...(prev.steps || []), ev.input.task || ''] } : prev)
+                }
+                // Add tool chip to narration thread
+                pushNarration({ kind: 'tool', id: ev.id, name: ev.name, logMsg, status: 'active' })
+                logActivity('tool', `● ${logMsg}`)
+                break
+              }
+
+              case 'tool_done': {
+                // Update tool chip status in narration thread
+                narrationRef.current = narrationRef.current.map(e =>
+                  e.kind === 'tool' && e.id === ev.id
+                    ? { ...e, status: ev.error ? 'error' : 'done' }
+                    : e
+                )
+                setNarrationThread([...narrationRef.current])
+                // Update the last entry in the activity log (which is the tool_start we just added)
+                const last = activityRef?.current?.[activityRef.current.length - 1]
+                if (last) {
+                  updateActivity(last.id, {
+                    status: ev.error ? 'error' : 'done',
+                    detail: String(ev.result).slice(0, 120),
+                  })
+                }
+                break
+              }
+
+              case 'usage': {
+                // Claude Code-style per-turn token accounting (↑ input  ↓ output)
+                const fmt = n => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+                if (ev.inputTokens || ev.outputTokens)
+                  logActivity('agent', `↑ ${fmt(ev.inputTokens)} in  ↓ ${fmt(ev.outputTokens)} out`)
+                break
+              }
+
+              case 'file_write':
+                logActivity('write', `✏ ${ev.action}: ${ev.path}`)
+                break
+
+              case 'done': {
+                const final = streamTextRef.current.trim()
+                if (final) {
+                  logActivity('agent', `💬 ${final}`)
+                  pushNarration({ kind: 'text', text: final })
+                  streamTextRef.current = ''
+                  setAgentStreamText('')
+                }
+                setAgentSummary(ev.text || '')
+                setAgentFiles(ev.filesChanged || [])
+                // Layer 2: mark task completed
+                setAgentTask(prev => prev ? { ...prev, status: 'completed' } : prev)
+                setAgentPhase('complete')
+                setOrchLanes(prev => applyLaneEvent(prev, ev))
+                updateActivity(startId, {
+                  status: 'done',
+                  msg: `⚡ Agent done — ${ev.filesChanged?.length || 0} file(s) changed`,
+                })
+                logActivity('done', `✓ Agent complete`)
+                if (sessionBranchRef.current) logActivity('agent', `⎇ Branch: ${sessionBranchRef.current}`)
+                onSetActiveTab?.('activity')
+                onAgentComplete?.(task, ev.text || '')
+                if (planMode && !forceBuildMode) onPlanDone?.(task, ev.text || '')
+                break
+              }
+
+              case 'error':
+                // Layer 2: mark task interrupted
+                setAgentTask(prev => prev ? { ...prev, status: 'interrupted' } : prev)
+                setOrchLanes(prev => applyLaneEvent(prev, ev))
+                logActivity('error', `✗ Agent error: ${ev.message}`)
+                updateActivity(startId, { status: 'error', msg: `⚡ Agent failed — ${ev.message}` })
+                if (ev.fsmState) setFailedAtPhase(ev.fsmState)
+                break
+
+              // ── 4.1 / 4.2: Orchestration events ─────────────────────────────
+              case 'orchestration': {
+                setOrchDecision({
+                  role:       ev.role,
+                  confidence: ev.confidence,
+                  strategy:   ev.strategy,
+                  modelId:    ev.modelId,
+                  reasoning:  ev.reasoning,
+                  scores:     ev.scores,
+                })
+                setOrchLanes(prev => applyLaneEvent(prev, ev))
+                const confPct = Math.round((ev.confidence ?? 0) * 100)
+                logActivity('agent', `◈ ${ev.role} → ${ev.modelId || '—'} (${confPct}% conf)`)
+                break
+              }
+
+              case 'orchestration_fallback':
+                setOrchLanes(prev => applyLaneEvent(prev, ev))
+                logActivity('warn', `⚠ fallback: ${ev.fromModelId} → ${ev.toModelId}`)
+                break
+
+              case 'orchestration_fallback_used':
+                setOrchLanes(prev => applyLaneEvent(prev, ev))
+                break
+
+              case 'model2_escalation': {
+                const reasonLabel = ev.reason === 'quality_gates' ? 'quality gates failed' : 'primary model error'
+                logActivity('warn', `⬆ Model 2 escalation triggered (${reasonLabel}) — retrying with ${ev.model2Id || 'backup model'}`)
+                updateActivity(startId, { msg: `⚡ Escalating to backup model…` })
+                if (ev.model2Id) setEscalatedModelId(ev.model2Id)
+                break
+              }
+
+              case 'orchestration_ensemble':
+                setOrchLanes(prev => applyLaneEvent(prev, ev))
+                logActivity('agent', `≡ ensemble: [${(ev.modelsUsed || []).join(', ')}]`)
+                break
+
+              case 'rag_inject':
+                logActivity('agent', `◎ RAG: injected ${ev.count} context chunk${ev.count !== 1 ? 's' : ''} (${ev.totalCandidates} candidates)`)
+                break
+
+              case 'library_context':
+                logActivity('agent', `◎ Library docs: fetched ${ev.count} package${ev.count !== 1 ? 's' : ''} (${(ev.packages || []).join(', ')})`)
+                break
+
+              case 'verification':
+                setLastVerification(ev.verification || null)
+                break
+
+              case 'critique':
+                setLastCritique(ev.critique || null)
+                break
+
+              default: break
             }
-            updateActivity(startId, { msg: `⚡ Agent — turn ${ev.turn}` })
-            break
-          }
+          },
+        })
 
-          case 'text_delta':
-            streamTextRef.current += ev.delta
-            // Debounce: batch rapid deltas into one React state update per animation frame
-            // to avoid 500+ re-renders per long response causing UI freeze.
-            if (!streamUpdatePendingRef.current) {
-              streamUpdatePendingRef.current = true
-              requestAnimationFrame(() => {
-                streamUpdatePendingRef.current = false
-                setAgentStreamText(streamTextRef.current)
-              })
-            }
-            break
+        // ── Continuation decision ──────────────────────────────────────────────
+        if (ctrl.signal.aborted) break
 
-          case 'tool_start': {
-            // Flush any streaming narration before the tool line
-            const narration = streamTextRef.current.trim()
-            if (narration) {
-              logActivity('agent', `💬 ${narration}`)
-              pushNarration({ kind: 'text', text: narration })
-              streamTextRef.current = ''
-              setAgentStreamText('')
-            }
-            // Layer 3: descriptive message instead of raw JSON
-            const logMsg = toolToLogMessage(ev.name, ev.input || {})
-            // Layer 3: infer phase from tool and update phase indicator
-            const inferredPhase = inferPhaseFromTool(ev.name)
-            setAgentPhase(inferredPhase)
-            // Layer 2: update task currentStep when a todo tool fires
-            if (ev.name === 'todo' && ev.input?.action === 'in_progress') {
-              setAgentTask(prev => prev ? { ...prev, steps: [...(prev.steps || []), ev.input.task || ''] } : prev)
-            }
-            // Add tool chip to narration thread
-            pushNarration({ kind: 'tool', id: ev.id, name: ev.name, logMsg, status: 'active' })
-            logActivity('tool', `● ${logMsg}`)
-            break
-          }
+        const needsContinuation = perRunStats.hitTurnLimit || perRunStats.transientErrMsg !== null
+        if (!needsContinuation) break
 
-          case 'tool_done': {
-            // Update tool chip status in narration thread
-            narrationRef.current = narrationRef.current.map(e =>
-              e.kind === 'tool' && e.id === ev.id
-                ? { ...e, status: ev.error ? 'error' : 'done' }
-                : e
-            )
-            setNarrationThread([...narrationRef.current])
-            // Update the last entry in the activity log (which is the tool_start we just added)
-            const last = activityRef?.current?.[activityRef.current.length - 1]
-            if (last) {
-              updateActivity(last.id, {
-                status: ev.error ? 'error' : 'done',
-                detail: String(ev.result).slice(0, 120),
-              })
-            }
-            break
-          }
-
-          case 'usage': {
-            // Claude Code-style per-turn token accounting (↑ input  ↓ output)
-            const fmt = n => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-            if (ev.inputTokens || ev.outputTokens)
-              logActivity('agent', `↑ ${fmt(ev.inputTokens)} in  ↓ ${fmt(ev.outputTokens)} out`)
-            break
-          }
-
-          case 'file_write':
-            logActivity('write', `✏ ${ev.action}: ${ev.path}`)
-            break
-
-          case 'done': {
-            const final = streamTextRef.current.trim()
-            if (final) {
-              logActivity('agent', `💬 ${final}`)
-              pushNarration({ kind: 'text', text: final })
-              streamTextRef.current = ''
-              setAgentStreamText('')
-            }
-            setAgentSummary(ev.text || '')
-            setAgentFiles(ev.filesChanged || [])
-            // Layer 2: mark task completed
-            setAgentTask(prev => prev ? { ...prev, status: 'completed' } : prev)
-            setAgentPhase('complete')
-            setOrchLanes(prev => applyLaneEvent(prev, ev))
-            updateActivity(startId, {
-              status: 'done',
-              msg: `⚡ Agent done — ${ev.filesChanged?.length || 0} file(s) changed`,
-            })
-            logActivity('done', `✓ Agent complete`)
-            if (sessionBranchRef.current) logActivity('agent', `⎇ Branch: ${sessionBranchRef.current}`)
-            onSetActiveTab?.('activity')
-            onAgentComplete?.(task, ev.text || '')
-            if (planMode && !forceBuildMode) onPlanDone?.(task, ev.text || '')
-            break
-          }
-
-          case 'error':
-            // Layer 2: mark task interrupted
-            setAgentTask(prev => prev ? { ...prev, status: 'interrupted' } : prev)
-            setOrchLanes(prev => applyLaneEvent(prev, ev))
-            logActivity('error', `✗ Agent error: ${ev.message}`)
-            updateActivity(startId, { status: 'error', msg: `⚡ Agent failed — ${ev.message}` })
-            if (ev.fsmState) setFailedAtPhase(ev.fsmState)
-            break
-
-          // ── 4.1 / 4.2: Orchestration events ─────────────────────────────
-          case 'orchestration': {
-            setOrchDecision({
-              role:       ev.role,
-              confidence: ev.confidence,
-              strategy:   ev.strategy,
-              modelId:    ev.modelId,
-              reasoning:  ev.reasoning,
-              scores:     ev.scores,
-            })
-            setOrchLanes(prev => applyLaneEvent(prev, ev))
-            const confPct = Math.round((ev.confidence ?? 0) * 100)
-            logActivity('agent', `◈ ${ev.role} → ${ev.modelId || '—'} (${confPct}% conf)`)
-            break
-          }
-
-          case 'orchestration_fallback':
-            setOrchLanes(prev => applyLaneEvent(prev, ev))
-            logActivity('warn', `⚠ fallback: ${ev.fromModelId} → ${ev.toModelId}`)
-            break
-
-          case 'orchestration_fallback_used':
-            setOrchLanes(prev => applyLaneEvent(prev, ev))
-            break
-
-          case 'model2_escalation': {
-            const reasonLabel = ev.reason === 'quality_gates' ? 'quality gates failed' : 'primary model error'
-            logActivity('warn', `⬆ Model 2 escalation triggered (${reasonLabel}) — retrying with ${ev.model2Id || 'backup model'}`)
-            updateActivity(startId, { msg: `⚡ Escalating to backup model…` })
-            if (ev.model2Id) setEscalatedModelId(ev.model2Id)
-            break
-          }
-
-          case 'orchestration_ensemble':
-            setOrchLanes(prev => applyLaneEvent(prev, ev))
-            logActivity('agent', `≡ ensemble: [${(ev.modelsUsed || []).join(', ')}]`)
-            break
-
-          case 'rag_inject':
-            logActivity('agent', `◎ RAG: injected ${ev.count} context chunk${ev.count !== 1 ? 's' : ''} (${ev.totalCandidates} candidates)`)
-            break
-
-          case 'library_context':
-            logActivity('agent', `◎ Library docs: fetched ${ev.count} package${ev.count !== 1 ? 's' : ''} (${(ev.packages || []).join(', ')})`)
-            break
-
-          case 'verification':
-            setLastVerification(ev.verification || null)
-            break
-
-          case 'critique':
-            setLastCritique(ev.critique || null)
-            break
-
-          default: break
+        if (continuationCount >= MAX_CONTINUATIONS) {
+          logActivity('warn', `↻ Auto-continuation limit (${MAX_CONTINUATIONS}) reached — stopping`)
+          break
         }
-      },
-    }) } catch (unexpectedErr) {
+
+        const madeProgress = perRunStats.filesThisRun.length > 0 || perRunStats.writingCallsThisRun >= 2
+        if (!madeProgress) {
+          logActivity('warn', `↻ No progress detected — stopping to avoid runaway loop`)
+          break
+        }
+
+        continuationCount++
+        const reason = perRunStats.hitTurnLimit
+          ? 'turn limit reached'
+          : `transient error: ${perRunStats.transientErrMsg}`
+        logActivity('agent', `↻ Auto-continuing (${continuationCount}/${MAX_CONTINUATIONS}) — ${reason}`)
+        updateActivity(startId, { msg: `⚡ Agent continuing — pass ${continuationCount}…` })
+
+        const digest = `[Auto-continuation ${continuationCount}/${MAX_CONTINUATIONS}] ` +
+          (perRunStats.filesThisRun.length ? `Files changed so far: ${perRunStats.filesThisRun.join(', ')}. ` : '') +
+          `Continue working on the task. Reason for restart: ${reason}.`
+        contHistory = [...contHistory, { role: 'user', content: digest }]
+      }
+    } catch (unexpectedErr) {
       // runAgentLoop should never throw (emits error events instead), but catch here
       // as an absolute safety net so isAgentRunning is always cleared
       logActivity('error', `✗ Agent crashed: ${unexpectedErr.message}`)
