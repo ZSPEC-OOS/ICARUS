@@ -364,20 +364,25 @@ export async function saveModelDoc(uid, model) {
 
 export async function loadModelDocs(uid) {
   if (!uid) return []
-  const db = await getFirestore()
-  const { collection, getDocs } = await import('firebase/firestore')
-  const snap = await getDocs(collection(db, 'users', uid, 'models'))
-  return snap.docs.map(d => {
-    const data = d.data()
-    return {
-      id:      d.id,
-      name:    data.modelName || '',
-      apiKey:  data.apiKey  ? xorDecipher(data.apiKey, uid) : '',
-      baseUrl: data.baseUrl || '',
-      modelId: data.modelId || '',
-      ...(data.useMaxCompletionTokens ? { useMaxCompletionTokens: true } : {}),
-    }
-  })
+  try {
+    const db = await getFirestore()
+    const { collection, getDocs } = await import('firebase/firestore')
+    const snap = await getDocs(collection(db, 'users', uid, 'models'))
+    return snap.docs.map(d => {
+      const data = d.data()
+      return {
+        id:      d.id,
+        name:    data.modelName || '',
+        apiKey:  data.apiKey  ? xorDecipher(data.apiKey, uid) : '',
+        baseUrl: data.baseUrl || '',
+        modelId: data.modelId || '',
+        ...(data.useMaxCompletionTokens ? { useMaxCompletionTokens: true } : {}),
+      }
+    })
+  } catch (err) {
+    console.warn('[Bluswan] loadModelDocs failed:', err.message)
+    return []
+  }
 }
 
 // ── Modular user tools (cross-device persistence) ────────────────────────────
