@@ -1029,20 +1029,29 @@ export async function callForStructuredOutput(modelConfig, toolName, toolSchema,
     try { return JSON.parse(tc.function.arguments || '{}') } catch { return null }
   }
 
+  // Models known to reject response_format (e.g. deepseek-reasoner / R1 variants).
+  // These use plain-text JSON extraction instead.
+  function supportsJsonMode(id) {
+    return !id.includes('reasoner') && !id.includes('-r1')
+  }
+
   async function tryJsonMode() {
     const jsonPrompt = `${prompt}\n\nRespond ONLY with a valid JSON object matching this schema:\n${JSON.stringify(toolSchema, null, 2)}`
-    const body = {
-      response_format: { type: 'json_object' },
-      messages: systemPrompt
-        ? [{ role: 'system', content: systemPrompt }, { role: 'user', content: jsonPrompt }]
-        : [{ role: 'user', content: jsonPrompt }],
-    }
+    const baseMessages = systemPrompt
+      ? [{ role: 'system', content: systemPrompt }, { role: 'user', content: jsonPrompt }]
+      : [{ role: 'user', content: jsonPrompt }]
+    const body = supportsJsonMode(modelId)
+      ? { response_format: { type: 'json_object' }, messages: baseMessages }
+      : { messages: baseMessages }
     const { url, options } = buildOpenAIRequest(baseUrl, apiKey, modelId, body, modelConfig)
     const res = await fetchWithRetry(url, options)
     if (!res.ok) { const err = await res.text(); throw new Error(`AI API error ${res.status}: ${err}`) }
     const data = await res.json()
     const text = data.choices?.[0]?.message?.content || ''
-    try { return JSON.parse(text) } catch { throw new Error('callForStructuredOutput: model returned invalid JSON') }
+    // Extract JSON from response — models without json_mode may wrap it in prose or markdown
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('callForStructuredOutput: model returned no JSON object')
+    try { return JSON.parse(jsonMatch[0]) } catch { throw new Error('callForStructuredOutput: model returned invalid JSON') }
   }
 
   const result = await tryToolCall()
