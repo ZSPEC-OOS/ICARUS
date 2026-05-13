@@ -79,3 +79,13 @@ export {
 } from './remediationBudget.js';
 
 export { makeExecutor } from '../services-v2/agentExecutor.js';
+
+export {
+  buildRepoIndex,
+  getFileContent,
+  searchFiles,
+  getRelatedFiles,
+  getRepoMap,
+  getSymbolsInFile,
+  invalidateFile,
+} from './repoIndex.js';

@@ -22,6 +22,7 @@ import { createContextCompressor } from './contextCompressor.js'
 import { promptRegistry } from './promptRegistry.js'
 
 import { fetchLibraryContext } from './libraryContextService.js'
+import { FEATURES } from '../config/featureFlags.js'
 
 export function makeSessionDiary() {
   const filesRead = new Set()
@@ -160,7 +161,7 @@ export async function runAgentLoop({
 
   // ── Code Intelligence: build / refresh symbol index from shadow context ───
   // Zero-cost when the index is current (TTL + size guard in buildIndex).
-  if (shadowContext?.isReady) {
+  if (!FEATURES.useV2Engine && shadowContext?.isReady) {
     try { codeIntelligence.buildIndex(shadowContext) } catch { /* non-fatal */ }
   }
 
@@ -210,7 +211,7 @@ export async function runAgentLoop({
   let isAnthropic = activeModelConfig.provider === 'anthropic' || (!activeModelConfig.provider && activeModelConfig.baseUrl?.includes('api.anthropic.com'))
 
   const filesChanged = []
-  const compressor = createContextCompressor({ memoryGraphService })
+  const compressor = !FEATURES.useV2Engine ? createContextCompressor({ memoryGraphService }) : null
   const recentSigs = []
   let loopRecoveryCount = 0
   // Track which prompt registry variants are active this session
@@ -227,82 +228,77 @@ export async function runAgentLoop({
   const executionTrace = { mutations: [], commandRuns: [] }
   let finalText = ''
 
-  // ── Proactive RAG injection ───────────────────────────────────────────────
-  // When RAG is enabled and the shadow index is ready, retrieve the top-K most
-  // relevant file chunks for the task and prepend them to the first user message.
-  // This gives the model grounded context before tool calls begin, reducing the
-  // number of turns needed to locate relevant files.
-  let ragContextBlock = ''
-  if (enhancerConfig.rag?.enabled && shadowContext?.isReady) {
-    try {
-      const ragResult = retrieveContext({
-        query: task,
-        shadowContext,
-        config: enhancerConfig.rag,
-      })
-      if (ragResult.contexts.length > 0) {
-        ragContextBlock = ragResult.promptContext
-        if (enhancerConfig.orchestration?.logDecisions) {
-          onEvent?.({ type: 'rag_inject', count: ragResult.contexts.length, totalCandidates: ragResult.totalCandidates })
-        }
-      }
-    } catch {
-      // RAG failures must never block the agent loop
-    }
-  }
-
-  // ── Library Context: auto-fetch docs for detected packages ───────────────
-  // Scans the task text for npm/pip package references and injects a concise
-  // README + API summary so the model has accurate signatures before writing code.
-  // Failures are silently ignored — zero impact on the main loop.
-  let libraryContextBlock = ''
-  try {
-    const libResult = await fetchLibraryContext(task, { maxPackages: 4 })
-    if (libResult.contextBlock) {
-      libraryContextBlock = libResult.contextBlock
-      if (orchCfg?.logDecisions) {
-        onEvent?.({ type: 'library_context', packages: libResult.packages, count: libResult.packages.length })
-      }
-    }
-  } catch { /* non-fatal */ }
-
-  // ── Task Decomposer: parallel multi-role pre-analysis ─────────────────────
-  // When plannerExecutor is enabled, complex compound tasks trigger lightweight
-  // parallel model calls for each specialist role before the main loop starts.
-  // The merged analyses are injected as structured context, giving the model a
-  // head start on multi-faceted tasks without recursive sub-agent loops.
-  let decompositionBlock = ''
-  if (enhancerConfig.plannerExecutor?.enabled) {
-    try {
-      const decomposer  = createTaskDecomposer({ onEvent })
-      const decomp      = decomposer.decomposeTask(task)
-      if (decomp.complex && decomp.subtasks.length >= 2) {
-        onEvent?.({ type: 'decompose_triggered', complexity: decomp.complexity, subtasks: decomp.subtasks.length })
-        decompositionBlock = await decomposer.runDecomposition(decomp.subtasks, {
-          modelConfig: activeModelConfig,
-          signal,
-        })
-      }
-    } catch {
-      // Decomposition failures must never block the main loop
-    }
-  }
-
   const taskText = enhancerConfig.structuredPrompting.enabled ? enforceStructuredPrompt(task).promptText : task
 
-  const contextSections = [
-    ragContextBlock      ? { heading: 'RELEVANT CONTEXT (auto-retrieved)',  content: ragContextBlock }      : null,
-    libraryContextBlock  ? { heading: 'LIBRARY DOCS (auto-fetched)',        content: libraryContextBlock }  : null,
-    decompositionBlock   ? { heading: 'MULTI-ROLE PRE-ANALYSIS',            content: decompositionBlock }   : null,
-    { heading: 'TASK', content: taskText },
-  ].filter(Boolean)
+  // ── Context injection (V1 only — gated behind V2 engine flag) ────────────
+  // When FEATURES.useV2Engine is true, V2 handles its own context packing via
+  // packCycleContext. The blocks below are skipped to avoid double-injection.
+  let firstUserContent = taskText
 
-  const packedInput = packContextSections(contextSections)
+  if (!FEATURES.useV2Engine) {
+    // ── Proactive RAG injection ─────────────────────────────────────────────
+    let ragContextBlock = ''
+    if (enhancerConfig.rag?.enabled && shadowContext?.isReady) {
+      try {
+        const ragResult = retrieveContext({
+          query: task,
+          shadowContext,
+          config: enhancerConfig.rag,
+        })
+        if (ragResult.contexts.length > 0) {
+          ragContextBlock = ragResult.promptContext
+          if (enhancerConfig.orchestration?.logDecisions) {
+            onEvent?.({ type: 'rag_inject', count: ragResult.contexts.length, totalCandidates: ragResult.totalCandidates })
+          }
+        }
+      } catch {
+        // RAG failures must never block the agent loop
+      }
+    }
+
+    // ── Library Context: auto-fetch docs for detected packages ─────────────
+    let libraryContextBlock = ''
+    try {
+      const libResult = await fetchLibraryContext(task, { maxPackages: 4 })
+      if (libResult.contextBlock) {
+        libraryContextBlock = libResult.contextBlock
+        if (orchCfg?.logDecisions) {
+          onEvent?.({ type: 'library_context', packages: libResult.packages, count: libResult.packages.length })
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    // ── Task Decomposer: parallel multi-role pre-analysis ──────────────────
+    let decompositionBlock = ''
+    if (enhancerConfig.plannerExecutor?.enabled) {
+      try {
+        const decomposer  = createTaskDecomposer({ onEvent })
+        const decomp      = decomposer.decomposeTask(task)
+        if (decomp.complex && decomp.subtasks.length >= 2) {
+          onEvent?.({ type: 'decompose_triggered', complexity: decomp.complexity, subtasks: decomp.subtasks.length })
+          decompositionBlock = await decomposer.runDecomposition(decomp.subtasks, {
+            modelConfig: activeModelConfig,
+            signal,
+          })
+        }
+      } catch {
+        // Decomposition failures must never block the main loop
+      }
+    }
+
+    const contextSections = [
+      ragContextBlock      ? { heading: 'RELEVANT CONTEXT (auto-retrieved)',  content: ragContextBlock }      : null,
+      libraryContextBlock  ? { heading: 'LIBRARY DOCS (auto-fetched)',        content: libraryContextBlock }  : null,
+      decompositionBlock   ? { heading: 'MULTI-ROLE PRE-ANALYSIS',            content: decompositionBlock }   : null,
+      { heading: 'TASK', content: taskText },
+    ].filter(Boolean)
+    firstUserContent = packContextSections(contextSections).text
+  }
 
   let messages = [
     ...(isAnthropic ? [] : [{ role: 'system', content: systemPrompt }]),
     ...(conversationHistory?.length ? conversationHistory : []),
-    { role: 'user', content: packedInput.text },
+    { role: 'user', content: firstUserContent },
   ]
   let anthropicSystemField = isAnthropic ? systemPrompt : undefined
 
@@ -420,7 +416,7 @@ export async function runAgentLoop({
             outputTokens: response.usage?.output || 0,
             meta: { role: routing.role, modelId: activeModelConfig.modelId || activeModelConfig.id, strategy: routing.strategy },
           })
-          if (response.text) compressor.onModelText(response.text)
+          if (response.text) compressor?.onModelText(response.text)
 
           // Per-turn critique: run mid-session when the model produces substantial
           // narration before tool calls.  Only emits an event when issues are found
@@ -495,7 +491,7 @@ export async function runAgentLoop({
                 if (!filesChanged.includes(path)) filesChanged.push(path)
                 const action = tc.name === 'write_file' ? 'write' : tc.name === 'delete_file' ? 'delete' : 'edit'
                 onEvent({ type: 'file_write', path, action })
-                compressor.onFileWrite(path, action)
+                compressor?.onFileWrite(path, action)
                 semanticCacheService.clearNamespace('file_content')
 
                 let afterContent = null
@@ -516,11 +512,11 @@ export async function runAgentLoop({
                 memoryGraphService.ingestFileChange({ path, action, content: String(result || '').slice(0, 500), source: 'agent_loop' })
               } else if (tc.name === 'read_file' || tc.name === 'read_many_files') {
                 const paths = tc.name === 'read_many_files' ? (tc.input.paths || []) : [tc.input.path]
-                paths.forEach(p => compressor.onFileRead(p))
+                paths.forEach(p => compressor?.onFileRead(p))
               }
 
               onEvent({ type: 'tool_done', id, name: tc.name, result, error: null })
-              compressor.onToolResult(tc.name, result)
+              compressor?.onToolResult(tc.name, result)
               efficiencyMetricsService.record({ taskId, stage: `tool:${tc.name}`, cacheHit: false })
               return result
             } catch (err) {

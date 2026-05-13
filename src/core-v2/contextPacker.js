@@ -115,22 +115,72 @@ function fitContent(content, maxTokens, mandatory) {
   return null; // drop this tier
 }
 
+// ─── Repo Map Helper (inline — avoids importing from repoIndex.js) ───────────
+
+/**
+ * Renders an indented file tree from a flat fileTree array, capped at maxTokens.
+ * @param {Array<{path: string}>} fileTree
+ * @param {number} maxTokens
+ * @returns {string}
+ */
+function _renderRepoMap(fileTree, maxTokens) {
+  const maxChars = maxTokens * 4;
+  const root = {};
+  for (const f of fileTree) {
+    const parts = f.path.split('/');
+    let node = root;
+    for (const part of parts.slice(0, -1)) {
+      node[part] = node[part] ?? {};
+      node = node[part];
+    }
+    node[parts[parts.length - 1]] = null;
+  }
+  const lines = [];
+  function walk(node, indent) {
+    const entries = Object.entries(node).sort(([a, va], [b, vb]) => {
+      if ((va === null) !== (vb === null)) return va === null ? 1 : -1;
+      return a.localeCompare(b);
+    });
+    for (const [name, children] of entries) {
+      lines.push(`${indent}${name}${children !== null ? '/' : ''}`);
+      if (children !== null) walk(children, indent + '  ');
+    }
+  }
+  walk(root, '');
+  let result = lines.join('\n');
+  if (result.length > maxChars) result = result.slice(0, maxChars) + '\n[...truncated]';
+  return result;
+}
+
 // ─── Main Assembly ────────────────────────────────────────────────────────────
 
 /**
  * Assembles the full cycle context for an LLM turn.
  *
+ * The 5th parameter accepts either:
+ *   - A RepoIndex object (has `fileTree` + `contentCache` properties): uses getRepoMap() for
+ *     Tier 4 and contentCache lookups for Tier 5.
+ *   - A legacy options object: `{ repoMap?, relevantFileContents?, remediationBudgetRemaining? }`
+ *   - null/undefined: Tier 4 and Tier 5 are skipped.
+ *
  * @param {import('./contextBudget.js').ContextBudget} budget
  * @param {import('./cycleEngine.js').ExecutionCycle} cycle
  * @param {import('./planContract.js').Deliverable[]} deliverables
  * @param {import('./cycleEngine.js').ToolResult[]} toolResults
- * @param {Object} [options]
- * @param {string} [options.repoMap] - File tree string
- * @param {Map<string, string>} [options.relevantFileContents] - path → content
- * @param {number} [options.remediationBudgetRemaining]
+ * @param {Object|null} [repoIndexOrOptions]
  * @returns {PackedContext}
  */
-export function packCycleContext(budget, cycle, deliverables, toolResults, options = {}) {
+export function packCycleContext(budget, cycle, deliverables, toolResults, repoIndexOrOptions = null) {
+  // Detect whether 5th arg is a RepoIndex instance or legacy options object
+  let repoIndex = null;
+  let options = {};
+  if (repoIndexOrOptions !== null && typeof repoIndexOrOptions === 'object') {
+    if ('fileTree' in repoIndexOrOptions || 'contentCache' in repoIndexOrOptions) {
+      repoIndex = repoIndexOrOptions;
+    } else {
+      options = repoIndexOrOptions;
+    }
+  }
   const messages = [];
   const includedTiers = [];
   const droppedTiers = [];
@@ -212,8 +262,16 @@ export function packCycleContext(budget, cycle, deliverables, toolResults, optio
   includedTiers.push('toolResults');
 
   // ── Tier 4: Repo map (best-effort) ───────────────────────────────────────
-  if (options.repoMap) {
-    const repoFitted = fitContent(options.repoMap, budget.tiers.repoMap.max, false);
+  // Source: repoIndex.fileTree (new path) or options.repoMap (legacy)
+  let repoMapSource = null;
+  if (repoIndex) {
+    repoMapSource = _renderRepoMap(repoIndex.fileTree, budget.tiers.repoMap.max);
+  } else if (options.repoMap) {
+    repoMapSource = options.repoMap;
+  }
+
+  if (repoMapSource) {
+    const repoFitted = fitContent(repoMapSource, budget.tiers.repoMap.max, false);
     if (repoFitted) {
       messages.push({ role: 'user', content: `--- Repository Map ---\n${repoFitted}` });
       dynamicTokens += computeTokenEstimate(repoFitted);
@@ -224,9 +282,28 @@ export function packCycleContext(budget, cycle, deliverables, toolResults, optio
   }
 
   // ── Tier 5: Relevant file contents (best-effort) ─────────────────────────
-  if (options.relevantFileContents && options.relevantFileContents.size > 0) {
+  // Source: repoIndex content cache for files read in toolResults (new path) or options.relevantFileContents (legacy)
+  let relevantFileContents = null;
+  if (repoIndex) {
+    const filesRead = (toolResults ?? [])
+      .filter((r) => r.toolName === 'read_file' && r.input?.path)
+      .map((r) => r.input.path)
+      .filter((p, i, arr) => arr.indexOf(p) === i) // dedupe
+      .slice(0, 5);
+    if (filesRead.length > 0) {
+      relevantFileContents = new Map();
+      for (const p of filesRead) {
+        const cached = repoIndex.contentCache.get(p);
+        if (cached !== undefined) relevantFileContents.set(p, cached);
+      }
+    }
+  } else if (options.relevantFileContents) {
+    relevantFileContents = options.relevantFileContents;
+  }
+
+  if (relevantFileContents && relevantFileContents.size > 0) {
     const fileLines = [];
-    for (const [path, content] of options.relevantFileContents) {
+    for (const [path, content] of relevantFileContents) {
       fileLines.push(`=== ${path} ===\n${content}`);
     }
     const filesContent = fileLines.join('\n\n');

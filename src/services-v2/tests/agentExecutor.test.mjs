@@ -192,6 +192,34 @@ describe('executeTool: list_directory', () => {
   });
 });
 
+// ─── search_files tests ───────────────────────────────────────────────────────
+
+describe('executeTool: search_files', () => {
+  it('returns matching file paths', async () => {
+    const fs = makeFs({ 'src/auth.js': '', 'src/auth.test.js': '', 'src/utils.js': '' });
+    const exec = makeExecutor(fs);
+    const result = await exec('search_files', { path: 'src', pattern: 'auth' });
+    assert.ok(result.includes('auth'));
+  });
+
+  it('caps at 20 results', async () => {
+    const files = {};
+    for (let i = 0; i < 30; i++) files[`src/file-${i}.js`] = '';
+    const exec = makeExecutor({
+      fsSearch: async () => Object.keys(files),
+    });
+    const result = await exec('search_files', { path: 'src', pattern: 'file' });
+    const count = result.split('\n').filter(Boolean).length;
+    assert.ok(count <= 20, `Expected ≤20 results, got ${count}`);
+  });
+
+  it('returns ERROR when not configured', async () => {
+    const exec = makeExecutor({});
+    const result = await exec('search_files', { path: 'src', pattern: 'x' });
+    assert.ok(result.startsWith('ERROR:'));
+  });
+});
+
 // ─── grep tests ───────────────────────────────────────────────────────────────
 
 describe('executeTool: grep', () => {

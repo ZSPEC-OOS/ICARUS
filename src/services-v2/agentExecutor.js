@@ -120,7 +120,8 @@ export function makeExecutor(config = {}) {
         case 'search_files': {
           if (!fsSearch) return 'ERROR: search_files not configured';
           const matches = await fsSearch(input.path ?? '.', input.pattern ?? '');
-          return Array.isArray(matches) ? matches.join('\n') : String(matches);
+          const results = Array.isArray(matches) ? matches : String(matches).split('\n');
+          return results.slice(0, 20).join('\n');
         }
 
         case 'grep': {

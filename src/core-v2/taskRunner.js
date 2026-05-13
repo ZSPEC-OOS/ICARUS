@@ -5,6 +5,7 @@
  */
 
 import { createTaskState, transition, isTerminal } from './taskStateMachine.js';
+import { buildRepoIndex, getFileContent, invalidateFile } from './repoIndex.js';
 import { createCycle, checkCycleCompletion, enforceToolRestriction, recordTurn as recordCycleTurn, summarizeCycle } from './cycleEngine.js';
 import { createContextBudget } from './contextBudget.js';
 import { packCycleContext } from './contextPacker.js';
@@ -65,6 +66,9 @@ const DEFAULT_OPTIONS = {
   remediationBudget: 100,
   requirePlanReview: false,
   requireCompletionConfirm: false,
+  repoUrl: null,
+  branch: null,
+  token: null,
 };
 
 const BASE_ALLOWED_TOOLS = ['read_file', 'read_many_files', 'list_directory', 'search_files', 'grep'];
@@ -220,9 +224,10 @@ export function updateDeliverablesFromCycle(plan, cycle) {
  * @param {TaskCallbacks} callbacks
  * @param {import('./contextBudget.js').ContextBudget} budget
  * @param {import('./planContract.js').Deliverable[]} deliverables
+ * @param {import('./repoIndex.js').RepoIndex|null} [repoIndex]
  * @returns {Promise<{status: string, turnsUsed: number, cycle: import('./cycleEngine.js').ExecutionCycle, finalMessage?: string, haltReason?: string}>}
  */
-async function runCycleTurns(cycle, context, callbacks, budget, deliverables) {
+async function runCycleTurns(cycle, context, callbacks, budget, deliverables, repoIndex = null) {
   let loopGuard = createLoopGuard();
   let currentCycle = cycle;
   let currentContext = context;
@@ -311,6 +316,18 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables) {
         const classified = classifyError(new Error(output));
         callbacks.onError(classified);
       }
+
+      // Repo index maintenance
+      if (repoIndex) {
+        if ((tc.name === 'write_file' || tc.name === 'edit_file') && tc.input?.path) {
+          invalidateFile(repoIndex, tc.input.path);
+        } else if (tc.name === 'read_file' && tc.input?.path && !(output ?? '').startsWith('ERROR:')) {
+          // Pre-warm content cache so Tier 5 can use it synchronously
+          if (!repoIndex.contentCache.has(tc.input.path)) {
+            repoIndex.contentCache.set(tc.input.path, output ?? '');
+          }
+        }
+      }
     }
 
     // Normalize { name, input } → { toolName, input } for cycleEngine / loopPrevention
@@ -329,8 +346,8 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables) {
       }
     }
 
-    // Repack context for next turn
-    currentContext = packCycleContext(budget, currentCycle, deliverables, currentCycle.toolResults);
+    // Repack context for next turn (pass repoIndex if available for Tier 4+5)
+    currentContext = packCycleContext(budget, currentCycle, deliverables, currentCycle.toolResults, repoIndex);
 
     callbacks.onEvent({ type: 'turn_complete', data: { turn, turnsUsed: currentCycle.turnsUsed } });
   }
@@ -473,6 +490,18 @@ export async function runTask(taskSpec, callbacks) {
   let totalTurnsUsed = 0;
   let totalTokensUsed = 0;
 
+  // Build repo index once per task (discarded after task completes)
+  let repoIndex = null;
+  if (opts.repoUrl && opts.branch) {
+    try {
+      repoIndex = await buildRepoIndex(opts.repoUrl, opts.branch, opts.token ?? '', opts._repoIndexOptions);
+      callbacks.onEvent({ type: 'repo_index_ready', data: { files: repoIndex.fileTree.length } });
+    } catch (err) {
+      callbacks.onEvent({ type: 'repo_index_error', data: { message: err.message } });
+      // Non-fatal: continue without repoIndex
+    }
+  }
+
   while (state.currentCycle + 1 < state.maxCycles) {
     const remaining = state.plan.deliverables.filter((d) => !d.completed);
     if (remaining.length === 0) break;
@@ -486,7 +515,7 @@ export async function runTask(taskSpec, callbacks) {
     state = transition(state, 'cycle_prep');
     callbacks.onPhaseChange(state.phase);
 
-    const packed = packCycleContext(contextBudget, cycle, state.plan.deliverables, []);
+    const packed = packCycleContext(contextBudget, cycle, state.plan.deliverables, [], repoIndex);
     totalTokensUsed += packed.metadata.totalTokensEstimated;
 
     state = {
@@ -499,7 +528,7 @@ export async function runTask(taskSpec, callbacks) {
     callbacks.onCycleStart(cycle);
 
     const cycleRunResult = await runCycleTurns(
-      cycle, packed, callbacks, contextBudget, state.plan.deliverables
+      cycle, packed, callbacks, contextBudget, state.plan.deliverables, repoIndex
     );
 
     totalTurnsUsed += cycleRunResult.turnsUsed;
