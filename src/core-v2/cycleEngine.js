@@ -4,6 +4,8 @@
  * with a fixed tool allowlist, turn cap, and completion protocol.
  */
 
+import { createLoopGuard } from './loopPrevention.js';
+
 // ─── JSDoc Types ──────────────────────────────────────────────────────────────
 
 /**
@@ -39,6 +41,7 @@
  * @property {CycleStatus} status
  * @property {string} [haltReason]
  * @property {number} remediationSpent
+ * @property {import('./loopPrevention.js').LoopGuard} loopGuard
  */
 
 /**
@@ -157,6 +160,7 @@ export function createCycle(plan, cycleNumber, targetDeliverables, allowedTools)
     toolResults: [],
     status: 'running',
     remediationSpent: 0,
+    loopGuard: createLoopGuard(),
   };
 }
 

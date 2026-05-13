@@ -150,8 +150,9 @@ export async function runAgentLoop({
   // ── Model 2 Attachment: resolve escalation model from enhancer config ─────
   // Resolved once at loop start.  If _escalated is true we are already running
   // as the backup model, so set model2Config to null to prevent re-escalation.
+  // V2 NOTE: Model escalation removed. Planner selects model. API errors classified and cycle halts.
   const m2Cfg = enhancerConfig.model2Attachment
-  const model2Config = (!_escalated && m2Cfg?.enabled && m2Cfg?.modelId)
+  const model2Config = (!_escalated && !FEATURES.useV2Engine && m2Cfg?.enabled && m2Cfg?.modelId)
     ? ((availableModels || []).find(m => m.id === m2Cfg.modelId && m.apiKey) ?? null)
     : null
 
@@ -531,26 +532,28 @@ export async function runAgentLoop({
           const nextMessages = buildToolResultMessages(response.toolCalls, results, isAnthropic, response._raw)
           messages = pruneMessages([...messages, ...nextMessages], compressor, isAnthropic, modelConfig)
 
-          const sig = toolSignature(response.toolCalls)
-          recentSigs.push(sig)
-          if (recentSigs.length > AGENT_LOOP_WINDOW) recentSigs.shift()
-          if (recentSigs.length === AGENT_LOOP_WINDOW && recentSigs.every(s => s === sig)) {
-            recentSigs.length = 0
-            loopRecoveryCount++
-            if (loopRecoveryCount >= AGENT_LOOP_MAX_RECOVERIES) {
-              // Prefer escalating to model2 for a fresh perspective before hard-stopping
-              if (model2Config && !needsModel2Escalation) {
-                needsModel2Escalation = true
-                onEvent?.({ type: 'model2_escalation', reason: 'loop_limit', model2Id: model2Config.modelId || model2Config.id })
-                finalText = 'Loop limit reached — escalating to backup model for a fresh approach.'
+          if (!FEATURES.useV2Engine) {
+            const sig = toolSignature(response.toolCalls)
+            recentSigs.push(sig)
+            if (recentSigs.length > AGENT_LOOP_WINDOW) recentSigs.shift()
+            if (recentSigs.length === AGENT_LOOP_WINDOW && recentSigs.every(s => s === sig)) {
+              recentSigs.length = 0
+              loopRecoveryCount++
+              if (loopRecoveryCount >= AGENT_LOOP_MAX_RECOVERIES) {
+                // Prefer escalating to model2 for a fresh perspective before hard-stopping
+                if (model2Config && !needsModel2Escalation) {
+                  needsModel2Escalation = true
+                  onEvent?.({ type: 'model2_escalation', reason: 'loop_limit', model2Id: model2Config.modelId || model2Config.id })
+                  finalText = 'Loop limit reached — escalating to backup model for a fresh approach.'
+                  return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
+                }
+                finalText = 'Agent stopped: repeated the same actions after multiple recovery attempts. Please rephrase or break the task into smaller steps.'
+                onEvent({ type: 'text_delta', delta: '\n[Loop limit reached — stopping agent]\n' })
                 return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
               }
-              finalText = 'Agent stopped: repeated the same actions after multiple recovery attempts. Please rephrase or break the task into smaller steps.'
-              onEvent({ type: 'text_delta', delta: '\n[Loop limit reached — stopping agent]\n' })
-              return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
+              messages.push({ role: 'user', content: `⚠ You are repeating the same tool calls (recovery attempt ${loopRecoveryCount}/${AGENT_LOOP_MAX_RECOVERIES}). Stop, reconsider the approach, and try something genuinely different.` })
+              onEvent({ type: 'text_delta', delta: `\n[Loop detected — recovery attempt ${loopRecoveryCount}]\n` })
             }
-            messages.push({ role: 'user', content: `⚠ You are repeating the same tool calls (recovery attempt ${loopRecoveryCount}/${AGENT_LOOP_MAX_RECOVERIES}). Stop, reconsider the approach, and try something genuinely different.` })
-            onEvent({ type: 'text_delta', delta: `\n[Loop detected — recovery attempt ${loopRecoveryCount}]\n` })
           }
         }
 

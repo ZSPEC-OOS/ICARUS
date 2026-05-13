@@ -56,6 +56,7 @@ export {
   getLoopReport,
   createTaskLoopGuard,
   checkDeliverableRetry,
+  recordFailedDeliverable,
 } from './loopPrevention.js';
 
 export {
