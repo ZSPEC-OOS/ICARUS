@@ -6,7 +6,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { CONV_MAX_MESSAGES } from '../../config/constants.js'
-import { compressToMemoryBlock, buildMemoryDigest } from '../../services/interactivePipeline.js'
+// V2 NOTE: interactivePipeline deleted in Phase 6. Stubs for V1 fallback.
+const compressToMemoryBlock = () => null
+const buildMemoryDigest = () => ''
 import {
   getCurrentUser,
   saveUserConversation,

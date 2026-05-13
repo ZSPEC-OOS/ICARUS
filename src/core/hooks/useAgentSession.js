@@ -14,13 +14,12 @@ import { AGENT_TOOLS, buildAgentSystemPrompt } from '../../services/agentTools.j
 import { AGENT_SESSION_TIMEOUT_MS } from '../../config/constants.js'
 import { shadowContext } from '../../services/shadowContext.js'
 import { loadEnhancerConfig } from '../../services/enhancers/config.js'
-import {
-  detectIntent,
-  INTENT_LABELS,
-  createTask,
-  inferPhaseFromTool,
-  toolToLogMessage,
-} from '../../services/interactivePipeline.js'
+// V2 NOTE: interactivePipeline deleted in Phase 6. Stubs for V1 fallback.
+const detectIntent = () => 'coding'
+const INTENT_LABELS = {}
+const createTask = () => ({})
+const inferPhaseFromTool = () => 'executing'
+const toolToLogMessage = () => ''
 import { applyLaneEvent } from '../../components/bluswan/BluswanTaskLanes.jsx'
 import { getAllTools } from '../../services/toolLoader.js'
 import { generateBranchName, createBranch, getBranch } from '../../services/githubService.js'

@@ -2,24 +2,39 @@ import { callWithToolsStreaming } from './aiService.js'
 import { AGENT_MAX_TURNS, AGENT_KEEP_TURNS, AGENT_LOOP_WINDOW, AGENT_LOOP_MAX_RECOVERIES } from '../config/constants.js'
 import { getContextWindow } from './providerRegistry.js'
 import { resolveEnhancerConfig } from './enhancers/config.js'
-import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
-import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
+// V2 NOTE: structuredPrompting deleted in Phase 6. Stub for V1 fallback.
+const enforceStructuredPrompt = (task) => ({ promptText: task, contract: { goal: task } })
+// V2 NOTE: critiqueMiddleware deleted in Phase 6. Stub for V1 fallback.
+const runCritiquePass = () => ({ passed: true, issues: [] })
 import { memoryGraphService } from './memoryGraphService.js'
 import { createReliabilityLoopFSM } from './reliability/fsm.js'
 import { evaluateReliabilityGates, detectApiSignatureChange, evaluateBenchmarkRegressionGate } from './reliability/gateEvaluators.js'
 import { createRollbackHandler } from './reliability/rollbackHandler.js'
 import { setTraceLoopState, traceOrchestrationDecision, traceOrchestrationFallback } from './toolTraceStore.js'
-import { semanticCacheService } from './efficiency/cacheService.js'
-import { efficiencyMetricsService } from './efficiency/metricsService.js'
+// V2 NOTE: efficiency/cacheService deleted in Phase 6. Stub for V1 fallback.
+const semanticCacheService = { get: () => null, set: () => {}, clearNamespace: () => {} }
+// V2 NOTE: efficiency/metricsService deleted in Phase 6. Stub for V1 fallback.
+const efficiencyMetricsService = { record: () => {} }
 import { packContextSections } from './enhancers/contextPacker.js'
 import { enforceQualityFloor } from './enhancers/qualityFloor.js'
-import { createModelRouter } from './orchestration/modelRouter.js'
-import { createTaskDecomposer } from './orchestration/taskDecomposer.js'
+// V2 NOTE: orchestration/modelRouter deleted in Phase 6. Stub for V1 fallback.
+const createModelRouter = () => ({
+  classifyAndRoute: () => ({ role: 'default', routing: 'single' }),
+  callEnsemble: async (_routing, callModel) => ({ result: await callModel(), modelsUsed: [], aggregationStrategy: 'first' }),
+  callWithFallback: async (_routing, callModel) => ({ result: await callModel(), modelUsed: {}, fallbackIndex: 0, usedFallback: false }),
+  saveFallbackPref: () => {},
+})
+// V2 NOTE: orchestration/taskDecomposer deleted in Phase 6. Stub for V1 fallback.
+const createTaskDecomposer = () => ({
+  decomposeTask: (task) => ({ subtasks: [task] }),
+  runDecomposition: async () => '',
+})
 import { retrieveContext } from './enhancers/ragService.js'
 import { shadowContext } from './shadowContext.js'
 import { codeIntelligence } from './codeIntelligence.js'
 import { createContextCompressor } from './contextCompressor.js'
-import { promptRegistry } from './promptRegistry.js'
+// V2 NOTE: promptRegistry deleted in Phase 6. Stub for V1 fallback.
+const promptRegistry = { get: () => null, recordOutcome: () => {} }
 
 import { fetchLibraryContext } from './libraryContextService.js'
 import { FEATURES } from '../config/featureFlags.js'

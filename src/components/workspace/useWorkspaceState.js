@@ -25,19 +25,24 @@ import {
 } from '../../services/githubService'
 import { estimateCost } from '../../utils/tokenEstimator'
 import { shadowContext } from '../../services/shadowContext'
-import { isVaguePrompt, amplifyPrompt } from '../../services/intentAmplifier'
-import { classifyIntent, estimateScope } from '../../services/intentClassifier'
-import { promptRegistry } from '../../services/promptRegistry'
+// V2 NOTE: intentAmplifier deleted in Phase 6. Stubs for V1 fallback.
+const isVaguePrompt = () => false
+const amplifyPrompt = async (p) => p
+// V2 NOTE: intentClassifier deleted in Phase 6. Stubs for V1 fallback.
+const classifyIntent = () => ({ intent: 'code', score: 1 })
+const estimateScope = () => ({ files: 1, complexity: 'low' })
+// V2 NOTE: promptRegistry deleted in Phase 6. Stub for V1 fallback.
+const promptRegistry = { get: () => null }
 import { buildFilePlan } from '../../services/planner'
-import { splitIntoSubtaskTexts } from '../../services/orchestration/taskDecomposer'
-import {
-  createPipelineSteps,
-  formatStructuredOutput,
-  parsePromptCommand,
-  createAssistantMessage,
-  createStreamEvent,
-  applyStreamEvent,
-} from '../../services/interactivePipeline'
+// V2 NOTE: orchestration/taskDecomposer deleted in Phase 6. Stub for V1 fallback.
+const splitIntoSubtaskTexts = (task) => [task]
+// V2 NOTE: interactivePipeline deleted in Phase 6. Stubs for V1 fallback.
+const createPipelineSteps = () => []
+const formatStructuredOutput = (x) => x
+const parsePromptCommand = (prompt) => ({ command: null, prompt })
+const createAssistantMessage = () => ''
+const createStreamEvent = () => ({})
+const applyStreamEvent = (x) => x
 import { useConversation }    from '../../core/hooks/useConversation'
 import { useExecBridge }      from '../../core/hooks/useExecBridge'
 import { useActivityLog }     from '../../core/hooks/useActivityLog'

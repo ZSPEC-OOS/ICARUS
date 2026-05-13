@@ -9,7 +9,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { EXEC_BRIDGE_TIMEOUT_MS } from '../../config/constants.js'
-import { executionSandbox } from '../../services/executionSandbox.js'
+// V2 NOTE: executionSandbox deleted in Phase 6. Stub for V1 fallback.
+const executionSandbox = {
+  init: async () => false,
+  exec: async () => ({ stdout: '', stderr: 'execution sandbox unavailable', exitCode: 1 }),
+  execStream: async (_cmd, _opts, onChunk) => { if (onChunk) onChunk('execution sandbox unavailable', 'stderr'); return { exitCode: 1, output: '' } },
+}
 
 export function useExecBridge() {
   const [bridgeAvailable, setBridgeAvailable] = useState(null)  // null=probing, true/false

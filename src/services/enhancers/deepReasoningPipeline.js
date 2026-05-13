@@ -1,12 +1,15 @@
-import { enforceStructuredPrompt } from './structuredPrompting.js'
+// V2 NOTE: structuredPrompting deleted in Phase 6. Stub for V1 fallback.
+const enforceStructuredPrompt = (task) => ({ promptText: task, contract: { goal: task } })
 import { retrieveContext } from './ragService.js'
-import { runCritiquePass } from './critiqueMiddleware.js'
+// V2 NOTE: critiqueMiddleware deleted in Phase 6. Stub for V1 fallback.
+const runCritiquePass = () => ({ passed: true, issues: [] })
 import { createReliabilityLoopFSM } from '../reliability/fsm.js'
 import { memoryGraphService } from '../memoryGraphService.js'
 import { setTraceLoopState, traceOrchestrationDecision } from '../toolTraceStore.js'
 import { packContextSections } from './contextPacker.js'
 import { enforceQualityFloor } from './qualityFloor.js'
-import { efficiencyMetricsService } from '../efficiency/metricsService.js'
+// V2 NOTE: efficiency/metricsService deleted in Phase 6. Stub for V1 fallback.
+const efficiencyMetricsService = { record: () => {} }
 import { classifyTask } from '../orchestration/taskClassifier.js'
 
 /**

@@ -4,7 +4,8 @@
 
 import { BLUSWAN_MD_CAP } from '../config/constants.js'
 import { getInputSchema, schemaVersion } from '../tools/contracts.js'
-import { promptRegistry } from './promptRegistry.js'
+// V2 NOTE: promptRegistry deleted in Phase 6. Stub for V1 fallback.
+const promptRegistry = { get: () => null, recordOutcome: () => {} }
 
 export const AGENT_TOOLS = [
   {
