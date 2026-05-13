@@ -1,3 +1,5 @@
+import { FEATURES } from '../../config/featureFlags.js'
+
 export const RELIABILITY_STATES = {
   PLAN: 'plan',
   EXECUTE: 'execute',
@@ -55,22 +57,34 @@ export function createReliabilityLoopFSM({
       return state
     }
 
-    transition(RELIABILITY_STATES.ROLLBACK, { failedGates: state.context.verification?.failedGateIds || [] })
-    state.context.rollback = await handlers.rollback({
-      trace: state.context.execution?.mutationTrace || [],
-      verification: state.context.verification,
-    })
+    // V2 NOTE: Reliability gates and rollback disabled. Use completionGate.js and user-initiated rollback.
+    if (!FEATURES.useV2Engine) {
+      transition(RELIABILITY_STATES.ROLLBACK, { failedGates: state.context.verification?.failedGateIds || [] })
+      state.context.rollback = await handlers.rollback({
+        trace: state.context.execution?.mutationTrace || [],
+        verification: state.context.verification,
+      })
 
-    const recovered = !!state.context.rollback?.rolledBack
-    transition(recovered ? RELIABILITY_STATES.DONE : RELIABILITY_STATES.FAILED)
+      const recovered = !!state.context.rollback?.rolledBack
+      transition(recovered ? RELIABILITY_STATES.DONE : RELIABILITY_STATES.FAILED)
 
-    memoryGraphService?.ingestReliabilityRun?.({
-      task,
-      stateHistory: state.history,
-      verification: state.context.verification,
-      rolledBack: recovered,
-      rollback: state.context.rollback,
-    })
+      memoryGraphService?.ingestReliabilityRun?.({
+        task,
+        stateHistory: state.history,
+        verification: state.context.verification,
+        rolledBack: recovered,
+        rollback: state.context.rollback,
+      })
+    } else {
+      // V2 mode: verification failure is advisory — transition to FAILED without rollback
+      transition(RELIABILITY_STATES.FAILED, { failedGates: state.context.verification?.failedGateIds || [] })
+      memoryGraphService?.ingestReliabilityRun?.({
+        task,
+        stateHistory: state.history,
+        verification: state.context.verification,
+        rolledBack: false,
+      })
+    }
 
     return state
   }

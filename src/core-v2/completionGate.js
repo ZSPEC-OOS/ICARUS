@@ -5,6 +5,7 @@
  */
 
 import { validatePlanCoverage } from './planContract.js';
+import { createValidationSuite, runValidation, summarizeValidation } from './validator.js';
 
 // ─── JSDoc Types ──────────────────────────────────────────────────────────────
 
@@ -316,31 +317,27 @@ export async function runCompletionGates(plan, cycles, executeTool) {
     }
   }
 
-  // ── Gate 4: Regression (build/test command) ────────────────────────────────
-  let regressionDetail;
-  try {
-    const testOutput = await executeTool('run_command', { command: 'npm test --passWithNoTests 2>&1 || true' });
-    // We treat non-ERROR prefix as pass for the regression gate
-    const regressionPassed = !testOutput.toLowerCase().includes('fail') ||
-      testOutput.startsWith('Success');
-    regressionDetail = {
-      id: 'regression',
-      passed: regressionPassed,
-      description: 'Regression test run',
-      detail: regressionPassed ? undefined : testOutput.slice(0, 500),
-    };
-  } catch {
-    // If executeTool itself throws, treat regression as skipped (not failed)
-    regressionDetail = { id: 'regression', passed: true, description: 'Regression skipped (no test runner available)' };
-  }
-  details.push(regressionDetail);
-  if (!regressionDetail.passed) {
-    return {
-      passed: false,
-      layer: 'regression',
-      reason: `Regression gate failed: ${regressionDetail.detail}`,
-      details,
-    };
+  // ── Gate 4: Validation Suite (advisory — does NOT block completion) ─────────
+  // Failures here are quality signals surfaced to the user, not hard blocks.
+  const suite = createValidationSuite(plan);
+  let validationSummary = '';
+  let validationResults = [];
+  if (suite.steps.length > 0) {
+    try {
+      const { results, allPassed } = await runValidation(suite, executeTool);
+      validationResults = results;
+      validationSummary = summarizeValidation(results);
+      details.push({
+        id: 'validation',
+        passed: allPassed,
+        description: `Build/Test/Lint: ${results.length} step(s)`,
+        detail: allPassed ? undefined : validationSummary,
+      });
+    } catch {
+      details.push({ id: 'validation', passed: true, description: 'Validation skipped' });
+    }
+  } else {
+    details.push({ id: 'validation', passed: true, description: 'No validation steps configured' });
   }
 
   // ── Gate 5: Self-Assessment ────────────────────────────────────────────────
@@ -380,5 +377,5 @@ export async function runCompletionGates(plan, cycles, executeTool) {
     };
   }
 
-  return { passed: true, layer: 'all_passed', details };
+  return { passed: true, layer: 'all_passed', details, validationResults };
 }
