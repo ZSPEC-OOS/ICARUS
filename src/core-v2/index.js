@@ -82,6 +82,17 @@ export {
 export { makeExecutor } from '../services-v2/agentExecutor.js';
 
 export {
+  createValidationSuite,
+  runValidation,
+  summarizeValidation,
+} from './validator.js';
+
+export {
+  runQualitySignals,
+  formatQualityReport,
+} from './qualitySignals.js';
+
+export {
   buildRepoIndex,
   getFileContent,
   searchFiles,

@@ -13,6 +13,7 @@ import { validatePlanCoverage, createPlanContract, markDeliverableComplete, Plan
 import { createLoopGuard, createTaskLoopGuard, checkToolSequence, checkFileRead, checkCommandRepeat, checkDeliverableProgress, checkDeliverableRetry, recordFailedDeliverable, recordTurn as recordLoopTurn } from './loopPrevention.js';
 import { classifyError, isFatal, formatErrorForLLM } from './errorClassifier.js';
 import { runSafetyGates, runCompletionGates } from './completionGate.js';
+import { runQualitySignals } from './qualitySignals.js';
 
 // ─── JSDoc Types ──────────────────────────────────────────────────────────────
 
@@ -651,12 +652,28 @@ export async function runTask(taskSpec, callbacks) {
   state = transition(state, 'done');
   callbacks.onPhaseChange(state.phase);
 
+  // Run quality signals post-completion (advisory only — never blocks)
+  let qualityReport = null;
+  try {
+    qualityReport = await runQualitySignals(
+      state.plan,
+      allCycles,
+      repoIndex,
+      callbacks.executeTool,
+      completionGate.validationResults ?? []
+    );
+    callbacks.onEvent({ type: 'quality_report', data: qualityReport });
+  } catch {
+    // Non-fatal — quality signals must never block task completion
+  }
+
   return {
     phase: 'done',
     plan: state.plan,
     cycles: allCycles,
     completionGate,
     safetyCheck,
+    qualityReport,
     totalTokensUsed,
     totalTurnsUsed,
     totalTimeMs: Date.now() - startTime,

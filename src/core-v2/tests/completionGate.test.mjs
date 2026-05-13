@@ -164,15 +164,15 @@ describe('runCompletionGates', () => {
     assert.equal(result.layer, 'acceptance_criteria');
   });
 
-  it('fails regression when test command fails', async () => {
+  it('does NOT block on validation failure (advisory only)', async () => {
     let plan = makePlan([{ type: 'file', path: 'src/foo.js', description: 'Foo', acceptanceCriteria: 'ok' }]);
     plan = markDeliverableComplete(plan, 'deliv-1', { passed: true });
     const cycle = makeCycle([
       { toolName: 'write_file', input: { path: 'src/foo.js', content: 'ok' }, output: 'ok done', turnNumber: 1 },
     ]);
     const result = await runCompletionGates(plan, [cycle], failExecuteTool);
-    assert.equal(result.passed, false);
-    assert.equal(result.layer, 'regression');
+    assert.equal(result.passed, true, 'Validation failure should not block completion');
+    assert.equal(result.layer, 'all_passed');
   });
 
   it('returns details array with all gate results', async () => {

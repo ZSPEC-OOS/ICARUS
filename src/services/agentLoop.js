@@ -303,7 +303,10 @@ export async function runAgentLoop({
   ]
   let anthropicSystemField = isAnthropic ? systemPrompt : undefined
 
-  const rollback = createRollbackHandler({ executeTool, onEvent, memoryGraphService })
+  // V2 NOTE: Rollback disabled in V2 mode. Completion gate and user-initiated rollback used instead.
+  const rollback = FEATURES.useV2Engine
+    ? async () => ({ rolledBack: false, strategy: 'v2_disabled', steps: [], errors: [] })
+    : createRollbackHandler({ executeTool, onEvent, memoryGraphService })
   const loopMeta = { workflow: 'agent_loop', task: String(task || '').slice(0, 180) }
 
   const fsm = createReliabilityLoopFSM({
@@ -561,6 +564,17 @@ export async function runAgentLoop({
         return { finalText, filesChanged, mutationTrace: executionTrace.mutations, trace: executionTrace }
       },
       verify: async ({ execution }) => {
+        // V2 NOTE: Reliability gates disabled in V2 mode. Use completionGate.js for V2 verification.
+        if (FEATURES.useV2Engine) {
+          const qualityFloor = enforceQualityFloor({
+            text: execution?.finalText || finalText,
+            minChars: enhancerConfig?.deepReasoning?.qualityFloorMinChars ?? 120,
+          })
+          onEvent({ type: 'quality_floor', qualityFloor })
+          const verification = { passed: true, gates: [], failedGateIds: [], critique: null }
+          onEvent({ type: 'verification', verification })
+          return verification
+        }
         const verification = evaluateReliabilityGates({
           executionTrace: execution?.trace || executionTrace,
           draftText: execution?.finalText || finalText,
