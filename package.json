@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/services/**/*.test.mjs src/core-v2/tests/*.test.mjs",
+    "test": "node --test src/services/**/*.test.mjs src/core-v2/tests/*.test.mjs src/services-v2/tests/*.test.mjs",
     "benchmark:nightly": "node scripts/run-benchmarks.mjs",
     "cli": "node src/cli/bluswan-cli.mjs",
     "lint": "eslint src/"

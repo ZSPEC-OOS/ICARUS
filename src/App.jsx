@@ -12,6 +12,7 @@ import {
   loadUserToolsDoc,
 } from './services/firebaseService'
 import { KEYS } from './shared/storageKeys.js'
+import { FEATURES } from './config/featureFlags.js'
 
 // Populate localStorage + sessionStorage from cloud settings
 // Called after login so that Bluswan's loadSettings() reads the cloud values on
@@ -230,6 +231,27 @@ export default function App() {
   // collapsed-state set even after models saved in the current session.
   const handleModelSaved = useCallback((modelId) => {
     setFbModelIds(prev => prev.includes(modelId) ? prev : [...prev, modelId])
+  }, [])
+
+  // V2 task execution stub — actual LLM caller and UI modals wired in a later phase
+  const handleTask = useCallback(async (_taskSpec) => {
+    if (FEATURES.useV2Engine) {
+      // V2 path: runTask with stub callbacks (full impl in next phase)
+      const { runTask } = await import('./core-v2/index.js');
+      return runTask(_taskSpec, {
+        onPhaseChange: () => {},
+        onCycleStart: () => {},
+        onCycleEnd: () => {},
+        onPlanReview: async () => 'approve',
+        onCompletionCheck: async () => 'accept',
+        onEvent: () => {},
+        onError: () => {},
+        callLLM: async () => { throw new Error('callLLM not implemented'); },
+        executeTool: async () => { throw new Error('executeTool not implemented'); },
+      });
+    }
+    // V1 path: no-op stub until legacy wiring is plumbed
+    return null;
   }, [])
 
   const handleLogout = useCallback(async () => {
