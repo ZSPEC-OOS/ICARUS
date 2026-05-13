@@ -291,6 +291,20 @@ export function getLoopReport(guard) {
 // ─── Cross-Cycle Guard ────────────────────────────────────────────────────────
 
 /**
+ * Records a deliverable failure without checking the retry limit.
+ * Returns the updated guard; does not halt.
+ *
+ * @param {TaskLoopGuard} taskGuard
+ * @param {string} deliverableId
+ * @returns {TaskLoopGuard}
+ */
+export function recordFailedDeliverable(taskGuard, deliverableId) {
+  const retries = new Map(taskGuard.failedDeliverableRetries);
+  retries.set(deliverableId, (retries.get(deliverableId) ?? 0) + 1);
+  return { ...taskGuard, failedDeliverableRetries: retries };
+}
+
+/**
  * Records a deliverable failure and checks retry limit.
  *
  * @param {TaskLoopGuard} taskGuard

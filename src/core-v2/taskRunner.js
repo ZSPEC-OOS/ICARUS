@@ -10,7 +10,7 @@ import { createCycle, checkCycleCompletion, enforceToolRestriction, recordTurn a
 import { createContextBudget } from './contextBudget.js';
 import { packCycleContext } from './contextPacker.js';
 import { validatePlanCoverage, createPlanContract, markDeliverableComplete, PlanValidationError } from './planContract.js';
-import { createLoopGuard, checkToolSequence, checkFileRead, checkCommandRepeat, checkDeliverableProgress, recordTurn as recordLoopTurn } from './loopPrevention.js';
+import { createLoopGuard, createTaskLoopGuard, checkToolSequence, checkFileRead, checkCommandRepeat, checkDeliverableProgress, checkDeliverableRetry, recordFailedDeliverable, recordTurn as recordLoopTurn } from './loopPrevention.js';
 import { classifyError, isFatal, formatErrorForLLM } from './errorClassifier.js';
 import { runSafetyGates, runCompletionGates } from './completionGate.js';
 
@@ -228,7 +228,7 @@ export function updateDeliverablesFromCycle(plan, cycle) {
  * @returns {Promise<{status: string, turnsUsed: number, cycle: import('./cycleEngine.js').ExecutionCycle, finalMessage?: string, haltReason?: string}>}
  */
 async function runCycleTurns(cycle, context, callbacks, budget, deliverables, repoIndex = null) {
-  let loopGuard = createLoopGuard();
+  let loopGuard = cycle.loopGuard ?? createLoopGuard();
   let currentCycle = cycle;
   let currentContext = context;
 
@@ -237,11 +237,11 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
     if (turn > 1) {
       const seqCheck = checkToolSequence(loopGuard, []);
       if (seqCheck.shouldHalt) {
-        return { status: 'halted', haltReason: seqCheck.reason, turnsUsed: turn - 1, cycle: currentCycle };
+        return { status: 'halted', haltReason: seqCheck.reason, guardType: seqCheck.guardType, turnsUsed: turn - 1, cycle: currentCycle };
       }
       const progressCheck = checkDeliverableProgress(loopGuard, []);
       if (progressCheck.shouldHalt) {
-        return { status: 'halted', haltReason: progressCheck.reason, turnsUsed: turn - 1, cycle: currentCycle };
+        return { status: 'halted', haltReason: progressCheck.reason, guardType: progressCheck.guardType, turnsUsed: turn - 1, cycle: currentCycle };
       }
     }
 
@@ -278,7 +278,7 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
         const readCheck = checkFileRead(loopGuard, path);
         if (readCheck.shouldHalt) {
           callbacks.onEvent({ type: 'loop_guard', data: readCheck });
-          return { status: 'halted', haltReason: readCheck.reason, turnsUsed: turn, cycle: currentCycle };
+          return { status: 'halted', haltReason: readCheck.reason, guardType: readCheck.guardType, turnsUsed: turn, cycle: currentCycle };
         }
       }
       if (tc.name === 'run_command') {
@@ -286,7 +286,7 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
         const cmdCheck = checkCommandRepeat(loopGuard, cmd);
         if (cmdCheck.shouldHalt) {
           callbacks.onEvent({ type: 'loop_guard', data: cmdCheck });
-          return { status: 'halted', haltReason: cmdCheck.reason, turnsUsed: turn, cycle: currentCycle };
+          return { status: 'halted', haltReason: cmdCheck.reason, guardType: cmdCheck.guardType, turnsUsed: turn, cycle: currentCycle };
         }
       }
 
@@ -336,13 +336,14 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
     // Record in cycle and loop guard
     currentCycle = recordCycleTurn(currentCycle, normalizedCalls, toolResults, assistantMessage);
     loopGuard = recordLoopTurn(loopGuard, normalizedCalls, toolResults);
+    currentCycle = { ...currentCycle, loopGuard };
 
     // Check sequence repeats after recording
     if (normalizedCalls.length > 0) {
       const seqCheck = checkToolSequence(loopGuard, normalizedCalls);
       if (seqCheck.shouldHalt) {
         callbacks.onEvent({ type: 'loop_guard', data: seqCheck });
-        return { status: 'halted', haltReason: seqCheck.reason, turnsUsed: turn, cycle: currentCycle };
+        return { status: 'halted', haltReason: seqCheck.reason, guardType: seqCheck.guardType, turnsUsed: turn, cycle: currentCycle };
       }
     }
 
@@ -489,6 +490,7 @@ export async function runTask(taskSpec, callbacks) {
   const allCycles = [];
   let totalTurnsUsed = 0;
   let totalTokensUsed = 0;
+  let taskLoopGuard = createTaskLoopGuard();
 
   // Build repo index once per task (discarded after task completes)
   let repoIndex = null;
@@ -542,6 +544,31 @@ export async function runTask(taskSpec, callbacks) {
     // Update plan deliverables
     state = { ...state, plan: updateDeliverablesFromCycle(state.plan, finishedCycle) };
 
+    // Cross-cycle retry check: halt if any target deliverable keeps failing
+    if (cycleRunResult.status !== 'completed') {
+      for (const delivId of targetIds) {
+        const deliv = state.plan.deliverables.find((d) => d.id === delivId && !d.completed);
+        if (deliv) {
+          const { taskGuard: updatedGuard, result } = checkDeliverableRetry(taskLoopGuard, delivId);
+          taskLoopGuard = updatedGuard;
+          if (result.shouldHalt) {
+            state = transition(state, 'halted');
+            callbacks.onPhaseChange(state.phase);
+            return {
+              phase: 'halted',
+              plan: state.plan,
+              cycles: allCycles,
+              haltReason: result.reason,
+              guardType: result.guardType,
+              totalTokensUsed,
+              totalTurnsUsed,
+              totalTimeMs: Date.now() - startTime,
+            };
+          }
+        }
+      }
+    }
+
     if (cycleRunResult.status === 'halted') {
       state = transition(state, 'halted');
       callbacks.onPhaseChange(state.phase);
@@ -550,6 +577,7 @@ export async function runTask(taskSpec, callbacks) {
         plan: state.plan,
         cycles: allCycles,
         haltReason: cycleRunResult.haltReason,
+        guardType: cycleRunResult.guardType,
         totalTokensUsed,
         totalTurnsUsed,
         totalTimeMs: Date.now() - startTime,
