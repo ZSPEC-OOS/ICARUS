@@ -11,9 +11,11 @@ import { memoryGraphService } from './memoryGraphService.js'
 import { createLogger } from '../utils/logger.js'
 
 const log = createLogger('Planner')
-import { enforceStructuredPrompt } from './enhancers/structuredPrompting.js'
+// V2 NOTE: structuredPrompting deleted in Phase 6. Stub for V1 fallback.
+const enforceStructuredPrompt = (task) => ({ promptText: task, contract: { goal: task } })
 import { retrieveContext } from './enhancers/ragService.js'
-import { runCritiquePass } from './enhancers/critiqueMiddleware.js'
+// V2 NOTE: critiqueMiddleware deleted in Phase 6. Stub for V1 fallback.
+const runCritiquePass = () => ({ passed: true, issues: [] })
 import { createReliabilityLoopFSM } from './reliability/fsm.js'
 import { setTraceLoopState } from './toolTraceStore.js'
 

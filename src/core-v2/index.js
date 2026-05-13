@@ -92,6 +92,8 @@ export {
   formatQualityReport,
 } from './qualitySignals.js';
 
+export { createTelemetrySink } from './telemetry.js';
+
 export {
   buildRepoIndex,
   getFileContent,

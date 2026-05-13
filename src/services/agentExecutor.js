@@ -50,7 +50,9 @@ import { AGENT_TOOLS } from './agentTools.js'
 import { fetchNpmMeta } from './libraryContextService.js'
 import { validatePatch } from './patchValidator.js'
 import { codeIntelligence } from './codeIntelligence.js'
-import { runTDDLoop, parseTestOutput } from './tddLoop.js'
+// V2 NOTE: tddLoop deleted in Phase 6. Stubs for V1 fallback.
+const runTDDLoop = async () => ({ status: 'skipped', results: [], output: '' })
+const parseTestOutput = () => ({ passed: 0, failed: 0, total: 0 })
 
 // ── Exec bridge call ──────────────────────────────────────────────────────────
 async function execBridge(cmd, cwd) {

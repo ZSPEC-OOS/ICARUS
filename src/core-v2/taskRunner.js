@@ -14,6 +14,7 @@ import { createLoopGuard, createTaskLoopGuard, checkToolSequence, checkFileRead,
 import { classifyError, isFatal, formatErrorForLLM } from './errorClassifier.js';
 import { runSafetyGates, runCompletionGates } from './completionGate.js';
 import { runQualitySignals } from './qualitySignals.js';
+import { createTelemetrySink } from './telemetry.js';
 
 // ─── JSDoc Types ──────────────────────────────────────────────────────────────
 
@@ -73,6 +74,25 @@ const DEFAULT_OPTIONS = {
 };
 
 const BASE_ALLOWED_TOOLS = ['read_file', 'read_many_files', 'list_directory', 'search_files', 'grep'];
+
+// ─── Telemetry Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Extracts safe metadata from tool input (no file contents, no secrets).
+ * @param {string} name
+ * @param {Object} input
+ * @returns {Object}
+ */
+function summarizeInput(name, input) {
+  if (!input || typeof input !== 'object') return {};
+  const safe = {};
+  if (input.path) safe.path = input.path;
+  if (input.file_path) safe.path = input.file_path;
+  if (input.command) safe.command = String(input.command).slice(0, 120);
+  if (input.url) safe.url = input.url;
+  if (input.query) safe.query = String(input.query).slice(0, 80);
+  return safe;
+}
 const NEVER_ALLOWED = new Set(['spawn_agent', 'revert_file']);
 
 // ─── Planning Prompt ──────────────────────────────────────────────────────────
@@ -226,9 +246,10 @@ export function updateDeliverablesFromCycle(plan, cycle) {
  * @param {import('./contextBudget.js').ContextBudget} budget
  * @param {import('./planContract.js').Deliverable[]} deliverables
  * @param {import('./repoIndex.js').RepoIndex|null} [repoIndex]
+ * @param {import('./telemetry.js').TelemetrySink} [telemetry]
  * @returns {Promise<{status: string, turnsUsed: number, cycle: import('./cycleEngine.js').ExecutionCycle, finalMessage?: string, haltReason?: string}>}
  */
-async function runCycleTurns(cycle, context, callbacks, budget, deliverables, repoIndex = null) {
+async function runCycleTurns(cycle, context, callbacks, budget, deliverables, repoIndex = null, telemetry = null) {
   let loopGuard = cycle.loopGuard ?? createLoopGuard();
   let currentCycle = cycle;
   let currentContext = context;
@@ -279,6 +300,7 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
         const readCheck = checkFileRead(loopGuard, path);
         if (readCheck.shouldHalt) {
           callbacks.onEvent({ type: 'loop_guard', data: readCheck });
+          telemetry?.emit('loop.guard_trigger', cycle.taskId ?? '', { guardType: readCheck.guardType, reason: readCheck.reason }, { cycleNumber: cycle.cycleNumber, turnNumber: turn });
           return { status: 'halted', haltReason: readCheck.reason, guardType: readCheck.guardType, turnsUsed: turn, cycle: currentCycle };
         }
       }
@@ -287,6 +309,7 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
         const cmdCheck = checkCommandRepeat(loopGuard, cmd);
         if (cmdCheck.shouldHalt) {
           callbacks.onEvent({ type: 'loop_guard', data: cmdCheck });
+          telemetry?.emit('loop.guard_trigger', cycle.taskId ?? '', { guardType: cmdCheck.guardType, reason: cmdCheck.reason }, { cycleNumber: cycle.cycleNumber, turnNumber: turn });
           return { status: 'halted', haltReason: cmdCheck.reason, guardType: cmdCheck.guardType, turnsUsed: turn, cycle: currentCycle };
         }
       }
@@ -303,12 +326,17 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
 
       // Execute
       let output;
+      const toolStart = Date.now();
+      telemetry?.emit('tool.call', cycle.taskId ?? '', { name: tc.name, inputSummary: summarizeInput(tc.name, tc.input) }, { cycleNumber: cycle.cycleNumber, turnNumber: turn });
       try {
         output = await callbacks.executeTool(tc.name, tc.input);
+        const durationMs = Date.now() - toolStart;
+        telemetry?.emit('tool.result', cycle.taskId ?? '', { name: tc.name, durationMs, isError: (output ?? '').startsWith('ERROR:') }, { cycleNumber: cycle.cycleNumber, turnNumber: turn });
       } catch (err) {
         const classified = classifyError(err);
         callbacks.onError(classified);
         output = `ERROR: ${classified.explanation}`;
+        telemetry?.emit('tool.error', cycle.taskId ?? '', { name: tc.name, durationMs: Date.now() - toolStart, error: classified.explanation }, { cycleNumber: cycle.cycleNumber, turnNumber: turn });
       }
 
       toolResults.push({ toolName: tc.name, input: tc.input, output: output ?? '', turnNumber: turn });
@@ -344,6 +372,7 @@ async function runCycleTurns(cycle, context, callbacks, budget, deliverables, re
       const seqCheck = checkToolSequence(loopGuard, normalizedCalls);
       if (seqCheck.shouldHalt) {
         callbacks.onEvent({ type: 'loop_guard', data: seqCheck });
+        telemetry?.emit('loop.guard_trigger', cycle.taskId ?? '', { guardType: seqCheck.guardType, reason: seqCheck.reason }, { cycleNumber: cycle.cycleNumber, turnNumber: turn });
         return { status: 'halted', haltReason: seqCheck.reason, guardType: seqCheck.guardType, turnsUsed: turn, cycle: currentCycle };
       }
     }
@@ -400,6 +429,8 @@ async function generatePlan(goal, callbacks) {
 export async function runTask(taskSpec, callbacks) {
   const startTime = Date.now();
   const opts = { ...DEFAULT_OPTIONS, ...(taskSpec.options ?? {}) };
+  const telemetry = createTelemetrySink({ onFlush: callbacks.onTelemetryFlush });
+  telemetry.emit('task.start', taskSpec.taskId, { goal: taskSpec.goal });
 
   let contextBudget;
   try {
@@ -426,7 +457,9 @@ export async function runTask(taskSpec, callbacks) {
   let plan = taskSpec.plan ?? null;
 
   if (!plan) {
+    const prevPhase = state.phase;
     state = transition(state, 'planning');
+    telemetry.emit('task.phase_change', taskSpec.taskId, { from: prevPhase, to: state.phase });
     callbacks.onPhaseChange(state.phase);
 
     try {
@@ -529,14 +562,16 @@ export async function runTask(taskSpec, callbacks) {
     state = transition(state, 'cycle_exec');
     callbacks.onPhaseChange(state.phase);
     callbacks.onCycleStart(cycle);
+    telemetry.emit('task.cycle_start', taskSpec.taskId, { cycleNumber: cycle.cycleNumber, targetDeliverables: targetIds });
 
     const cycleRunResult = await runCycleTurns(
-      cycle, packed, callbacks, contextBudget, state.plan.deliverables, repoIndex
+      cycle, packed, callbacks, contextBudget, state.plan.deliverables, repoIndex, telemetry
     );
 
     totalTurnsUsed += cycleRunResult.turnsUsed;
     const finishedCycle = { ...cycleRunResult.cycle, status: cycleRunResult.status };
     allCycles.push(finishedCycle);
+    telemetry.emit('task.cycle_end', taskSpec.taskId, { cycleNumber: cycle.cycleNumber, status: cycleRunResult.status, turnsUsed: cycleRunResult.turnsUsed, haltReason: cycleRunResult.haltReason });
 
     state = transition(state, 'cycle_validate');
     callbacks.onPhaseChange(state.phase);
@@ -652,6 +687,11 @@ export async function runTask(taskSpec, callbacks) {
   state = transition(state, 'done');
   callbacks.onPhaseChange(state.phase);
 
+  // Emit validation step results as telemetry
+  for (const vr of completionGate.validationResults ?? []) {
+    telemetry.emit('validation.run', taskSpec.taskId, { step: vr.id, passed: vr.passed, durationMs: vr.durationMs });
+  }
+
   // Run quality signals post-completion (advisory only — never blocks)
   let qualityReport = null;
   try {
@@ -662,10 +702,16 @@ export async function runTask(taskSpec, callbacks) {
       callbacks.executeTool,
       completionGate.validationResults ?? []
     );
+    for (const sig of qualityReport.signals ?? []) {
+      telemetry.emit('quality.signal', taskSpec.taskId, { name: sig.id, status: sig.status });
+    }
     callbacks.onEvent({ type: 'quality_report', data: qualityReport });
   } catch {
     // Non-fatal — quality signals must never block task completion
   }
+
+  const totalTimeMs = Date.now() - startTime;
+  telemetry.emit('task.done', taskSpec.taskId, { durationMs: totalTimeMs });
 
   return {
     phase: 'done',
@@ -676,6 +722,7 @@ export async function runTask(taskSpec, callbacks) {
     qualityReport,
     totalTokensUsed,
     totalTurnsUsed,
-    totalTimeMs: Date.now() - startTime,
+    totalTimeMs,
+    telemetryReport: telemetry.exportReport(taskSpec.taskId),
   };
 }

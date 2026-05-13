@@ -26,13 +26,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  ONBOARDING_STEPS,
-  SIMPLE_TIPS,
-  getIncompleteSteps,
-  isOnboardingComplete,
-  isSimpleMode,
-} from '../../services/bluswanSimpleMode.js'
+// V2 NOTE: bluswanSimpleMode deleted in Phase 6. Stubs for V1 fallback.
+const ONBOARDING_STEPS = []
+const SIMPLE_TIPS = []
+const getIncompleteSteps = () => []
+const isOnboardingComplete = () => true
+const isSimpleMode = () => false
 import { KEYS } from '../../shared/storageKeys.js'
 
 const ONBOARDING_KEY  = KEYS.LS.ONBOARDING        // localStorage — persisted state
