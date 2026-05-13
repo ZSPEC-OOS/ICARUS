@@ -67,3 +67,15 @@ export {
 } from './errorClassifier.js';
 
 export { runSafetyGates, runCompletionGates } from './completionGate.js';
+
+export {
+  createRemediationBudget,
+  spend,
+  canAfford,
+  getSpentByCategory,
+  getAuditReport,
+  COST_TABLE,
+  RemediationBudgetExhaustedError,
+} from './remediationBudget.js';
+
+export { makeExecutor } from '../services-v2/agentExecutor.js';
