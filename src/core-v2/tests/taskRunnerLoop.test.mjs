@@ -220,7 +220,7 @@ next_cycle_needed: false
     // Should complete (or reach completion_check/done)
     // Even if safety/completion gates fail without real file system,
     // the cycle itself should complete (not halt due to loop guard)
-    assert.notEqual(result.phase, 'halted' && result.haltReason?.includes('loop'));
+    assert.ok(result.phase !== 'halted' || !result.haltReason?.includes('loop'));
     assert.ok(result.cycles.length > 0);
     // The cycle should have completed status
     const finishedCycle = result.cycles[0];
