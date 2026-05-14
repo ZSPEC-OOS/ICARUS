@@ -12,8 +12,16 @@ import {
   loadUserToolsDoc,
 } from './services/firebaseService'
 import { KEYS } from './shared/storageKeys.js'
-import { FEATURES } from './config/featureFlags.js'
+import {
+  getFeatureFlags,
+  getMigrationStatus,
+  setFeatureFlag,
+} from './config/featureFlags.js'
 import TaskDashboard from './components-v2/TaskDashboard.jsx'
+import PlanReview from './components-v2/PlanReview.jsx'
+import CycleReview from './components-v2/CycleReview.jsx'
+import QualitySignals from './components-v2/QualitySignals.jsx'
+import FeatureFlagPanel from './components-v2/FeatureFlagPanel.jsx'
 
 // Populate localStorage + sessionStorage from cloud settings
 // Called after login so that Bluswan's loadSettings() reads the cloud values on
@@ -109,6 +117,9 @@ class AppErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  // Feature flags resolved once at render start — changing requires page refresh
+  const FEATURES = getFeatureFlags()
+
   // Three-phase state:
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
   //   authUser=null      -> Not logged in
@@ -234,8 +245,9 @@ export default function App() {
     setFbModelIds(prev => prev.includes(modelId) ? prev : [...prev, modelId])
   }, [])
 
-  // V2 dashboard state — updated reactively as the task runs
-  const [v2State, setV2State] = useState({
+  // ─── V2 Task State ───────────────────────────────────────────────────────────
+
+  const [taskState, setTaskState] = useState({
     phase: 'idle',
     plan: null,
     cycles: [],
@@ -245,52 +257,158 @@ export default function App() {
     taskSpec: null,
     error: null,
   })
+  const [v2Result, setV2Result] = useState(null)
+  const [showPlanReview, setShowPlanReview] = useState(false)
+  const [planReviewPlan, setPlanReviewPlan] = useState(null)
+  const [showCycleReview, setShowCycleReview] = useState(false)
+  const [cycleReviewCycle, setCycleReviewCycle] = useState(null)
+  const [isFallbackToV1, setIsFallbackToV1] = useState(false)
+  const [v2Notice, setV2Notice] = useState(null) // { type: 'error'|'info'|'warn', msg }
 
-  const startV2Task = useCallback(async (taskSpec) => {
-    if (!FEATURES.useV2Engine) return
-    setV2State(s => ({ ...s, phase: 'planning', taskSpec, error: null, cycles: [], plan: null, gates: [] }))
+  // Resolve refs allow onPlanReview / onCompletionCheck promises to be settled
+  // from outside the async runTask call.
+  const planReviewResolveRef = useRef(null)
+  const completionResolveRef = useRef(null)
+
+  // ─── V1 Task Execution ───────────────────────────────────────────────────────
+
+  async function runV1Task(_goal) {
+    // V1 execution is handled entirely inside the Bluswan component.
+    // This function is called only when falling back from V2.
+    // Switching to V1 UI is handled by setting isFallbackToV1, which re-renders
+    // to show <Bluswan> — the user can then enter the task again.
+    setV2Notice({ type: 'info', msg: 'Switched to V1 engine. Use the chat interface below.' })
+  }
+
+  // ─── V2 Task Execution ───────────────────────────────────────────────────────
+
+  async function executeV2(taskSpec) {
+    setIsFallbackToV1(false)
+    setV2Result(null)
+    setV2Notice(null)
+    setTaskState({ phase: 'planning', plan: null, cycles: [], budget: null, gates: [], securityScan: null, taskSpec, error: null })
+
+    // Thin executor — delegates to services-v2/agentExecutor.js with stub IO
+    const { makeExecutor: makeV2Executor } = await import('./services-v2/agentExecutor.js')
+    const v2ExecuteTool = makeV2Executor({
+      // IO stubs — real implementations provided by the bridge layer in production.
+      // Phase 9 wires the routing; IO bridge is connected in Phase 10.
+      fsRead: async (path) => `ERROR: fsRead not connected (${path})`,
+      fsWrite: async (_path, _content) => { throw new Error('fsWrite not connected') },
+      fsEdit: async (_path, _old, _new) => { throw new Error('fsEdit not connected') },
+      fsDelete: async (_path) => { throw new Error('fsDelete not connected') },
+      fsList: async (_dir) => [],
+      fsSearch: async (_dir, _pattern) => [],
+      fsGrep: async (_pattern, _path) => [],
+      runCommand: async (cmd) => `ERROR: runCommand not connected (${cmd})`,
+      webFetch: async (url) => `ERROR: webFetch not connected (${url})`,
+      webSearch: async (_query) => [],
+    })
+
     try {
       const { runTask } = await import('./core-v2/index.js')
-      await runTask(taskSpec, {
-        onPhaseChange: (phase) => setV2State(s => ({ ...s, phase })),
-        onCycleStart: (_idx) => {},
-        onCycleEnd: (cycle) => setV2State(s => ({ ...s, cycles: [...s.cycles, cycle] })),
-        onPlanReview: async (plan) => {
-          setV2State(s => ({ ...s, plan }))
-          return 'approve'
-        },
-        onCompletionCheck: async (result) => {
-          setV2State(s => ({
-            ...s,
-            gates: result?.gates || s.gates,
-            securityScan: result?.securityScan || s.securityScan,
+      const result = await runTask(taskSpec, {
+        onPhaseChange: (phase) => setTaskState(prev => ({ ...prev, phase })),
+        onCycleStart: (cycle) => setTaskState(prev => ({ ...prev, currentCycle: cycle })),
+        onCycleEnd: (cycle, cycleResult) => {
+          setTaskState(prev => ({
+            ...prev,
+            cycles: [...(prev.cycles ?? []), { ...cycle, ...cycleResult }],
           }))
-          return 'accept'
+          if (FEATURES.enableCycleReview && cycleResult?.status !== 'completed') {
+            setCycleReviewCycle(cycle)
+            setShowCycleReview(true)
+          }
         },
-        onEvent: () => {},
-        onError: (err) => setV2State(s => ({ ...s, phase: 'error', error: err?.message || String(err) })),
-        callLLM: async () => { throw new Error('callLLM not implemented') },
-        executeTool: async () => { throw new Error('executeTool not implemented') },
+        onPlanReview: async (plan) => {
+          if (!FEATURES.enablePlanReview) return 'approve'
+          setPlanReviewPlan(plan)
+          setTaskState(prev => ({ ...prev, plan }))
+          setShowPlanReview(true)
+          return new Promise((resolve) => { planReviewResolveRef.current = resolve })
+        },
+        onCompletionCheck: async (state, gateResult) => {
+          setTaskState(prev => ({
+            ...prev,
+            gates: gateResult?.details ?? prev.gates,
+            securityScan: gateResult?.securityScan ?? prev.securityScan,
+          }))
+          return new Promise((resolve) => { completionResolveRef.current = resolve })
+        },
+        onEvent: (event) => {
+          if (FEATURES.enableTelemetry) {
+            // Telemetry events forwarded — external sink wired in Phase 10
+            console.debug('[telemetry]', event.type, event.data)
+          }
+        },
+        onError: (error) => {
+          setV2Notice({ type: 'error', msg: `${error.code}: ${error.explanation}` })
+        },
+        callLLM: async (_messages) => {
+          // LLM bridge stub — connected to real streaming in Phase 10
+          throw new Error('callLLM bridge not yet connected')
+        },
+        executeTool: v2ExecuteTool,
       })
-      setV2State(s => ({ ...s, phase: 'done' }))
-    } catch (err) {
-      setV2State(s => ({ ...s, phase: 'error', error: err?.message || String(err) }))
-    }
-  }, [])
 
-  const handleV2ApprovePlan = useCallback(() => {}, [])
-  const handleV2RejectPlan = useCallback(() => {
-    setV2State(s => ({ ...s, phase: 'idle' }))
-  }, [])
+      setV2Result(result)
+      setTaskState(prev => ({ ...prev, phase: result.phase }))
 
-  // V2 task execution stub — actual LLM caller and UI modals wired in a later phase
-  const handleTask = useCallback(async (_taskSpec) => {
-    if (FEATURES.useV2Engine) {
-      return startV2Task(_taskSpec)
+      // Offer V1 fallback if V2 failed
+      if (result.phase === 'failed' && !isFallbackToV1) {
+        setV2Notice({ type: 'warn', msg: `V2 task failed: ${result.failureReason ?? 'unknown'}. You can retry with V1.` })
+      }
+    } catch (error) {
+      console.error('[V2] Engine crashed:', error)
+      setTaskState(prev => ({ ...prev, phase: 'error', error: error.message }))
+      setV2Notice({ type: 'error', msg: 'V2 engine crashed. Falling back to V1.' })
+      await fallbackToV1(taskSpec)
     }
-    // V1 path: no-op stub until legacy wiring is plumbed
-    return null
-  }, [startV2Task])
+  }
+
+  // ─── Fallback ────────────────────────────────────────────────────────────────
+
+  async function fallbackToV1(taskSpec) {
+    setIsFallbackToV1(true)
+    await runV1Task(taskSpec?.goal ?? '')
+  }
+
+  // ─── Plan Review Handlers ─────────────────────────────────────────────────────
+
+  function handlePlanApprove() {
+    planReviewResolveRef.current?.('approve')
+    planReviewResolveRef.current = null
+    setShowPlanReview(false)
+  }
+
+  function handlePlanReject() {
+    planReviewResolveRef.current?.('reject')
+    planReviewResolveRef.current = null
+    setShowPlanReview(false)
+    setTaskState(prev => ({ ...prev, phase: 'idle' }))
+  }
+
+  // ─── Cycle Review Handlers ────────────────────────────────────────────────────
+
+  function handleCycleContinue() {
+    setShowCycleReview(false)
+    // Task runner continues automatically
+  }
+
+  function handleCycleAcceptPartial() {
+    setShowCycleReview(false)
+    completionResolveRef.current?.('accept')
+    completionResolveRef.current = null
+  }
+
+  function handleCycleHalt() {
+    setShowCycleReview(false)
+    completionResolveRef.current?.('halt')
+    completionResolveRef.current = null
+    setTaskState(prev => ({ ...prev, phase: 'halted' }))
+  }
+
+  // ─── Auth ────────────────────────────────────────────────────────────────────
 
   const handleLogout = useCallback(async () => {
     // Flush any pending save before signing out
@@ -316,10 +434,17 @@ export default function App() {
     setModels([])
   }, [])
 
+  const handleTask = useCallback(async (taskSpec) => {
+    if (FEATURES.useV2Engine) return executeV2(taskSpec)
+    return null
+  }, [FEATURES.useV2Engine]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   if (!authChecked) return <Splash />
   if (authUser && !settingsReady) return <Splash msg="Loading your settings..." />
+
+  const showV2UI = FEATURES.useV2UI && !isFallbackToV1
 
   return (
     <>
@@ -332,15 +457,110 @@ export default function App() {
           Warning: {cloudError}
         </div>
       )}
+
+      {/* Dev-only feature flag bar */}
+      {import.meta.env.DEV && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9998,
+          background: '#0f172a', color: '#64748b', padding: '0.25rem 0.75rem',
+          fontSize: '0.7rem', display: 'flex', gap: '1rem', alignItems: 'center',
+          borderTop: '1px solid #1e293b',
+        }}>
+          <span>Engine: <strong style={{ color: FEATURES.useV2Engine ? '#34d399' : '#f87171' }}>{FEATURES.useV2Engine ? 'V2' : 'V1'}</strong></span>
+          <span>UI: <strong style={{ color: FEATURES.useV2UI ? '#34d399' : '#f87171' }}>{FEATURES.useV2UI ? 'V2' : 'V1'}</strong></span>
+          <span>Status: <strong style={{ color: '#94a3b8' }}>{getMigrationStatus()}</strong></span>
+        </div>
+      )}
+
+      {/* V2 crash/failure notice */}
+      {v2Notice && (
+        <div style={{
+          position: 'fixed', top: cloudError ? '2.5rem' : 0, left: 0, right: 0, zIndex: 9997,
+          background: v2Notice.type === 'error' ? '#7f1d1d' : v2Notice.type === 'warn' ? '#78350f' : '#1e3a5f',
+          color: v2Notice.type === 'error' ? '#fca5a5' : v2Notice.type === 'warn' ? '#fcd34d' : '#bfdbfe',
+          padding: '0.5rem 1rem', fontSize: '0.8rem', textAlign: 'center',
+          display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center',
+        }}>
+          <span>{v2Notice.msg}</span>
+          {v2Notice.type !== 'info' && (
+            <button
+              onClick={() => fallbackToV1(taskState.taskSpec)}
+              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '3px', color: 'inherit', cursor: 'pointer', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}
+            >
+              Use V1
+            </button>
+          )}
+          <button
+            onClick={() => setV2Notice(null)}
+            style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '0.5rem' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <AppErrorBoundary>
-        {FEATURES.useV2UI ? (
-          <TaskDashboard
-            v2State={v2State}
-            onStartTask={() => startV2Task(v2State.taskSpec || { taskId: 'v2-task', goal: 'New task', cycleLimit: 10 })}
-            onApprovePlan={handleV2ApprovePlan}
-            onRejectPlan={handleV2RejectPlan}
-          />
+        {showV2UI ? (
+          <div className="v2-layout">
+            <TaskDashboard
+              v2State={taskState}
+              onStartTask={(spec) => executeV2(spec ?? taskState.taskSpec)}
+              onApprovePlan={handlePlanApprove}
+              onRejectPlan={handlePlanReject}
+            />
+
+            {showPlanReview && planReviewPlan && (
+              <PlanReview
+                plan={planReviewPlan}
+                onApprove={handlePlanApprove}
+                onReject={handlePlanReject}
+              />
+            )}
+
+            {showCycleReview && cycleReviewCycle && (
+              <CycleReview
+                cycles={taskState.cycles}
+                onContinue={handleCycleContinue}
+                onAccept={handleCycleAcceptPartial}
+                onHalt={handleCycleHalt}
+              />
+            )}
+
+            {v2Result?.qualityReport && taskState.phase === 'done' && (
+              <QualitySignals report={v2Result.qualityReport} />
+            )}
+
+            {/* Dev feature flag panel */}
+            {import.meta.env.DEV && (
+              <FeatureFlagPanel
+                flags={FEATURES}
+                onChange={(key, val) => {
+                  setFeatureFlag(key, val)
+                  window.location.reload()
+                }}
+              />
+            )}
+
+            {/* V1 fallback banner */}
+            {isFallbackToV1 && (
+              <div style={{
+                position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+                background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
+                borderRadius: '6px', padding: '0.6rem 1rem', fontSize: '0.8rem',
+                display: 'flex', gap: '0.75rem', alignItems: 'center', zIndex: 9000,
+              }}>
+                <span>⚠ Running in V1 fallback mode.</span>
+                <button
+                  onClick={() => { setFeatureFlag('useV2Engine', false); window.location.reload() }}
+                  style={{ background: 'transparent', border: '1px solid #475569', borderRadius: '3px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                >
+                  Stay on V1
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
+          /* V1 Chat Interface — completely unchanged */
           <Bluswan
             models={models}
             setModels={handleSetModels}
