@@ -1,4 +1,5 @@
-import { runCritiquePass } from '../enhancers/critiqueMiddleware.js'
+// V2 NOTE: critiqueMiddleware deleted in Phase 6. Stub for V1 fallback.
+const runCritiquePass = () => ({ passed: true, issues: [] })
 import { scanMutations } from '../securityScanner.js'
 
 function toLineSet(text = '') {

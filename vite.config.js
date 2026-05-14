@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { spawn } from 'node:child_process'
-import { getMetricsDashboard } from './src/services/efficiency/metricsService.js'
+// V2 NOTE: efficiency/metricsService deleted in Phase 6. Stub for V1 dev server endpoint.
+const getMetricsDashboard = () => ({})
 
 // Dev-only exec bridge â lets the BLUSWAN terminal and Tools tab run real shell
 // commands on your machine during `vite dev`. Never included in production builds.

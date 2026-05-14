@@ -3,8 +3,9 @@
 // chunking and reranking. This implementation avoids introducing heavy infra
 // and can be swapped for a real vector DB backend later.
 import { memoryGraphService } from '../memoryGraphService.js'
-import { semanticCacheService } from '../efficiency/cacheService.js'
-import { efficiencyMetricsService } from '../efficiency/metricsService.js'
+// V2 NOTE: efficiency/cacheService and metricsService deleted in Phase 6. Stubs for V1 fallback.
+const semanticCacheService = { get: () => null, set: () => {}, clearNamespace: () => {} }
+const efficiencyMetricsService = { record: () => {} }
 
 /**
  * @typedef {{
