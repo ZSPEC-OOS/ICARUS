@@ -13,6 +13,7 @@ import {
 } from './services/firebaseService'
 import { KEYS } from './shared/storageKeys.js'
 import { FEATURES } from './config/featureFlags.js'
+import TaskDashboard from './components-v2/TaskDashboard.jsx'
 
 // Populate localStorage + sessionStorage from cloud settings
 // Called after login so that Bluswan's loadSettings() reads the cloud values on
@@ -233,26 +234,63 @@ export default function App() {
     setFbModelIds(prev => prev.includes(modelId) ? prev : [...prev, modelId])
   }, [])
 
+  // V2 dashboard state — updated reactively as the task runs
+  const [v2State, setV2State] = useState({
+    phase: 'idle',
+    plan: null,
+    cycles: [],
+    budget: null,
+    gates: [],
+    securityScan: null,
+    taskSpec: null,
+    error: null,
+  })
+
+  const startV2Task = useCallback(async (taskSpec) => {
+    if (!FEATURES.useV2Engine) return
+    setV2State(s => ({ ...s, phase: 'planning', taskSpec, error: null, cycles: [], plan: null, gates: [] }))
+    try {
+      const { runTask } = await import('./core-v2/index.js')
+      await runTask(taskSpec, {
+        onPhaseChange: (phase) => setV2State(s => ({ ...s, phase })),
+        onCycleStart: (_idx) => {},
+        onCycleEnd: (cycle) => setV2State(s => ({ ...s, cycles: [...s.cycles, cycle] })),
+        onPlanReview: async (plan) => {
+          setV2State(s => ({ ...s, plan }))
+          return 'approve'
+        },
+        onCompletionCheck: async (result) => {
+          setV2State(s => ({
+            ...s,
+            gates: result?.gates || s.gates,
+            securityScan: result?.securityScan || s.securityScan,
+          }))
+          return 'accept'
+        },
+        onEvent: () => {},
+        onError: (err) => setV2State(s => ({ ...s, phase: 'error', error: err?.message || String(err) })),
+        callLLM: async () => { throw new Error('callLLM not implemented') },
+        executeTool: async () => { throw new Error('executeTool not implemented') },
+      })
+      setV2State(s => ({ ...s, phase: 'done' }))
+    } catch (err) {
+      setV2State(s => ({ ...s, phase: 'error', error: err?.message || String(err) }))
+    }
+  }, [])
+
+  const handleV2ApprovePlan = useCallback(() => {}, [])
+  const handleV2RejectPlan = useCallback(() => {
+    setV2State(s => ({ ...s, phase: 'idle' }))
+  }, [])
+
   // V2 task execution stub — actual LLM caller and UI modals wired in a later phase
   const handleTask = useCallback(async (_taskSpec) => {
     if (FEATURES.useV2Engine) {
-      // V2 path: runTask with stub callbacks (full impl in next phase)
-      const { runTask } = await import('./core-v2/index.js');
-      return runTask(_taskSpec, {
-        onPhaseChange: () => {},
-        onCycleStart: () => {},
-        onCycleEnd: () => {},
-        onPlanReview: async () => 'approve',
-        onCompletionCheck: async () => 'accept',
-        onEvent: () => {},
-        onError: () => {},
-        callLLM: async () => { throw new Error('callLLM not implemented'); },
-        executeTool: async () => { throw new Error('executeTool not implemented'); },
-      });
+      return startV2Task(_taskSpec)
     }
     // V1 path: no-op stub until legacy wiring is plumbed
-    return null;
-  }, [])
+    return null
+  }, [startV2Task])
 
   const handleLogout = useCallback(async () => {
     // Flush any pending save before signing out
@@ -295,18 +333,27 @@ export default function App() {
         </div>
       )}
       <AppErrorBoundary>
-        <Bluswan
-          models={models}
-          setModels={handleSetModels}
-          selectedModelId={selectedModelId}
-          onModelChange={(id) => setSelectedModelId(id)}
-          onClose={() => {}}
-          onSettingsChanged={handleSettingsChanged}
-          onLogout={handleLogout}
-          userEmail={authUser?.email || 'local-user@bluswan.local'}
-          savedModelIds={fbModelIds}
-          onModelSaved={handleModelSaved}
-        />
+        {FEATURES.useV2UI ? (
+          <TaskDashboard
+            v2State={v2State}
+            onStartTask={() => startV2Task(v2State.taskSpec || { taskId: 'v2-task', goal: 'New task', cycleLimit: 10 })}
+            onApprovePlan={handleV2ApprovePlan}
+            onRejectPlan={handleV2RejectPlan}
+          />
+        ) : (
+          <Bluswan
+            models={models}
+            setModels={handleSetModels}
+            selectedModelId={selectedModelId}
+            onModelChange={(id) => setSelectedModelId(id)}
+            onClose={() => {}}
+            onSettingsChanged={handleSettingsChanged}
+            onLogout={handleLogout}
+            userEmail={authUser?.email || 'local-user@bluswan.local'}
+            savedModelIds={fbModelIds}
+            onModelSaved={handleModelSaved}
+          />
+        )}
       </AppErrorBoundary>
     </>
   )
