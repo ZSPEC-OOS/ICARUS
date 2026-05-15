@@ -279,6 +279,60 @@ function FeedEntry({ event }) {
   )
 }
 
+// ─── Error Log ────────────────────────────────────────────────────────────────
+
+function ErrorLog({ errors }) {
+  const [copiedIdx, setCopiedIdx] = useState(null)
+
+  if (!errors.length) return null
+
+  function copy(text, idx) {
+    navigator.clipboard.writeText(text).catch(() => {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    })
+    setCopiedIdx(idx)
+    setTimeout(() => setCopiedIdx(null), 1800)
+  }
+
+  const allText = errors.map((e, i) => `[${i + 1}] ${e}`).join('\n')
+
+  return (
+    <div className="v2-error-log">
+      <div className="v2-error-log-header">
+        <span className="v2-error-log-label">
+          {errors.length} error{errors.length !== 1 ? 's' : ''}
+        </span>
+        <button
+          type="button"
+          className="v2-error-copy-all"
+          onClick={() => copy(allText, 'all')}
+        >
+          {copiedIdx === 'all' ? '✓ Copied' : 'Copy all'}
+        </button>
+      </div>
+      {errors.map((msg, i) => (
+        <div key={i} className="v2-error-entry">
+          <span className="v2-error-entry-num">{i + 1}</span>
+          <span className="v2-error-entry-text">{msg}</span>
+          <button
+            type="button"
+            className="v2-error-copy-one"
+            title="Copy this error"
+            onClick={() => copy(msg, i)}
+          >
+            {copiedIdx === i ? '✓' : '⎘'}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Sidebar content ──────────────────────────────────────────────────────────
 
 function SidebarContent({ models, selectedModelId, onModelChange, isRunning, onOpenModelSetup, onClose }) {
@@ -370,6 +424,15 @@ export default function TaskDashboard({
 
   const tokenPct = budget?.tokens ? Math.round(budget.tokens.used / budget.tokens.total * 100) : 0
   const cyclePct = budget?.cycles ? Math.round(budget.cycles.used / budget.cycles.total * 100) : 0
+
+  // Collect all error strings from the main error field + error-type events
+  const allErrors = [
+    ...(error ? [String(error)] : []),
+    ...(events || [])
+      .filter(e => e.type === 'error')
+      .map(e => e.message || (e.data ? JSON.stringify(e.data) : ''))
+      .filter(Boolean),
+  ]
 
   function handleStart(e) {
     e.preventDefault()
@@ -578,11 +641,7 @@ export default function TaskDashboard({
                   </div>
 
                   {haltReason && <div className="v2-result-halt-reason">{haltReason}</div>}
-                  {error && (
-                    <div className="v2-result-halt-reason" style={{ color: 'var(--lk-danger)', borderLeftColor: 'var(--lk-danger)', background: 'var(--lk-danger-bg)' }}>
-                      {String(error)}
-                    </div>
-                  )}
+                  <ErrorLog errors={allErrors} />
 
                   <div className="v2-result-actions">
                     <button type="button" className="btn-primary" onClick={() => { setGoal(''); onStartTask?.(null) }}>
@@ -628,6 +687,16 @@ export default function TaskDashboard({
             <div className="v2-panel-section">
               <div className="v2-panel-section-title"><span>Quality Signals</span></div>
               <QualitySignals gates={gates} securityScan={securityScan} />
+            </div>
+          )}
+
+          {allErrors.length > 0 && (
+            <div className="v2-panel-section">
+              <div className="v2-panel-section-title" style={{ color: 'var(--lk-danger)' }}>
+                <span>Errors</span>
+                <span className="status-badge status-badge--failed">{allErrors.length}</span>
+              </div>
+              <ErrorLog errors={allErrors} />
             </div>
           )}
         </aside>
