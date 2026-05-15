@@ -371,7 +371,11 @@ export default function App() {
       })
 
       setV2Result(result)
-      setTaskState(prev => ({ ...prev, phase: result.phase }))
+      setTaskState(prev => ({
+        ...prev,
+        phase: result.phase,
+        error: result.failureReason ?? result.haltReason ?? prev.error ?? null,
+      }))
 
       // Offer V1 fallback if V2 failed
       if (result.phase === 'failed' && !isFallbackToV1) {
