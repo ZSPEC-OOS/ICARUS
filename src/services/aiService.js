@@ -21,18 +21,26 @@ const V2_PREFIX = 'v2:'
 // Import the session key once and cache the CryptoKey for all subsequent calls.
 let _cryptoKeyPromise = null
 
+const SESSION_KEY_PERSIST = SESSION_KEY_K + '-persist' // localStorage fallback for cross-session recovery
+
 async function _getOrCreateCryptoKey() {
   if (_cryptoKeyPromise) return _cryptoKeyPromise
   _cryptoKeyPromise = (async () => {
     try {
+      // Primary: sessionStorage. Fallback: localStorage persist key (survives browser restart).
       let rawB64 = sessionStorage.getItem(SESSION_KEY_K)
+      if (!rawB64) {
+        try { rawB64 = localStorage.getItem(SESSION_KEY_PERSIST) } catch {}
+      }
       let rawBytes
       if (rawB64) {
         rawBytes = Uint8Array.from(atob(rawB64), c => c.charCodeAt(0))
       } else {
         rawBytes = crypto.getRandomValues(new Uint8Array(32))
-        sessionStorage.setItem(SESSION_KEY_K, btoa(String.fromCharCode(...rawBytes)))
       }
+      const b64 = btoa(String.fromCharCode(...rawBytes))
+      sessionStorage.setItem(SESSION_KEY_K, b64)
+      try { localStorage.setItem(SESSION_KEY_PERSIST, b64) } catch {}
       return await crypto.subtle.importKey('raw', rawBytes, AES_ALGO, false, ['encrypt', 'decrypt'])
     } catch {
       return null   // restricted environment — _xorEncrypt/_xorDecrypt fallbacks used below

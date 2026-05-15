@@ -4,7 +4,7 @@ import ModelSetup from './ModelSetup.jsx'
 import DeliverableList from './DeliverableList.jsx'
 import BudgetBar from './BudgetBar.jsx'
 import QualitySignals from './QualitySignals.jsx'
-import { getAuthenticatedUser, getRepo } from '../services/githubService.js'
+import { getAuthenticatedUser, getRepo, listUserRepos } from '../services/githubService.js'
 import './styles.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -30,11 +30,17 @@ const RESULT_META = {
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
+const GH_TOKEN_PERSIST = 'bluswan:ghtoken-persist'
+
 function readGitHubConfig() {
   try {
     const s = JSON.parse(localStorage.getItem('bluswan:settings') || '{}')
+    // sessionStorage primary (V1 compat), localStorage persist fallback (V2 cross-session)
+    const token = sessionStorage.getItem('bluswan:ghtoken')
+      || localStorage.getItem(GH_TOKEN_PERSIST)
+      || ''
     return {
-      token:  sessionStorage.getItem('bluswan:ghtoken') || '',
+      token,
       owner:  s.repoOwner  || '',
       repo:   s.repoName   || '',
       branch: s.baseBranch || 'main',
@@ -45,6 +51,12 @@ function readGitHubConfig() {
 function writeGitHubConfig({ token, owner, repo, branch }) {
   try {
     sessionStorage.setItem('bluswan:ghtoken', token)
+    // Persist token across sessions (V2-specific; V1 uses Firebase for this)
+    if (token) {
+      localStorage.setItem(GH_TOKEN_PERSIST, token)
+    } else {
+      localStorage.removeItem(GH_TOKEN_PERSIST)
+    }
     const s = JSON.parse(localStorage.getItem('bluswan:settings') || '{}')
     localStorage.setItem('bluswan:settings', JSON.stringify({
       ...s, repoOwner: owner, repoName: repo, baseBranch: branch,
@@ -60,14 +72,29 @@ function GitHubSection() {
   const [checking, setChecking] = useState(false)
   const [ghUser, setGhUser]     = useState(null)
   const [error, setError]       = useState('')
+  const [repos, setRepos]       = useState([])
+  const [loadingRepos, setLoadingRepos] = useState(false)
 
-  // Verify stored token on mount
+  // On mount: verify stored token and load repos if already connected
   useEffect(() => {
     if (!cfg.token) return
     getAuthenticatedUser(cfg.token)
-      .then(u => setGhUser(u))
+      .then(u => {
+        setGhUser(u)
+        loadRepos(cfg.token)
+      })
       .catch(() => setGhUser(null))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadRepos(token) {
+    setLoadingRepos(true)
+    try {
+      const list = await listUserRepos(token)
+      setRepos(list.map(r => ({ fullName: r.full_name, owner: r.owner.login, name: r.name, branch: r.default_branch || 'main' })))
+    } catch {} finally {
+      setLoadingRepos(false)
+    }
+  }
 
   async function handleConnect(e) {
     e.preventDefault()
@@ -80,6 +107,7 @@ function GitHubSection() {
       const saved = { ...form, token: form.token.trim() }
       setCfg(saved)
       writeGitHubConfig(saved)
+      loadRepos(form.token.trim())
     } catch {
       setError('Token invalid or network error.')
       setGhUser(null)
@@ -93,12 +121,19 @@ function GitHubSection() {
     setCfg(cleared)
     setForm(cleared)
     setGhUser(null)
+    setRepos([])
     writeGitHubConfig(cleared)
+  }
+
+  function handleRepoSelect(e) {
+    const r = repos.find(r => r.fullName === e.target.value)
+    if (!r) return
+    setForm(f => ({ ...f, owner: r.owner, repo: r.name, branch: r.branch }))
   }
 
   function handleRepoSave(e) {
     e.preventDefault()
-    const saved = { ...cfg, owner: form.owner, repo: form.repo, branch: form.branch }
+    const saved = { ...cfg, owner: form.owner.trim(), repo: form.repo.trim(), branch: form.branch.trim() || 'main' }
     setCfg(saved)
     writeGitHubConfig(saved)
   }
@@ -111,24 +146,23 @@ function GitHubSection() {
     } catch {}
   }
 
-  const connected = Boolean(cfg.token && ghUser)
+  const connected       = Boolean(cfg.token && ghUser)
+  const currentFullName = form.owner && form.repo ? `${form.owner}/${form.repo}` : ''
 
   return (
     <div className="v2-gh-section">
-      {/* Status header */}
+      {/* Status */}
       <div className="v2-gh-status">
         <span className={`v2-gh-dot v2-gh-dot--${connected ? 'on' : 'off'}`} />
         <span className="v2-gh-status-text">
           {connected ? `@${ghUser.login}` : 'Not connected'}
         </span>
         {connected && (
-          <button type="button" className="v2-gh-disconnect" onClick={handleDisconnect}>
-            Disconnect
-          </button>
+          <button type="button" className="v2-gh-disconnect" onClick={handleDisconnect}>Disconnect</button>
         )}
       </div>
 
-      {/* Token form (not connected) */}
+      {/* Token form */}
       {!connected && (
         <form onSubmit={handleConnect} className="v2-gh-form">
           <input
@@ -148,47 +182,43 @@ function GitHubSection() {
             <a href="https://github.com/settings/tokens/new?scopes=repo&description=BLUSWAN" target="_blank" rel="noreferrer">
               github.com/settings/tokens
             </a>
-            {' '}with <strong>repo</strong> scope.
+            {' '}— <strong>repo</strong> scope.
           </p>
         </form>
       )}
 
-      {/* Repo + branch (always shown) */}
+      {/* Repo picker + manual fields */}
       <form onSubmit={handleRepoSave} className="v2-gh-repo-form">
+        {connected && repos.length > 0 && (
+          <div style={{ marginBottom: '0.45rem' }}>
+            <div className="v2-sidebar-section-label" style={{ marginBottom: '0.25rem' }}>
+              {loadingRepos ? 'Loading repos…' : `${repos.length} repos`}
+            </div>
+            <select
+              className="v2-model-select"
+              value={currentFullName}
+              onChange={handleRepoSelect}
+            >
+              <option value="">— pick a repo —</option>
+              {repos.map(r => (
+                <option key={r.fullName} value={r.fullName}>{r.fullName}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="v2-settings-row">
-          <input
-            className="v2-settings-input v2-settings-input--half"
-            placeholder="owner"
-            value={form.owner}
-            onChange={e => setForm(f => ({ ...f, owner: e.target.value }))}
-          />
-          <input
-            className="v2-settings-input v2-settings-input--half"
-            placeholder="repo"
-            value={form.repo}
-            onChange={e => setForm(f => ({ ...f, repo: e.target.value }))}
-          />
+          <input className="v2-settings-input v2-settings-input--half" placeholder="owner"
+            value={form.owner} onChange={e => setForm(f => ({ ...f, owner: e.target.value }))} />
+          <input className="v2-settings-input v2-settings-input--half" placeholder="repo"
+            value={form.repo} onChange={e => setForm(f => ({ ...f, repo: e.target.value }))} />
         </div>
         <div className="v2-settings-row">
-          <input
-            className="v2-settings-input"
-            placeholder="branch (e.g. main)"
-            value={form.branch}
-            onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
-          />
-          <button
-            type="button"
-            className="v2-settings-icon-btn"
-            title="Auto-detect default branch"
-            disabled={!cfg.token || !form.owner || !form.repo}
-            onClick={detectBranch}
-          >
-            ⟳
-          </button>
+          <input className="v2-settings-input" placeholder="branch"
+            value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} />
+          <button type="button" className="v2-settings-icon-btn" title="Auto-detect branch"
+            disabled={!cfg.token || !form.owner || !form.repo} onClick={detectBranch}>⟳</button>
         </div>
-        <button type="submit" className="btn-secondary v2-settings-btn">
-          Save Repo
-        </button>
+        <button type="submit" className="btn-secondary v2-settings-btn">Save Repo</button>
       </form>
     </div>
   )
@@ -256,7 +286,7 @@ function SidebarContent({ models, selectedModelId, onModelChange, isRunning, onO
     <>
       {/* Brand */}
       <div className="v2-sidebar-brand">
-        <span className="v2-sidebar-brand-name">BLUSWAN</span>
+        <img src="/BLUSWAN-logo-transparent.png" className="v2-sidebar-logo" alt="BLUSWAN" />
         <span className="v2-sidebar-brand-tag">V2</span>
         {onClose && (
           <button type="button" className="v2-sidebar-close" onClick={onClose} aria-label="Close menu">✕</button>

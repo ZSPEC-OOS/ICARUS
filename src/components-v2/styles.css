@@ -5,34 +5,35 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 .lk-root {
-  --lk-bg:          #1a1b1e;
-  --lk-surface:     #25262b;
-  --lk-surface-2:   #2c2e33;
-  --lk-surface-3:   #373a3f;
-  --lk-surface-4:   #424549;
-  --lk-border:      #3d4045;
-  --lk-border-soft: #2c2e33;
-  --lk-border-glow: rgba(116,192,252,0.30);
-  --lk-text:        #efefef;
-  --lk-text-2:      #c1c2c5;
-  --lk-text-muted:  #868e96;
-  --lk-accent:      #74c0fc;
-  --lk-accent-h:    #a5d8ff;
-  --lk-accent-dim:  rgba(116,192,252,0.12);
-  --lk-accent-glow: rgba(116,192,252,0.22);
-  --lk-violet:      #b197fc;
-  --lk-violet-dim:  rgba(177,151,252,0.10);
-  --lk-silver:      #ced4da;
-  --lk-silver-dim:  rgba(206,212,218,0.07);
-  --lk-success:     #51cf66;
-  --lk-success-bg:  rgba(81,207,102,0.08);
-  --lk-danger:      #ff6b6b;
-  --lk-danger-bg:   rgba(255,107,107,0.08);
-  --lk-warn:        #ffd43b;
-  --lk-grad-bg:     #1a1b1e;
-  --lk-grad-panel:  #25262b;
-  --lk-shadow:      0 8px 32px rgba(0,0,0,0.45);
-  --lk-shadow-sm:   0 2px 12px rgba(0,0,0,0.30);
+  /* V1 BLUSWAN theme — deep cosmic navy */
+  --lk-bg:          #030b18;
+  --lk-surface:     #070f1e;
+  --lk-surface-2:   #0c1628;
+  --lk-surface-3:   #111e36;
+  --lk-surface-4:   #162540;
+  --lk-border:      #1c2e4e;
+  --lk-border-soft: #0d1828;
+  --lk-border-glow: rgba(77,156,255,0.35);
+  --lk-text:        #e8f4ff;
+  --lk-text-2:      #93c5fd;
+  --lk-text-muted:  #3d5a7a;
+  --lk-accent:      #3b8ef0;
+  --lk-accent-h:    #60a5fa;
+  --lk-accent-dim:  rgba(59,142,240,0.14);
+  --lk-accent-glow: rgba(59,142,240,0.28);
+  --lk-violet:      #818cf8;
+  --lk-violet-dim:  rgba(129,140,248,0.10);
+  --lk-silver:      #cbd5e1;
+  --lk-silver-dim:  rgba(203,213,225,0.07);
+  --lk-success:     #34d399;
+  --lk-success-bg:  rgba(52,211,153,0.08);
+  --lk-danger:      #fb7185;
+  --lk-danger-bg:   rgba(251,113,133,0.08);
+  --lk-warn:        #fbbf24;
+  --lk-grad-bg:     #030b18;
+  --lk-grad-panel:  #070f1e;
+  --lk-shadow:      0 8px 32px rgba(0,0,0,0.75);
+  --lk-shadow-sm:   0 2px 12px rgba(0,0,0,0.60);
   --lk-hl: 1;
   --lk-sh: 1;
 }
@@ -43,12 +44,15 @@
 
 .v2-root {
   display: flex;
-  flex-direction: column; /* mobile bar stacks above the sidebar+main row */
-  min-height: -webkit-fill-available; /* iOS Safari < 15.4 */
+  flex-direction: column;
+  min-height: -webkit-fill-available;
   height: 100vh;
-  height: 100dvh; /* accounts for browser chrome on iOS 15.4+ */
+  height: 100dvh;
   overflow: hidden;
   background: var(--lk-bg);
+  /* Subtle deep-blue radial glow matching V1's aurora effect on first load */
+  background-image: radial-gradient(ellipse 80% 60% at 50% 100%,
+    rgba(20,60,180,0.18) 0%, rgba(8,20,70,0.08) 55%, transparent 80%);
   color: var(--lk-text);
   font-family: 'Cormorant', system-ui, sans-serif;
   font-size: 14px;
@@ -73,41 +77,47 @@
 /* ── Sidebar ─────────────────────────────────────────────────────── */
 
 .v2-sidebar {
-  width: 208px;
-  min-width: 208px;
-  background: var(--lk-surface);
-  border-right: 1px solid var(--lk-border);
+  width: 220px;
+  min-width: 220px;
+  background: rgba(4, 10, 24, 0.88);
+  border-right: 1px solid rgba(77,156,255,0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .v2-sidebar-brand {
-  padding: 1.1rem 1rem 0.9rem;
-  border-bottom: 1px solid var(--lk-border-soft);
+  padding: 0.85rem 1rem 0.85rem;
+  border-bottom: 1px solid rgba(77,156,255,0.12);
   display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.v2-sidebar-brand-name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--lk-accent);
-  text-transform: uppercase;
+.v2-sidebar-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+  flex: 1;
 }
 
 .v2-sidebar-brand-tag {
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   background: var(--lk-accent-dim);
   color: var(--lk-accent);
   border-radius: 3px;
-  padding: 0.1rem 0.32rem;
+  padding: 0.12rem 0.38rem;
   line-height: 1.4;
+  flex-shrink: 0;
 }
 
 .v2-sidebar-section {
