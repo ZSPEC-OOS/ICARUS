@@ -21,7 +21,7 @@ let mockStorage;
 function setupBrowserGlobals(href = 'http://localhost/', storageData = {}) {
   mockStorage = new MockStorage();
   for (const [k, v] of Object.entries(storageData)) mockStorage.setItem(k, v);
-  global.window = { location: { href } };
+  global.window = { location: { href }, __bluswanFeatureOverrides: {} };
   global.localStorage = mockStorage;
 }
 
@@ -55,17 +55,17 @@ describe('getFeatureFlags', () => {
   beforeEach(() => setupBrowserGlobals());
   after(() => teardownBrowserGlobals());
 
-  it('returns all boolean flags as false by default (except enableTelemetry)', () => {
+  it('returns all V2 core flags as true by default (V2 is default)', () => {
     const f = getFeatureFlags();
-    assert.equal(f.useV2Engine, false);
-    assert.equal(f.useV2UI, false);
-    assert.equal(f.useV2Context, false);
-    assert.equal(f.useV2LoopPrevention, false);
-    assert.equal(f.useV2Reliability, false);
-    assert.equal(f.useV2Executor, false);
+    assert.equal(f.useV2Engine, true);
+    assert.equal(f.useV2UI, true);
+    assert.equal(f.useV2Context, true);
+    assert.equal(f.useV2LoopPrevention, true);
+    assert.equal(f.useV2Reliability, true);
+    assert.equal(f.useV2Executor, true);
     assert.equal(f.enablePlanReview, false);
     assert.equal(f.enableCycleReview, false);
-    assert.equal(f.enableTelemetry, true); // only flag that defaults to true
+    assert.equal(f.enableTelemetry, true);
   });
 
   it('returns correct numeric defaults', () => {
@@ -76,11 +76,11 @@ describe('getFeatureFlags', () => {
     assert.equal(f.remediationBudget, 100);
   });
 
-  it('URL param ?v2=true enables useV2Engine', () => {
+  it('URL param ?v2=true enables useV2Engine (already true by default)', () => {
     setupBrowserGlobals('http://localhost/?v2=true');
     const f = getFeatureFlags();
     assert.equal(f.useV2Engine, true);
-    assert.equal(f.useV2UI, false); // unrelated flag unaffected
+    assert.equal(f.useV2UI, true); // also true by default
   });
 
   it('URL param ?v2ui=true enables useV2UI', () => {
@@ -112,7 +112,7 @@ describe('getFeatureFlags', () => {
     setupBrowserGlobals('http://localhost/', { [FLAGS_KEY]: 'NOT_JSON{{{' });
     assert.doesNotThrow(() => getFeatureFlags());
     const f = getFeatureFlags();
-    assert.equal(f.useV2Engine, false); // falls back to default
+    assert.equal(f.useV2Engine, true); // falls back to default (true)
   });
 });
 
@@ -159,7 +159,7 @@ describe('resetFeatureFlags', () => {
   it('causes getFeatureFlags to return defaults after reset', () => {
     resetFeatureFlags();
     const f = getFeatureFlags();
-    assert.equal(f.useV2Engine, false);
+    assert.equal(f.useV2Engine, true); // default is now true
   });
 });
 
@@ -167,13 +167,18 @@ describe('isV2FullyEnabled', () => {
   beforeEach(() => setupBrowserGlobals());
   after(() => teardownBrowserGlobals());
 
-  it('returns false when all flags are default (false)', () => {
-    assert.equal(isV2FullyEnabled(), false);
+  it('returns true when all flags are default (V2 is default)', () => {
+    assert.equal(isV2FullyEnabled(), true);
   });
 
-  it('returns false when only some core flags are set', () => {
-    setupBrowserGlobals('http://localhost/?v2=true&v2ui=true');
-    assert.equal(isV2FullyEnabled(), false); // missing executor/context/loop/reliability
+  it('returns false when core flags are disabled via overrides', () => {
+    // Use runtime overrides to simulate V1 mode
+    global.window.__bluswanFeatureOverrides = {
+      useV2Engine: false, useV2UI: false, useV2Executor: false,
+      useV2Context: false, useV2LoopPrevention: false, useV2Reliability: false,
+    };
+    assert.equal(isV2FullyEnabled(), false);
+    global.window.__bluswanFeatureOverrides = {};
   });
 
   it('returns true when all six core flags are enabled via URL + localStorage', () => {
@@ -189,18 +194,35 @@ describe('getMigrationStatus', () => {
   beforeEach(() => setupBrowserGlobals());
   after(() => teardownBrowserGlobals());
 
-  it('returns v1_only when all flags are false', () => {
+  it('returns v2_full by default (all flags default to true)', () => {
+    assert.equal(getMigrationStatus(), 'v2_full');
+  });
+
+  it('returns v1_only when all flags are overridden to false', () => {
+    global.window.__bluswanFeatureOverrides = {
+      useV2Engine: false, useV2UI: false, useV2Executor: false,
+      useV2Context: false, useV2LoopPrevention: false, useV2Reliability: false,
+    };
     assert.equal(getMigrationStatus(), 'v1_only');
+    global.window.__bluswanFeatureOverrides = {};
   });
 
-  it('returns v2_partial when only engine is on', () => {
-    setupBrowserGlobals('http://localhost/?v2=true');
+  it('returns v2_partial when only engine is on (all others overridden off)', () => {
+    global.window.__bluswanFeatureOverrides = {
+      useV2UI: false, useV2Executor: false,
+      useV2Context: false, useV2LoopPrevention: false, useV2Reliability: false,
+    };
     assert.equal(getMigrationStatus(), 'v2_partial');
+    global.window.__bluswanFeatureOverrides = {};
   });
 
-  it('returns v2_mixed when engine and UI are on but not all subsystems', () => {
-    setupBrowserGlobals('http://localhost/?v2=true&v2ui=true');
+  it('returns v2_mixed when 3 of 6 core flags are on', () => {
+    // 3 off → 3 on (engine + UI + loopPrevention) → v2Count=3 → v2_mixed
+    global.window.__bluswanFeatureOverrides = {
+      useV2Executor: false, useV2Context: false, useV2Reliability: false,
+    };
     assert.equal(getMigrationStatus(), 'v2_mixed');
+    global.window.__bluswanFeatureOverrides = {};
   });
 
   it('returns v2_full when all six core flags are enabled', () => {
