@@ -357,10 +357,14 @@ export default function App() {
         onError: (error) => {
           setV2Notice({ type: 'error', msg: `${error.code}: ${error.explanation}` })
         },
-        callLLM: async (prompt) => {
+        callLLM: async (messages) => {
           const model = modelsRef.current.find(m => m.id === selectedModelIdRef.current) || modelsRef.current[0]
           if (!model?.apiKey) throw new Error('No model with API key configured')
-          const result = await runPrompt(model, prompt, '', null, null)
+          // messages is [{role, content}, ...] — split into context + last user content
+          const arr = Array.isArray(messages) ? messages : [{ role: 'user', content: messages }]
+          const last = arr[arr.length - 1]
+          const context = arr.slice(0, -1)
+          const result = await runPrompt(model, last?.content ?? '', context, null, null)
           return typeof result === 'string' ? result : (result?.text || '')
         },
         executeTool: v2ExecuteTool,

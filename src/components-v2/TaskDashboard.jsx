@@ -378,12 +378,7 @@ export default function TaskDashboard({
     onStartTask?.({
       taskId,
       goal: goal.trim(),
-      plan: {
-        version: '2026.1', taskId, goal: goal.trim(),
-        deliverables: [], dependencies: [], validationSteps: [],
-        estimatedCycles: maxCycles,
-        contextStrategy: { maxTokensPerCycle: 80000, includeRepoMap: true },
-      },
+      // No plan — taskRunner generates it via LLM from the goal
       options: {
         maxCycles, maxTurnsPerCycle, contextWindow: 128000,
         requirePlanReview: false, requireCompletionConfirm: false,
