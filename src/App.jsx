@@ -16,12 +16,14 @@ import {
   getFeatureFlags,
   getMigrationStatus,
   setFeatureFlag,
+  subscribeToFlags,
 } from './config/featureFlags.js'
 import TaskDashboard from './components-v2/TaskDashboard.jsx'
 import PlanReview from './components-v2/PlanReview.jsx'
 import CycleReview from './components-v2/CycleReview.jsx'
 import QualitySignals from './components-v2/QualitySignals.jsx'
 import FeatureFlagPanel from './components-v2/FeatureFlagPanel.jsx'
+import EngineToggle from './components-v2/EngineToggle.jsx'
 
 // Populate localStorage + sessionStorage from cloud settings
 // Called after login so that Bluswan's loadSettings() reads the cloud values on
@@ -117,8 +119,7 @@ class AppErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  // Feature flags resolved once at render start — changing requires page refresh
-  const FEATURES = getFeatureFlags()
+  const [flags, setFlags] = useState(getFeatureFlags())
 
   // Three-phase state:
   //   authChecked=false  -> Firebase resolving initial auth state (show splash)
@@ -141,6 +142,11 @@ export default function App() {
       setModels(m)
       setSelectedModelId(prev => prev || m[0]?.id || '')
     }).catch(() => {})
+  }, [])
+
+  // Re-render when the engine toggle fires (or any other setFeatureFlag call)
+  useEffect(() => {
+    return subscribeToFlags(() => setFlags(getFeatureFlags()))
   }, [])
 
   // Debounce ref - avoids a Firestore write on every keystroke
@@ -315,13 +321,13 @@ export default function App() {
             ...prev,
             cycles: [...(prev.cycles ?? []), { ...cycle, ...cycleResult }],
           }))
-          if (FEATURES.enableCycleReview && cycleResult?.status !== 'completed') {
+          if (flags.enableCycleReview && cycleResult?.status !== 'completed') {
             setCycleReviewCycle(cycle)
             setShowCycleReview(true)
           }
         },
         onPlanReview: async (plan) => {
-          if (!FEATURES.enablePlanReview) return 'approve'
+          if (!flags.enablePlanReview) return 'approve'
           setPlanReviewPlan(plan)
           setTaskState(prev => ({ ...prev, plan }))
           setShowPlanReview(true)
@@ -336,7 +342,7 @@ export default function App() {
           return new Promise((resolve) => { completionResolveRef.current = resolve })
         },
         onEvent: (event) => {
-          if (FEATURES.enableTelemetry) {
+          if (flags.enableTelemetry) {
             // Telemetry events forwarded — external sink wired in Phase 10
             console.debug('[telemetry]', event.type, event.data)
           }
@@ -435,16 +441,16 @@ export default function App() {
   }, [])
 
   const handleTask = useCallback(async (taskSpec) => {
-    if (FEATURES.useV2Engine) return executeV2(taskSpec)
+    if (flags.useV2Engine) return executeV2(taskSpec)
     return null
-  }, [FEATURES.useV2Engine]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [flags.useV2Engine]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   if (!authChecked) return <Splash />
   if (authUser && !settingsReady) return <Splash msg="Loading your settings..." />
 
-  const showV2UI = FEATURES.useV2UI && !isFallbackToV1
+  const showV2UI = flags.useV2UI && !isFallbackToV1
 
   return (
     <>
@@ -466,8 +472,8 @@ export default function App() {
           fontSize: '0.7rem', display: 'flex', gap: '1rem', alignItems: 'center',
           borderTop: '1px solid #1e293b',
         }}>
-          <span>Engine: <strong style={{ color: FEATURES.useV2Engine ? '#34d399' : '#f87171' }}>{FEATURES.useV2Engine ? 'V2' : 'V1'}</strong></span>
-          <span>UI: <strong style={{ color: FEATURES.useV2UI ? '#34d399' : '#f87171' }}>{FEATURES.useV2UI ? 'V2' : 'V1'}</strong></span>
+          <span>Engine: <strong style={{ color: flags.useV2Engine ? '#34d399' : '#f87171' }}>{flags.useV2Engine ? 'V2' : 'V1'}</strong></span>
+          <span>UI: <strong style={{ color: flags.useV2UI ? '#34d399' : '#f87171' }}>{flags.useV2UI ? 'V2' : 'V1'}</strong></span>
           <span>Status: <strong style={{ color: '#94a3b8' }}>{getMigrationStatus()}</strong></span>
         </div>
       )}
@@ -500,80 +506,90 @@ export default function App() {
       )}
 
       <AppErrorBoundary>
-        {showV2UI ? (
-          <div className="v2-layout">
-            <TaskDashboard
-              v2State={taskState}
-              onStartTask={(spec) => executeV2(spec ?? taskState.taskSpec)}
-              onApprovePlan={handlePlanApprove}
-              onRejectPlan={handlePlanReject}
-            />
-
-            {showPlanReview && planReviewPlan && (
-              <PlanReview
-                plan={planReviewPlan}
-                onApprove={handlePlanApprove}
-                onReject={handlePlanReject}
-              />
-            )}
-
-            {showCycleReview && cycleReviewCycle && (
-              <CycleReview
-                cycles={taskState.cycles}
-                onContinue={handleCycleContinue}
-                onAccept={handleCycleAcceptPartial}
-                onHalt={handleCycleHalt}
-              />
-            )}
-
-            {v2Result?.qualityReport && taskState.phase === 'done' && (
-              <QualitySignals report={v2Result.qualityReport} />
-            )}
-
-            {/* Dev feature flag panel */}
-            {import.meta.env.DEV && (
-              <FeatureFlagPanel
-                flags={FEATURES}
-                onChange={(key, val) => {
-                  setFeatureFlag(key, val)
-                  window.location.reload()
-                }}
-              />
-            )}
-
-            {/* V1 fallback banner */}
-            {isFallbackToV1 && (
-              <div style={{
-                position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
-                background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
-                borderRadius: '6px', padding: '0.6rem 1rem', fontSize: '0.8rem',
-                display: 'flex', gap: '0.75rem', alignItems: 'center', zIndex: 9000,
-              }}>
-                <span>⚠ Running in V1 fallback mode.</span>
-                <button
-                  onClick={() => { setFeatureFlag('useV2Engine', false); window.location.reload() }}
-                  style={{ background: 'transparent', border: '1px solid #475569', borderRadius: '3px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
-                >
-                  Stay on V1
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* V1 Chat Interface — completely unchanged */
-          <Bluswan
-            models={models}
-            setModels={handleSetModels}
-            selectedModelId={selectedModelId}
-            onModelChange={(id) => setSelectedModelId(id)}
-            onClose={() => {}}
-            onSettingsChanged={handleSettingsChanged}
-            onLogout={handleLogout}
-            userEmail={authUser?.email || 'local-user@bluswan.local'}
-            savedModelIds={fbModelIds}
-            onModelSaved={handleModelSaved}
+        <>
+          {/* Always-visible engine toggle — works in both V1 and V2 modes */}
+          <EngineToggle
+            position="floating"
+            onSwitch={({ engine }) => {
+              if (engine === 'v2') setIsFallbackToV1(false)
+            }}
           />
-        )}
+
+          {showV2UI ? (
+            <div className="v2-layout">
+              <TaskDashboard
+                v2State={taskState}
+                onStartTask={(spec) => executeV2(spec ?? taskState.taskSpec)}
+                onApprovePlan={handlePlanApprove}
+                onRejectPlan={handlePlanReject}
+              />
+
+              {showPlanReview && planReviewPlan && (
+                <PlanReview
+                  plan={planReviewPlan}
+                  onApprove={handlePlanApprove}
+                  onReject={handlePlanReject}
+                />
+              )}
+
+              {showCycleReview && cycleReviewCycle && (
+                <CycleReview
+                  cycles={taskState.cycles}
+                  onContinue={handleCycleContinue}
+                  onAccept={handleCycleAcceptPartial}
+                  onHalt={handleCycleHalt}
+                />
+              )}
+
+              {v2Result?.qualityReport && taskState.phase === 'done' && (
+                <QualitySignals report={v2Result.qualityReport} />
+              )}
+
+              {/* Dev feature flag panel */}
+              {import.meta.env.DEV && (
+                <FeatureFlagPanel
+                  flags={flags}
+                  onChange={(key, val) => {
+                    setFeatureFlag(key, val)
+                    window.location.reload()
+                  }}
+                />
+              )}
+
+              {/* V1 fallback banner */}
+              {isFallbackToV1 && (
+                <div style={{
+                  position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+                  background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
+                  borderRadius: '6px', padding: '0.6rem 1rem', fontSize: '0.8rem',
+                  display: 'flex', gap: '0.75rem', alignItems: 'center', zIndex: 9000,
+                }}>
+                  <span>⚠ Running in V1 fallback mode.</span>
+                  <button
+                    onClick={() => { setFeatureFlag('useV2Engine', false); window.location.reload() }}
+                    style={{ background: 'transparent', border: '1px solid #475569', borderRadius: '3px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                  >
+                    Stay on V1
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* V1 Chat Interface — completely unchanged */
+            <Bluswan
+              models={models}
+              setModels={handleSetModels}
+              selectedModelId={selectedModelId}
+              onModelChange={(id) => setSelectedModelId(id)}
+              onClose={() => {}}
+              onSettingsChanged={handleSettingsChanged}
+              onLogout={handleLogout}
+              userEmail={authUser?.email || 'local-user@bluswan.local'}
+              savedModelIds={fbModelIds}
+              onModelSaved={handleModelSaved}
+            />
+          )}
+        </>
       </AppErrorBoundary>
     </>
   )

@@ -627,3 +627,200 @@
   overflow: hidden;
   background: var(--lk-bg);
 }
+
+/* ============================================
+   ENGINE TOGGLE
+   ============================================ */
+
+.engine-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.engine-toggle--header {
+  flex-direction: row;
+  gap: 0.75rem;
+}
+
+.engine-toggle--floating {
+  position: fixed;
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+  right: max(1.5rem, env(safe-area-inset-right));
+  background: var(--lk-surface, #1a1a2e);
+  border: 1px solid var(--lk-border, #2a2a3e);
+  border-radius: 16px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ---- Switch Button ---- */
+
+.engine-toggle__switch {
+  position: relative;
+  width: 56px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  outline: none;
+}
+
+.engine-toggle__switch:focus-visible {
+  outline: 2px solid var(--lk-accent, #3b82f6);
+  outline-offset: 2px;
+}
+
+.engine-toggle__switch:active {
+  transform: scale(0.92);
+}
+
+.engine-toggle__switch.transitioning {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Track */
+
+.engine-toggle__track {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  position: relative;
+  transition: background-color 0.3s ease;
+}
+
+.engine-toggle__switch.v1 .engine-toggle__track {
+  background: linear-gradient(135deg, #4b5563, #6b7280);
+}
+
+.engine-toggle__switch.v2 .engine-toggle__track {
+  background: linear-gradient(135deg, #059669, #10b981);
+}
+
+/* Thumb */
+
+.engine-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  will-change: transform;
+}
+
+.engine-toggle__switch.v2 .engine-toggle__thumb {
+  transform: translateX(24px);
+}
+
+/* ---- Labels ---- */
+
+.engine-toggle__labels {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.engine-toggle__labels span {
+  color: var(--lk-text-muted, #6b7280);
+  transition: color 0.2s ease;
+}
+
+.engine-toggle__labels span.active {
+  color: var(--lk-text, #e5e7eb);
+}
+
+/* ---- Status ---- */
+
+.engine-toggle__status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--lk-text-muted, #6b7280);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.v1 {
+  background: #6b7280;
+}
+
+.status-dot.v2 {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+/* ============================================
+   IPHONE / MOBILE OPTIMIZATIONS
+   ============================================ */
+
+@media (max-width: 640px) {
+  .engine-toggle--header {
+    gap: 0.5rem;
+  }
+
+  .engine-toggle__switch {
+    width: 48px;
+    height: 28px;
+  }
+
+  .engine-toggle__thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .engine-toggle__switch.v2 .engine-toggle__thumb {
+    transform: translateX(20px);
+  }
+
+  .engine-toggle__labels {
+    font-size: 0.75rem;
+  }
+
+  .engine-toggle__status {
+    font-size: 0.65rem;
+  }
+
+  .engine-toggle--floating {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    right: max(1rem, env(safe-area-inset-right));
+    padding: 0.6rem 0.8rem;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 896px) and (orientation: landscape) {
+  .engine-toggle--floating {
+    bottom: 0.5rem;
+    right: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .engine-toggle__thumb,
+  .engine-toggle__track {
+    transition: none;
+  }
+}
