@@ -2,21 +2,24 @@
 
 Build software at the speed of intent.
 
-BLUSWAN is a forward-looking AI engineering workspace for teams that want **production outcomes**, not chatbot demos. It combines orchestration, verification, and tooling into one browser-first experience so you can plan changes, execute code edits, validate quality, and ship faster with confidence.
+BLUSWAN is an AI-powered engineering workspace that combines a deterministic execution engine, bounded resource budgets, and integrated tooling into one browser-first experience. Plan changes, execute code edits, validate quality, and ship with confidence.
 
 ---
 
-## Why BLUSWAN
+## What's New in V2
 
-Most AI coding tools stop at “generated code.” BLUSWAN is built for what happens next:
+V2 replaces the V1 nested-loop architecture with structural guarantees:
 
-- **Reliable execution loops** with planning, implementation, and verification stages
-- **Multi-model routing** so different tasks use the best-fit model profile
-- **Quality safeguards** that catch weak outputs before they become regressions
-- **Integrated tooling** for file operations, search, code analysis, commands, package installs, and PR drafting
-- **Memory and retrieval context** to improve continuity across tasks and sessions
+| Concern | V1 | V2 |
+|---|---|---|
+| Loop prevention | Heuristics (30% infinite-loop rate) | Forward-only 11-phase Task State Machine — loops structurally impossible |
+| Token waste | ~40% on auto-repair loops | ≤10% — remediation budget makes repair costs explicit |
+| Context management | 10 competing injectors, silent pruning | Reserved tiers + `ContextBudgetError` — no silent drops |
+| Error handling | 1,400-line auto-repair engine, hidden retries | Classify-only `errorClassifier.js` — LLM decides fix strategy |
+| Quality checks | Uniform hard gates — any warning blocks shipping | Gates (blocking) + signals (non-blocking, reported) |
+| Observability | Final outcome only | Full telemetry trace — every event, budget spend, and phase transition |
 
-The goal: transform AI from a drafting assistant into a dependable engineering copilot.
+V1 routing is preserved. The V2 engine is opt-in via feature flags and does not affect existing integrations.
 
 ---
 
@@ -27,57 +30,75 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` and sign in with your Google account or email via the Firebase Auth prompt.
+Open `http://localhost:5173` and sign in via the Firebase Auth prompt.
 
-Then configure your AI provider in **Settings → AI Provider**.
+Configure your AI provider in **Settings → AI Provider**.
 
----
-
-## Core Capabilities
-
-### 1) Agent Reliability Workflow
-BLUSWAN runs tasks through a structured lifecycle:
-
-`plan → execute → verify → rollback (if needed)`
-
-This keeps output quality high and reduces the chance of unsafe or incomplete changes reaching your branch.
-
-### 2) Model Orchestration
-Route specialized work (planning, debugging, refactoring, review) to different models with configurable strategies, including fallback and cost-aware routing.
-
-### 3) Tool-Driven Execution
-The agent can operate with practical engineering tools for:
-
-- file I/O and repository navigation
-- stacktrace/code analysis and search
-- web/documentation lookups
-- command execution and package management
-- pull request generation support
-
-### 4) Retrieval + Memory
-Use repository-aware context and persistent memory patterns to improve relevance, reduce repeated prompting, and keep long-running work aligned.
-
-### 5) Browser-First, Developer-Controlled
-BLUSWAN runs as a React SPA with configurable settings and local development ergonomics. You stay in control of models, keys, and behavior.
+To enable the V2 engine, add `?v2=true` to the URL. To enable the V2 UI as well, use `?v2=true&v2ui=true`.
 
 ---
 
-## Configuration at a Glance
+## Feature Flags
 
-BLUSWAN supports OpenAI-compatible endpoints and can be configured with:
+| URL param | Effect |
+|---|---|
+| `?v2=true` | Routes tasks through the V2 state machine |
+| `?v2ui=true` | Enables the V2 task lanes, budget bar, and telemetry panel |
+| `?v2=true&v2ui=true` | Full V2 experience |
 
-- one or more AI models/providers
-- optional GitHub token for repository/PR workflows
-- optional web search integration
-- optional persistence settings for cross-session continuity
+Flags can also be set persistently in `localStorage`:
+
+```javascript
+localStorage.setItem('bluswan_v2_engine', 'true');
+localStorage.setItem('bluswan_v2_ui', 'true');
+```
 
 ---
 
-## Headless and Automation-Friendly
+## Core Architecture (V2)
 
-BLUSWAN also supports CLI-driven workflows for scripted and CI-style operation.
+### Task State Machine
 
-Example:
+Every task moves forward through 11 phases:
+
+```
+idle → planning → plan_review → cycle_prep → cycle_exec
+     → cycle_validate → [repeat] → completion_check
+     → completion_confirm → done | failed | halted
+```
+
+Phases are forward-only. No phase can be revisited. The plan is immutable after `plan_review`. Hard caps: max 3 cycles, max 25 turns per cycle (both configurable).
+
+### Bounded Remediation
+
+Each task has a 100-unit remediation budget. Every fix attempt costs units:
+
+| Action | Cost |
+|---|---|
+| `tool_retry` | 5 |
+| `test_re_run` | 10 |
+| `lint_re_run` | 5 |
+| `model_re_call` | 20 |
+| `context_repack` | 15 |
+
+When the budget is exhausted, the task completes with quality warnings rather than failing. The full audit trail is in `TaskResult.remediationBudget.auditTrail`.
+
+### Context Budget
+
+Context is assembled in priority-ordered tiers. Reserved space is inviolable:
+
+- System prompt: 2,000 tokens
+- Plan contract: 1,500 tokens
+- Completion protocol: 500 tokens
+- Safety buffer: 1,000 tokens
+
+Overflow throws `ContextBudgetError` — no silent pruning that drops the task goal.
+
+---
+
+## CLI
+
+Headless operation for scripted and CI workflows:
 
 ```bash
 node src/cli/bluswan-cli.mjs run "Refactor auth module to use async/await" --model=claude-3-5-sonnet-20241022
@@ -85,19 +106,19 @@ node src/cli/bluswan-cli.mjs run "Refactor auth module to use async/await" --mod
 
 ---
 
-## Deployment
+## Documentation
 
-A `render.yaml` blueprint is included for static deployment workflows.
+| Document | Description |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full V2 architecture: state machine diagram, context budget tiers, quality pipeline |
+| [docs/api/public-api.md](docs/api/public-api.md) | Stable public API reference (`runTask`, `createPlanContract`, all types) |
+| [docs/contributing/getting-started.md](docs/contributing/getting-started.md) | Setup, project structure, feature flags, adding tools and quality signals |
+| [docs/contributing/debugging.md](docs/contributing/debugging.md) | Telemetry export, event types, common failure modes |
+| [docs/adr/](docs/adr/) | Architecture Decision Records (5 ADRs covering V2 design decisions) |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ---
 
-## Vision
+## Deployment
 
-BLUSWAN is designed for teams moving toward an AI-native engineering model:
-
-- faster iteration cycles
-- stronger guardrails
-- better model utilization
-- higher confidence from prompt to production
-
-If your roadmap includes autonomous coding, multi-model systems, and verification-first delivery, BLUSWAN is built for where you are going next.
+A `render.yaml` blueprint is included for static deployment workflows.

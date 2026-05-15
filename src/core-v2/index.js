@@ -1,6 +1,8 @@
 /**
  * @module core-v2
  * Public API entry point for the core-v2 execution pipeline.
+ * @since 2.0.0
+ * @stable
  */
 
 export { runTask, groupDeliverables, getAllowedTools, parseToolCalls, updateDeliverablesFromCycle } from './taskRunner.js';

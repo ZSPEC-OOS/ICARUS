@@ -425,6 +425,8 @@ async function generatePlan(goal, callbacks) {
  * @param {TaskSpec} taskSpec
  * @param {TaskCallbacks} callbacks
  * @returns {Promise<TaskResult>}
+ * @since 2.0.0
+ * @stable
  */
 export async function runTask(taskSpec, callbacks) {
   const startTime = Date.now();
