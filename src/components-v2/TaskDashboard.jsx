@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import EngineToggle from './EngineToggle.jsx'
 import ModelSetup from './ModelSetup.jsx'
 import DeliverableList from './DeliverableList.jsx'
@@ -90,6 +90,113 @@ function FeedEntry({ event }) {
   )
 }
 
+function loadRepoConfig() {
+  try {
+    const s = JSON.parse(localStorage.getItem('bluswan:settings') || '{}')
+    return {
+      token: sessionStorage.getItem('bluswan:ghtoken') || '',
+      owner: s.repoOwner || '',
+      name: s.repoName || '',
+      branch: s.baseBranch || 'main',
+    }
+  } catch {
+    return { token: '', owner: '', name: '', branch: 'main' }
+  }
+}
+
+function saveRepoConfig({ token, owner, name, branch }) {
+  try {
+    sessionStorage.setItem('bluswan:ghtoken', token)
+    const settings = JSON.parse(localStorage.getItem('bluswan:settings') || '{}')
+    localStorage.setItem('bluswan:settings', JSON.stringify({
+      ...settings, repoOwner: owner, repoName: name, baseBranch: branch,
+    }))
+  } catch {}
+}
+
+function RepoSection() {
+  const [cfg, setCfg] = useState(loadRepoConfig)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(cfg)
+
+  const isConnected = Boolean(cfg.token && cfg.owner && cfg.name)
+
+  function handleSave(e) {
+    e.preventDefault()
+    saveRepoConfig(form)
+    setCfg(form)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <form className="v2-repo-form" onSubmit={handleSave}>
+        <div className="v2-repo-form-row">
+          <label className="v2-sidebar-section-label">GitHub Token</label>
+          <input
+            className="v2-repo-input"
+            type="password"
+            placeholder="ghp_..."
+            value={form.token}
+            onChange={e => setForm(f => ({ ...f, token: e.target.value }))}
+            autoComplete="new-password"
+          />
+        </div>
+        <div className="v2-repo-form-row">
+          <label className="v2-sidebar-section-label">Owner / Repo</label>
+          <div style={{ display: 'flex', gap: '0.3rem' }}>
+            <input
+              className="v2-repo-input"
+              placeholder="owner"
+              value={form.owner}
+              onChange={e => setForm(f => ({ ...f, owner: e.target.value }))}
+            />
+            <input
+              className="v2-repo-input"
+              placeholder="repo"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="v2-repo-form-row">
+          <label className="v2-sidebar-section-label">Branch</label>
+          <input
+            className="v2-repo-input"
+            placeholder="main"
+            value={form.branch}
+            onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.45rem' }}>
+          <button type="submit" className="btn-primary" style={{ flex: 1, fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}>
+            Save
+          </button>
+          <button type="button" className="btn-ghost" style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }} onClick={() => setEditing(false)}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    )
+  }
+
+  return (
+    <div className="v2-repo-summary">
+      {isConnected ? (
+        <>
+          <span className="v2-repo-connected">● {cfg.owner}/{cfg.name}</span>
+          <span className="v2-repo-branch">{cfg.branch}</span>
+        </>
+      ) : (
+        <span className="v2-repo-empty">Not connected</span>
+      )}
+      <button type="button" className="v2-repo-edit-btn" onClick={() => { setForm(cfg); setEditing(true) }}>
+        {isConnected ? 'Edit' : 'Connect →'}
+      </button>
+    </div>
+  )
+}
+
 export default function TaskDashboard({
   v2State = {},
   onStartTask,
@@ -160,7 +267,33 @@ export default function TaskDashboard({
   return (
     <div className="lk-root v2-root">
 
-      {/* ── Sidebar ──────────────────────────────────────────────── */}
+      {/* ── Mobile top bar (phones only, ≤640px) ─────────────────── */}
+      <div className="v2-mobile-bar">
+        <span className="v2-mobile-bar-brand">BLUSWAN</span>
+        <select
+          className="v2-mobile-bar-select"
+          value={selectedModelId}
+          onChange={e => onModelChange?.(e.target.value)}
+          disabled={isRunning}
+        >
+          {models.length === 0 && <option value="">No model</option>}
+          {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        <button
+          type="button"
+          className="v2-mobile-bar-btn"
+          onClick={() => setShowModelSetup(true)}
+          aria-label="API Keys"
+        >
+          🔑
+        </button>
+        <EngineToggle position="header" />
+      </div>
+
+      {/* ── Body row: sidebar + main + right panel ───────────────── */}
+      <div className="v2-body-row">
+
+      {/* ── Sidebar (desktop only, >640px) ───────────────────────── */}
       <aside className="v2-sidebar">
         <div className="v2-sidebar-brand">
           <span className="v2-sidebar-brand-name">BLUSWAN</span>
@@ -193,6 +326,11 @@ export default function TaskDashboard({
             <span className="v2-sidebar-btn-icon">🔑</span>
             <span>API Keys</span>
           </button>
+        </div>
+
+        <div className="v2-sidebar-section">
+          <div className="v2-sidebar-section-label">Repository</div>
+          <RepoSection />
         </div>
 
         <div className="v2-sidebar-footer">
@@ -434,6 +572,8 @@ export default function TaskDashboard({
           </div>
         )}
       </aside>
+
+      </div>{/* end .v2-body-row */}
 
       {/* ── ModelSetup Modal ──────────────────────────────────────── */}
       {showModelSetup && (
