@@ -43,7 +43,9 @@
 
 .v2-root {
   display: flex;
+  min-height: -webkit-fill-available; /* iOS Safari < 15.4 */
   height: 100vh;
+  height: 100dvh; /* accounts for browser chrome on iOS 15.4+ */
   overflow: hidden;
   background: var(--lk-bg);
   color: var(--lk-text);
@@ -300,6 +302,7 @@
   align-items: center;
   justify-content: center;
   padding: 2.5rem 2rem;
+  padding-bottom: max(2.5rem, calc(2.5rem + env(safe-area-inset-bottom)));
   overflow-y: auto;
 }
 
@@ -433,7 +436,9 @@
 .v2-exec-feed {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 0.85rem 1.1rem 1.1rem;
+  padding-bottom: max(1.1rem, calc(1.1rem + env(safe-area-inset-bottom)));
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -548,8 +553,10 @@
   flex-direction: column;
   align-items: center;
   padding: 2rem 1.5rem;
+  padding-bottom: max(2rem, calc(2rem + env(safe-area-inset-bottom)));
   gap: 1.25rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .v2-result-card {
@@ -670,6 +677,16 @@
 /* ═══════════════════════════════════════════════════════════════════
    COMPONENTS
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Tap highlight reset (iOS) ───────────────────────────────────── */
+
+.lk-root button,
+.lk-root select,
+.lk-root input,
+.lk-root textarea {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
 
 /* ── Shared Buttons ──────────────────────────────────────────────── */
 
@@ -1427,7 +1444,27 @@
   .v2-model-hint,
   .v2-sidebar-btn span { display: none; }
   .v2-sidebar-section { padding: 0.5rem; }
-  .v2-sidebar-btn { justify-content: center; padding: 0.5rem; }
+  .v2-sidebar-btn {
+    justify-content: center;
+    padding: 0.5rem;
+    min-height: 44px; /* iOS touch target */
+  }
+
+  /* Prevent iOS Safari auto-zoom on focus (requires font-size >= 16px) */
+  .v2-model-select,
+  .v2-composer-opt select,
+  .v2-composer-opt input[type="number"],
+  .model-form-input,
+  .v2-composer-textarea {
+    font-size: 16px;
+  }
+
+  /* No drag-resize on mobile */
+  .v2-composer-textarea { resize: none; }
+
+  /* Comfortable composer padding on phones */
+  .v2-composer { padding: 1.5rem 1rem; }
+  .v2-composer-inner { max-width: 100%; }
 
   .engine-toggle--floating {
     bottom: max(0.75rem, env(safe-area-inset-bottom));
