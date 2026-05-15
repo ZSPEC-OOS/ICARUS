@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Bluswan from './components/Bluswan'
-import { loadModels, saveModels, saveSearchKey } from './services/aiService'
+import { loadModels, saveModels, saveSearchKey, runPrompt } from './services/aiService'
 import {
   onAuthStateChange,
   signOutUser,
@@ -253,6 +253,12 @@ export default function App() {
 
   // ─── V2 Task State ───────────────────────────────────────────────────────────
 
+  const modelsRef = useRef(models)
+  const selectedModelIdRef = useRef(selectedModelId)
+
+  useEffect(() => { modelsRef.current = models }, [models])
+  useEffect(() => { selectedModelIdRef.current = selectedModelId }, [selectedModelId])
+
   const [taskState, setTaskState] = useState({
     phase: 'idle',
     plan: null,
@@ -262,6 +268,7 @@ export default function App() {
     securityScan: null,
     taskSpec: null,
     error: null,
+    events: [],
   })
   const [v2Result, setV2Result] = useState(null)
   const [showPlanReview, setShowPlanReview] = useState(false)
@@ -292,7 +299,7 @@ export default function App() {
     setIsFallbackToV1(false)
     setV2Result(null)
     setV2Notice(null)
-    setTaskState({ phase: 'planning', plan: null, cycles: [], budget: null, gates: [], securityScan: null, taskSpec, error: null })
+    setTaskState({ phase: 'planning', plan: null, cycles: [], budget: null, gates: [], securityScan: null, taskSpec, error: null, events: [] })
 
     // Thin executor — delegates to services-v2/agentExecutor.js with stub IO
     const { makeExecutor: makeV2Executor } = await import('./services-v2/agentExecutor.js')
@@ -342,17 +349,19 @@ export default function App() {
           return new Promise((resolve) => { completionResolveRef.current = resolve })
         },
         onEvent: (event) => {
+          setTaskState(prev => ({ ...prev, events: [...(prev.events || []), event] }))
           if (flags.enableTelemetry) {
-            // Telemetry events forwarded — external sink wired in Phase 10
             console.debug('[telemetry]', event.type, event.data)
           }
         },
         onError: (error) => {
           setV2Notice({ type: 'error', msg: `${error.code}: ${error.explanation}` })
         },
-        callLLM: async (_messages) => {
-          // LLM bridge stub — connected to real streaming in Phase 10
-          throw new Error('callLLM bridge not yet connected')
+        callLLM: async (prompt) => {
+          const model = modelsRef.current.find(m => m.id === selectedModelIdRef.current) || modelsRef.current[0]
+          if (!model?.apiKey) throw new Error('No model with API key configured')
+          const result = await runPrompt(model, prompt, '', null, null)
+          return typeof result === 'string' ? result : (result?.text || '')
         },
         executeTool: v2ExecuteTool,
       })
@@ -516,12 +525,20 @@ export default function App() {
           />
 
           {showV2UI ? (
-            <div className="v2-layout">
+            <>
               <TaskDashboard
                 v2State={taskState}
-                onStartTask={(spec) => executeV2(spec ?? taskState.taskSpec)}
-                onApprovePlan={handlePlanApprove}
-                onRejectPlan={handlePlanReject}
+                onStartTask={(spec) => {
+                  if (spec === null) {
+                    setTaskState(prev => ({ ...prev, phase: 'idle', events: [] }))
+                    return
+                  }
+                  executeV2(spec)
+                }}
+                models={models}
+                selectedModelId={selectedModelId}
+                onModelChange={(id) => setSelectedModelId(id)}
+                onModelsUpdate={handleSetModels}
               />
 
               {showPlanReview && planReviewPlan && (
@@ -541,11 +558,6 @@ export default function App() {
                 />
               )}
 
-              {v2Result?.qualityReport && taskState.phase === 'done' && (
-                <QualitySignals report={v2Result.qualityReport} />
-              )}
-
-              {/* Dev feature flag panel */}
               {import.meta.env.DEV && (
                 <FeatureFlagPanel
                   flags={flags}
@@ -555,25 +567,7 @@ export default function App() {
                   }}
                 />
               )}
-
-              {/* V1 fallback banner */}
-              {isFallbackToV1 && (
-                <div style={{
-                  position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
-                  background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
-                  borderRadius: '6px', padding: '0.6rem 1rem', fontSize: '0.8rem',
-                  display: 'flex', gap: '0.75rem', alignItems: 'center', zIndex: 9000,
-                }}>
-                  <span>⚠ Running in V1 fallback mode.</span>
-                  <button
-                    onClick={() => { setFeatureFlag('useV2Engine', false); window.location.reload() }}
-                    style={{ background: 'transparent', border: '1px solid #475569', borderRadius: '3px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
-                  >
-                    Stay on V1
-                  </button>
-                </div>
-              )}
-            </div>
+            </>
           ) : (
             /* V1 Chat Interface — completely unchanged */
             <Bluswan
