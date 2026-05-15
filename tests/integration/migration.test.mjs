@@ -18,7 +18,7 @@ class MockStorage {
   removeItem(k) { delete this._store[k]; }
 }
 
-global.window = { location: { href: 'http://localhost/' } };
+global.window = { location: { href: 'http://localhost/' }, __bluswanFeatureOverrides: {} };
 global.localStorage = new MockStorage();
 
 // ─── Module Imports ───────────────────────────────────────────────────────────
@@ -63,19 +63,19 @@ function makeTaskSpec(taskId, plan, opts = {}) {
 
 const CYCLE_DONE = `## summary\nDone.\n\n## deliverables_addressed\n- src/output.js: written\n\n## next_cycle_needed\nNo.\n\n<CYCLE_COMPLETE>`;
 
-// ─── Test 1: V1 Path (flag-level check) ───────────────────────────────────────
+// ─── Test 1: Default flag resolution (V2 is default) ─────────────────────────
 
-describe('V1 path: flag resolution', () => {
+describe('Default flags: V2 is default', () => {
   beforeEach(() => {
-    global.window = { location: { href: 'http://localhost/' } };
+    global.window = { location: { href: 'http://localhost/' }, __bluswanFeatureOverrides: {} };
     global.localStorage = new MockStorage();
   });
 
-  it('returns v1_only when all flags are default', () => {
-    assert.equal(getMigrationStatus(), 'v1_only');
+  it('returns v2_full when all flags are default', () => {
+    assert.equal(getMigrationStatus(), 'v2_full');
     const f = getFeatureFlags();
-    assert.equal(f.useV2Engine, false);
-    assert.equal(f.useV2UI, false);
+    assert.equal(f.useV2Engine, true);
+    assert.equal(f.useV2UI, true);
   });
 });
 
@@ -102,11 +102,11 @@ describe('V2 path: engine executes and completes', () => {
 
 describe('V2 UI: flag resolution', () => {
   beforeEach(() => {
-    global.window = { location: { href: 'http://localhost/?v2ui=true' } };
+    global.window = { location: { href: 'http://localhost/?v2ui=true' }, __bluswanFeatureOverrides: {} };
     global.localStorage = new MockStorage();
   });
 
-  it('useV2UI becomes true with ?v2ui=true URL param', () => {
+  it('useV2UI is true with ?v2ui=true URL param (and by default)', () => {
     const f = getFeatureFlags();
     assert.equal(f.useV2UI, true);
   });
@@ -130,17 +130,23 @@ describe('Fallback: V2 engine failure phase', () => {
 
 // ─── Test 5: Mixed mode ───────────────────────────────────────────────────────
 
-describe('Mixed mode: V2 engine + V1 UI flags', () => {
+describe('Mixed mode: V2 engine + V1 UI override', () => {
   beforeEach(() => {
-    global.window = { location: { href: 'http://localhost/?v2=true' } };
+    // Explicitly override useV2UI to false to simulate mixed mode.
+    // With V2 defaults, all subsystems are true; this tests the partial scenario.
+    global.window = {
+      location: { href: 'http://localhost/' },
+      __bluswanFeatureOverrides: { useV2UI: false },
+    };
     global.localStorage = new MockStorage();
   });
 
-  it('useV2Engine=true but useV2UI=false — returns v2_partial status', () => {
+  it('useV2Engine=true, useV2UI=false override — returns v2_mixed status', () => {
     const f = getFeatureFlags();
     assert.equal(f.useV2Engine, true);
     assert.equal(f.useV2UI, false);
-    assert.equal(getMigrationStatus(), 'v2_partial');
+    // 5 of 6 subsystems enabled → v2_mixed
+    assert.equal(getMigrationStatus(), 'v2_mixed');
   });
 
   it('V2 engine still runs task correctly in mixed mode', async () => {
