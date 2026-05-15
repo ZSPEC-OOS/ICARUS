@@ -246,6 +246,8 @@ function collectValidationErrors(rawPlan) {
  *
  * @param {unknown} rawPlan
  * @returns {Readonly<ExecutionPlan>}
+ * @since 2.0.0
+ * @stable
  */
 export function createPlanContract(rawPlan) {
   const errors = collectValidationErrors(rawPlan);
