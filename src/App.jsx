@@ -375,9 +375,8 @@ export default function App() {
       }
     } catch (error) {
       console.error('[V2] Engine crashed:', error)
-      setTaskState(prev => ({ ...prev, phase: 'error', error: error.message }))
-      setV2Notice({ type: 'error', msg: 'V2 engine crashed. Falling back to V1.' })
-      await fallbackToV1(taskSpec)
+      setTaskState(prev => ({ ...prev, phase: 'failed', error: error.message }))
+      setV2Notice({ type: 'error', msg: `V2 engine error: ${error.message}` })
     }
   }
 
