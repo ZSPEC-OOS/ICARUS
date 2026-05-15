@@ -43,6 +43,7 @@
 
 .v2-root {
   display: flex;
+  flex-direction: column; /* mobile bar stacks above the sidebar+main row */
   min-height: -webkit-fill-available; /* iOS Safari < 15.4 */
   height: 100vh;
   height: 100dvh; /* accounts for browser chrome on iOS 15.4+ */
@@ -52,6 +53,21 @@
   font-family: 'Cormorant', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
+}
+
+/* The sidebar+main+right-panel row fills remaining height */
+.v2-root > .v2-sidebar,
+.v2-root > .v2-main,
+.v2-root > .v2-right-panel {
+  /* These three are siblings inside the column root — wrap them in a row */
+}
+
+/* Inner row that holds sidebar + main + right panel */
+.v2-body-row {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────── */
@@ -1307,6 +1323,70 @@
 
 .model-form-input::placeholder { color: var(--lk-text-muted); font-style: italic; }
 
+/* ── Repository Section ──────────────────────────────────────────── */
+
+.v2-repo-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.v2-repo-connected {
+  font-size: 0.76rem;
+  color: var(--lk-success);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.v2-repo-branch {
+  font-size: 0.68rem;
+  color: var(--lk-text-muted);
+  font-family: 'Menlo', 'Consolas', monospace;
+}
+
+.v2-repo-empty {
+  font-size: 0.75rem;
+  color: var(--lk-text-muted);
+  font-style: italic;
+}
+
+.v2-repo-edit-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--lk-accent);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-family: inherit;
+  text-align: left;
+  margin-top: 0.2rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.v2-repo-form { display: flex; flex-direction: column; gap: 0.38rem; }
+
+.v2-repo-form-row { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.v2-repo-input {
+  width: 100%;
+  background: var(--lk-surface);
+  border: 1px solid var(--lk-border);
+  border-radius: 4px;
+  color: var(--lk-text);
+  font-size: 0.76rem;
+  padding: 0.28rem 0.45rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.v2-repo-input:focus {
+  outline: none;
+  border-color: var(--lk-accent);
+}
+
 /* ── Engine Toggle (floating) ────────────────────────────────────── */
 
 .engine-toggle {
@@ -1429,6 +1509,12 @@
   color: var(--lk-danger);
 }
 
+/* ── Mobile top bar (phones only) ───────────────────────────────── */
+
+.v2-mobile-bar {
+  display: none; /* hidden on desktop — shown at ≤640px */
+}
+
 /* ── Mobile ──────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
@@ -1436,22 +1522,70 @@
 }
 
 @media (max-width: 640px) {
-  .v2-sidebar { width: 48px; min-width: 48px; }
-  .v2-sidebar-brand-name,
-  .v2-sidebar-brand-tag,
-  .v2-sidebar-section-label,
-  .v2-model-select,
-  .v2-model-hint,
-  .v2-sidebar-btn span { display: none; }
-  .v2-sidebar-section { padding: 0.5rem; }
-  .v2-sidebar-btn {
-    justify-content: center;
-    padding: 0.5rem;
-    min-height: 44px; /* iOS touch target */
+  /* Hide desktop sidebar entirely — replaced by .v2-mobile-bar */
+  .v2-sidebar { display: none; }
+
+  /* Show mobile top bar */
+  .v2-mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0 0.85rem;
+    padding-top: max(0.55rem, env(safe-area-inset-top));
+    height: calc(48px + max(0px, env(safe-area-inset-top)));
+    min-height: 48px;
+    background: var(--lk-surface);
+    border-bottom: 1px solid var(--lk-border);
+    flex-shrink: 0;
   }
 
+  .v2-mobile-bar-brand {
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--lk-accent);
+    flex-shrink: 0;
+  }
+
+  .v2-mobile-bar-select {
+    flex: 1;
+    min-width: 0;
+    background: var(--lk-surface-2);
+    border: 1px solid var(--lk-border);
+    border-radius: 6px;
+    color: var(--lk-text);
+    font-size: 16px; /* prevents iOS zoom */
+    padding: 0.3rem 0.5rem;
+    font-family: inherit;
+    appearance: none;
+  }
+
+  .v2-mobile-bar-btn {
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+    background: var(--lk-surface-2);
+    border: 1px solid var(--lk-border);
+    border-radius: 6px;
+    color: var(--lk-text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Compact engine toggle in mobile header */
+  .v2-mobile-bar .engine-toggle--header {
+    flex-shrink: 0;
+    gap: 0.4rem;
+  }
+  .v2-mobile-bar .engine-toggle__status,
+  .v2-mobile-bar .engine-toggle__labels { display: none; }
+
   /* Prevent iOS Safari auto-zoom on focus (requires font-size >= 16px) */
-  .v2-model-select,
   .v2-composer-opt select,
   .v2-composer-opt input[type="number"],
   .model-form-input,

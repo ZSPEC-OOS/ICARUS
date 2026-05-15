@@ -516,13 +516,15 @@ export default function App() {
 
       <AppErrorBoundary>
         <>
-          {/* Always-visible engine toggle — works in both V1 and V2 modes */}
-          <EngineToggle
-            position="floating"
-            onSwitch={({ engine }) => {
-              if (engine === 'v2') setIsFallbackToV1(false)
-            }}
-          />
+          {/* Floating engine toggle only shown in V1 mode; V2 has its own in the sidebar */}
+          {!showV2UI && (
+            <EngineToggle
+              position="floating"
+              onSwitch={({ engine }) => {
+                if (engine === 'v2') setIsFallbackToV1(false)
+              }}
+            />
+          )}
 
           {showV2UI ? (
             <>
