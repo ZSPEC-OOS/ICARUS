@@ -191,9 +191,6 @@ export function packCycleContext(budget, cycle, deliverables, toolResults, repoI
   // ── Tier 0a: System message (reserved, mandatory) ─────────────────────────
   const systemContent = buildSystemMessage(cycle);
   const systemFitted = fitContent(systemContent, budget.reserved.systemPrompt, true);
-  if (computeTokenEstimate(systemFitted) > budget.reserved.systemPrompt + 200) {
-    throw new ContextBudgetError('System message exceeds reserved system prompt space');
-  }
   messages.push({ role: 'system', content: systemFitted });
   reservedTokens += computeTokenEstimate(systemFitted);
   includedTiers.push('systemPrompt');
@@ -204,9 +201,6 @@ export function packCycleContext(budget, cycle, deliverables, toolResults, repoI
     cycle.targetDeliverables
   );
   const planFitted = fitContent(planContent, budget.reserved.planContract, true);
-  if (computeTokenEstimate(planFitted) > budget.reserved.planContract + 200) {
-    throw new ContextBudgetError('Plan contract exceeds reserved plan contract space');
-  }
   messages.push({ role: 'system', content: planFitted });
   reservedTokens += computeTokenEstimate(planFitted);
   includedTiers.push('planContract');

@@ -633,10 +633,10 @@ export async function runTask(taskSpec, callbacks) {
   const safetyCheck = await runSafetyGates(state.plan, allCycles, callbacks.executeTool);
 
   if (!safetyCheck.passed) {
-    state = transition(state, 'completion_confirm');
+    state = transition(state, 'failed');
     callbacks.onPhaseChange(state.phase);
     return {
-      phase: 'completion_confirm',
+      phase: 'failed',
       plan: state.plan,
       cycles: allCycles,
       safetyCheck,
