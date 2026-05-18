@@ -161,7 +161,6 @@ export function allocateTier(budget, tierName, requestedTokens) {
  * @param {Array<{role: string, content: string}>} messages
  */
 export function enforceBudget(budget, messages) {
-  const totalChars = messages.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
   const requested = computeTokenEstimate(messages.map((m) => m.content ?? '').join(''));
 
   if (requested > budget.available) {

@@ -348,22 +348,13 @@ export async function runCompletionGates(plan, cycles, executeTool) {
   if (!lastCycle) {
     selfAssessDetail = { id: 'self-assessment', passed: false, description: 'No cycles found', detail: 'No cycles to assess' };
   } else {
-    const lastAssistantMsg = lastCycle.toolResults
-      .filter((r) => r.turnNumber === lastCycle.turnsUsed)
-      .map((r) => r.output)
-      .join('\n');
-
-    const hasToken = lastAssistantMsg.includes('<CYCLE_COMPLETE>') ||
-      lastCycle.status === 'completed';
-    const nextCycleNo = lastAssistantMsg.toLowerCase().includes('next_cycle_needed') &&
-      (lastAssistantMsg.toLowerCase().includes(': no') ||
-        lastAssistantMsg.toLowerCase().includes(': false'));
+    const hasToken = lastCycle.status === 'completed';
 
     selfAssessDetail = {
       id: 'self-assessment',
       passed: hasToken,
       description: 'Cycle self-assessment',
-      detail: hasToken ? undefined : 'Missing <CYCLE_COMPLETE> token or next_cycle_needed not false',
+      detail: hasToken ? undefined : 'Last cycle did not reach completed status',
     };
   }
 
