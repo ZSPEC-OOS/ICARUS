@@ -15,14 +15,12 @@ import { KEYS } from './shared/storageKeys.js'
 import {
   getFeatureFlags,
   getMigrationStatus,
-  setFeatureFlag,
   subscribeToFlags,
 } from './config/featureFlags.js'
 import TaskDashboard from './components-v2/TaskDashboard.jsx'
 import PlanReview from './components-v2/PlanReview.jsx'
 import CycleReview from './components-v2/CycleReview.jsx'
 import QualitySignals from './components-v2/QualitySignals.jsx'
-import FeatureFlagPanel from './components-v2/FeatureFlagPanel.jsx'
 import EngineToggle from './components-v2/EngineToggle.jsx'
 
 // Populate localStorage + sessionStorage from cloud settings
@@ -567,15 +565,6 @@ export default function App() {
                 />
               )}
 
-              {import.meta.env.DEV && (
-                <FeatureFlagPanel
-                  flags={flags}
-                  onChange={(key, val) => {
-                    setFeatureFlag(key, val)
-                    window.location.reload()
-                  }}
-                />
-              )}
             </>
           ) : (
             /* V1 Chat Interface — completely unchanged */
