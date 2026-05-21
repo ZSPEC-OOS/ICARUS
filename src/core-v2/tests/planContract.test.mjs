@@ -71,33 +71,22 @@ describe('createPlanContract', () => {
     );
   });
 
-  it('throws on estimatedCycles > 3', () => {
-    assert.throws(
-      () => createPlanContract(validPlan({ estimatedCycles: 4 })),
-      (err) => {
-        assert.ok(err instanceof PlanValidationError);
-        assert.ok(err.details.some((d) => d.includes('estimatedCycles')));
-        return true;
-      }
-    );
+  it('accepts any estimatedCycles value — field is no longer validated', () => {
+    // estimatedCycles was removed from the schema; any value (or none) should pass
+    assert.doesNotThrow(() => createPlanContract(validPlan({ estimatedCycles: 4 })));
+    assert.doesNotThrow(() => createPlanContract(validPlan({ estimatedCycles: 999 })));
+    const plan = createPlanContract(validPlan({ estimatedCycles: 4 }));
+    assert.equal(plan.taskId, 'task-001');
   });
 
-  it('throws on estimatedCycles < Math.ceil(deliverables.length / 3)', () => {
-    // 7 deliverables → min cycles = ceil(7/3) = 3; estimatedCycles=1 is too optimistic
+  it('accepts many deliverables without cycle estimation errors', () => {
     const manyDeliverables = Array.from({ length: 7 }, (_, i) => ({
       id: `deliv-${i + 1}`,
       type: 'file',
       description: `Deliverable ${i + 1}`,
       acceptanceCriteria: 'exists',
     }));
-    assert.throws(
-      () => createPlanContract(validPlan({ deliverables: manyDeliverables, estimatedCycles: 1 })),
-      (err) => {
-        assert.ok(err instanceof PlanValidationError);
-        assert.ok(err.details.some((d) => d.includes('too optimistic')));
-        return true;
-      }
-    );
+    assert.doesNotThrow(() => createPlanContract(validPlan({ deliverables: manyDeliverables })));
   });
 
   it('throws on missing required fields (no goal)', () => {
@@ -113,15 +102,9 @@ describe('createPlanContract', () => {
     );
   });
 
-  it('throws on wrong version', () => {
-    assert.throws(
-      () => createPlanContract(validPlan({ version: '1.0' })),
-      (err) => {
-        assert.ok(err instanceof PlanValidationError);
-        assert.ok(err.details.some((d) => d.includes('version')));
-        return true;
-      }
-    );
+  it('auto-corrects wrong version instead of throwing', () => {
+    const plan = createPlanContract(validPlan({ version: '1.0' }));
+    assert.equal(plan.version, '2026.1');
   });
 
   it('throws on duplicate dependency paths', () => {

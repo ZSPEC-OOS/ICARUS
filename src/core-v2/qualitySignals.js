@@ -200,7 +200,7 @@ async function checkLintClean(executeTool, cachedResults) {
   // Use cached lint result if available from validation run
   const cached = cachedResults?.find((r) => r.id === 'lint');
   if (cached) {
-    return signal('lint_clean', 'Lint', cached.passed ? 'pass' : 'warn', 'Linter result', cached.passed ? undefined : cached.output.split('\n').slice(0, 3).join('\n'));
+    return signal('lint_clean', 'Lint', cached.passed ? 'pass' : 'warn', 'Linter result', cached.passed ? undefined : (cached.output ?? '').split('\n').slice(0, 3).join('\n'));
   }
 
   try {
@@ -215,7 +215,7 @@ async function checkLintClean(executeTool, cachedResults) {
 async function checkTypeClean(executeTool, cachedResults) {
   const cached = cachedResults?.find((r) => r.id === 'build' || r.id === 'typecheck');
   if (cached) {
-    return signal('type_clean', 'Type Check', cached.passed ? 'pass' : 'warn', 'Type checker result', cached.passed ? undefined : cached.output.split('\n').slice(0, 3).join('\n'));
+    return signal('type_clean', 'Type Check', cached.passed ? 'pass' : 'warn', 'Type checker result', cached.passed ? undefined : (cached.output ?? '').split('\n').slice(0, 3).join('\n'));
   }
 
   try {
