@@ -118,7 +118,6 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanation):
   ],
   "dependencies": [],
   "validationSteps": [],
-  "estimatedCycles": 1,
   "contextStrategy": {
     "maxTokensPerCycle": 80000,
     "includeRepoMap": true,
@@ -127,10 +126,9 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanation):
 }
 
 Rules:
-- estimatedCycles must be 1-3
-- estimatedCycles must be >= ceil(deliverables.length / 3)
 - deliverable IDs must be unique
-- version must be "2026.1"`;
+- version must be "2026.1"
+- each deliverable must have id, type, description, and acceptanceCriteria`;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

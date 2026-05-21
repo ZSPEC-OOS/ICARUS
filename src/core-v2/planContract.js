@@ -108,23 +108,10 @@ function collectValidationErrors(rawPlan) {
     return ['plan must be a non-null object'];
   }
 
-  // version
-  if (rawPlan.version !== PLAN_VERSION) {
-    errors.push(`version must be '${PLAN_VERSION}', got '${rawPlan.version}'`);
-  }
-
   // required string fields
   for (const field of ['taskId', 'goal']) {
     const err = requireString(rawPlan[field], field);
     if (err) errors.push(err);
-  }
-
-  // estimatedCycles
-  const ec = rawPlan.estimatedCycles;
-  if (typeof ec !== 'number' || !Number.isInteger(ec)) {
-    errors.push('estimatedCycles must be an integer');
-  } else if (ec < 1 || ec > MAX_ESTIMATED_CYCLES) {
-    errors.push(`estimatedCycles must be between 1 and ${MAX_ESTIMATED_CYCLES}, got ${ec}`);
   }
 
   // deliverables
@@ -158,15 +145,6 @@ function collectValidationErrors(rawPlan) {
       if (acErr) errors.push(acErr);
     });
 
-    // sanity check: estimatedCycles not too optimistic
-    if (typeof ec === 'number' && Number.isInteger(ec)) {
-      const minCycles = Math.ceil(rawPlan.deliverables.length / 3);
-      if (ec < minCycles) {
-        errors.push(
-          `estimatedCycles (${ec}) is too optimistic for ${rawPlan.deliverables.length} deliverables; minimum is ${minCycles}`
-        );
-      }
-    }
   }
 
   // dependencies (optional, but if present must be valid)
@@ -250,6 +228,11 @@ function collectValidationErrors(rawPlan) {
  * @stable
  */
 export function createPlanContract(rawPlan) {
+  // Auto-correct version so a stale LLM output doesn't fail the whole plan
+  if (rawPlan && typeof rawPlan === 'object' && rawPlan.version !== PLAN_VERSION) {
+    rawPlan = { ...rawPlan, version: PLAN_VERSION };
+  }
+
   const errors = collectValidationErrors(rawPlan);
   if (errors.length > 0) {
     throw new PlanValidationError(
