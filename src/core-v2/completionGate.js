@@ -169,7 +169,7 @@ export async function runSafetyGates(plan, cycles, executeTool) {
     return sum + (content.split('\n').length);
   }, 0);
 
-  if (totalLinesChanged > 500 && plan.estimatedCycles === 1) {
+  if (totalLinesChanged > 500) {
     warnings.push(
       `Large change detected (${totalLinesChanged} lines). Consider splitting into smaller tasks.`
     );
